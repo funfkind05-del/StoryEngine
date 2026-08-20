@@ -119,6 +119,8 @@ function LocationPanel() {
   const openTalk = useStore((s) => s.openTalk);
   const eatMeal = useStore((s) => s.eatMeal);
   const auctionBid = useStore((s) => s.auctionBid);
+  const aiBuyRumor = useStore((s) => s.aiBuyRumor);
+  const aiBusy = useStore((s) => s.aiBusy);
   const pitEnter = useStore((s) => s.pitEnter);
   const contestAct = useStore((s) => s.contestAct);
   const [bids, setBids] = useState<Record<number, number>>({});
@@ -357,6 +359,14 @@ function LocationPanel() {
           </>
         );
       })()}
+      {(loc.factionInfluence['FAC_LAMPLIGHTERS'] ?? 0) >= 5 && (
+        <>
+          <h4>🕯 The Lamplighters</h4>
+          <button disabled={aiBusy !== null} onClick={() => void aiBuyRumor()} title="20 copper for something a lamp saw. Rumors are grounded in what is actually moving in the world — rivals, the Circle, uncleared depths.">
+            {aiBusy === 'rumor' ? 'listening…' : 'Buy a rumor (20c)'}
+          </button>
+        </>
+      )}
       {loc.id === PIT_LOCATION && isPitTrialsDay(world) && (
         <>
           <h4>🥊 The Pit Trials</h4>
@@ -484,6 +494,8 @@ function MusePanel() {
 // ---------- Quests ----------
 function QuestsPanel() {
   const world = useStore((s) => s.world);
+  const aiRewordBoard = useStore((s) => s.aiRewordBoard);
+  const aiBusyQ = useStore((s) => s.aiBusy);
   const questAccept = useStore((s) => s.questAccept);
   const questDecline = useStore((s) => s.questDecline);
   const questTurnIn = useStore((s) => s.questTurnIn);
@@ -496,7 +508,7 @@ function QuestsPanel() {
   const spineOpen = mainQuests(world).find((q) => q.status !== 'completed' && q.status !== 'declined');
   return (
     <div>
-      <h3>Quests</h3>
+      <h3>Quests <button style={{ float: 'right' }} disabled={aiBusyQ !== null} onClick={() => void aiRewordBoard()} title="Rewrite the open board postings in each poster's own voice — tasks and stakes unchanged.">{aiBusyQ === 'board' ? '…' : '✨ Reword board'}</button></h3>
       <div className="card" style={{ borderColor: 'var(--accent)' }}>
         <div className="row">
           <span className="name grow">⚜ What Lies Beneath Blackwall</span>
@@ -883,6 +895,8 @@ function DungeonPanel() {
   const campAct = useStore((s) => s.campAct);
   const moveScheme = useStore((s) => s.moveScheme);
   const setMoveScheme = useStore((s) => s.setMoveScheme);
+  const aiDescribeRoom = useStore((s) => s.aiDescribeRoom);
+  const aiBusyD = useStore((s) => s.aiBusy);
   if (!world.currentDungeon || !world.currentRoom) {
     const entrances = Object.values(world.locations).filter((l) => l.dungeonId);
     return (
@@ -968,6 +982,7 @@ function DungeonPanel() {
         {room.shrine && !room.shrine.used && <button onClick={shrineAct}>🕯 Pray at the shrine</button>}
         {room.lorebook && !room.lorebook.taken && <button onClick={lorebookAct}>📜 Take the writings</button>}
         {room.resource && !room.resource.gathered && <button onClick={gatherAct}>⛏ Gather {room.resource.proto.replace(/-/g, ' ')}</button>}
+        <button disabled={aiBusyD !== null} onClick={() => void aiDescribeRoom()} title="Ask the model to re-render this room's description from the sim's facts — contents, dark, danger all stay true.">{aiBusyD === 'room' ? '…' : '✨ Describe'}</button>
         <button onClick={campAct} title="Rest 8 hours underground: real recovery, real chance something finds the fire.">⛺ Camp</button>
         <button onClick={leaveDungeon}>Exit dungeon</button>
       </div>

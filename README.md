@@ -58,6 +58,20 @@ and logged as events.
   temple resurrection) / Permadeath.
 - **Encumbrance**: Off / Light (slot-based) / Full.
 
+## AI flavor — the model writes prose around sim facts
+
+Five features, all optional, all with the same rule: the simulation decides what is true; the model only decides how it reads. Every one degrades gracefully when no LLM is reachable.
+
+- **✨ Describe** (Dungeon panel) — re-renders the current room's description from its real contents: dark stays dark, the chest stays a chest, the hostiles stay unengaged.
+- **Buy a rumor (20c)** — anywhere the Lamplighters hold the street. Rumors are grounded in what is actually moving: living rivals, the Circle's clock, uncleared depths, active world events, today's festival. If the model is silent, the sim's own fallback rumor is still true.
+- **✨ Reword board** (Quests panel) — rewrites open job postings in each poster's voice; tasks, targets, and pay unchanged.
+- **Letters** — a companion whose heart is in it (affection 6+, or lover and beyond) sometimes leaves a letter overnight, written in her voice from her actual memories. It lands in the event log — and in the outline.
+- **✨ Reword** (encounter banner) — the GM voice: same creatures, same counts, sharper stakes.
+
+## The 2026 polish pass
+
+CRT treatment on the corridor view (scanlines, phosphor glow, vignette), step transitions when you walk, animated HP bars, a party strip that pulses red below a third, weighted primary buttons with amber hover everywhere, illuminated-plate modal chrome — and **district tinting**: the UI's accent color follows the party (Dock Ward green, Ironmarket amber, Old Quarter bone, Highcourt steel-blue, Cemetery pale jade).
+
 ## LLM features (optional)
 
 Point the app at any OpenAI-compatible server — LM Studio on `localhost:1234`

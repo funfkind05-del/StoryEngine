@@ -72,7 +72,7 @@ function PartyStrip() {
           <span key={c.id} className="ps-member">
             <span className="ps-name">{c.name}{c.title ? ` ·${''} ${c.title}` : ''}</span>
             <span className="ps-bars">
-              <span className="ps-bar hp"><span style={{ width: `${Math.round(hurt * 100)}%`, background: hurt < 0.3 ? 'var(--danger)' : hurt < 0.6 ? '#c88a2e' : 'var(--accent2)' }} /></span>
+              <span className={`ps-bar hp${hurt < 0.34 ? ' hurt' : ''}`}><span style={{ width: `${Math.round(hurt * 100)}%`, background: hurt < 0.3 ? 'var(--danger)' : hurt < 0.6 ? '#c88a2e' : 'var(--accent2)' }} /></span>
               {c.mana.max > 0 && <span className="ps-bar mp"><span style={{ width: `${Math.round((c.mana.current / c.mana.max) * 100)}%` }} /></span>}
             </span>
             <span className="mono dim ps-num">{c.hp.current}/{c.hp.max}</span>
@@ -191,8 +191,11 @@ export default function App() {
 
   const chapters = Array.from(new Set(world.scenes.map((s) => s.chapter))).sort((a, b) => a - b);
 
+  const district = world.currentDungeon
+    ? world.locations[world.dungeons[world.currentDungeon].entranceLocation]?.district
+    : world.locations[world.partyLocation]?.district;
   return (
-    <div className={`app${playMode ? ' play' : ''}`}>
+    <div className={`app${playMode ? ' play' : ''}`} data-district={district ?? ''}>
       <div className="topbar">
         <span className="title">Blackwall</span>
         <span className="clock">{fmtWhen(world.time)}</span>

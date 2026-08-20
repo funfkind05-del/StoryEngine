@@ -69,6 +69,7 @@ import { createScenesFromBeats, markOutlined, type OutlineBeat } from '../engine
 import { maybeCompanionMoment } from '../engine/moments';
 import { placeBid } from '../engine/auction';
 import { contestArchery, contestSong, enterPitTrials } from '../engine/tournament';
+import { boardQuests, describeRoom, generateRumor, letterCandidates, rewordEncounter, rewordQuest, rumorGrounds, writeLetter } from '../engine/flavorLlm';
 import { brewAtHome, buyFirstHome, cookAtHome, fletchArrows, hostFeast, prayAtShrine, repairAtHome, sparAtHome } from '../engine/household';
 import { setMusicEnabled, setSfxEnabled, sfx, startMusic, stopMusic, type MusicTheme } from '../sound';
 
@@ -213,6 +214,13 @@ interface AppState {
   auctionBid: (lotIdx: number, offer: number) => void;
   pitEnter: () => void;
   contestAct: (kind: 'archery' | 'song', charId: string) => void;
+
+  // AI flavor — the model writes prose around sim facts
+  aiDescribeRoom: () => Promise<void>;
+  aiBuyRumor: () => Promise<void>;
+  aiRewordBoard: () => Promise<void>;
+  aiRewordEncounter: () => Promise<void>;
+  aiBusy: string | null;
   identifyItem: (itemId: string) => void;
   ascend: (charId: string, pathKey: string) => void;
   compactLog: () => void;
@@ -313,6 +321,7 @@ export const useStore = create<AppState>((set, get) => ({
   musicOn: localStorage.getItem('storyengine.music') !== '0',
   moveScheme: (localStorage.getItem('storyengine.movescheme') === 'relative' ? 'relative' : 'compass') as 'compass' | 'relative',
   facing: 'north',
+  aiBusy: null,
   talk: null,
 
   commit: (opts) => {
@@ -366,12 +375,28 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   sleepUntilMorning: () => {
-    const { world, commit } = get();
+    const { world, commit, setToast } = get();
     advanceUntilMorning(world);
     restockShops(world);
     refreshJobs(world);
     maybeCompanionMoment(world);
     commit({ autosave: 'Slept until morning' });
+    // sometimes, someone who loves you leaves a letter by the bed
+    const candidates = letterCandidates(world);
+    if (candidates.length && Math.random() < 0.2) {
+      const charId = candidates[Math.floor(Math.random() * candidates.length)];
+      void writeLetter(loadLlmConfig(), world, charId)
+        .then((text) => {
+          const w = get().world;
+          const c = w.characters[charId];
+          if (!c || text.length < 20) return;
+          logEvent(w, 'letter', { from: charId }, `${c.name} left a letter where ${w.characters[w.mcId].name} would find it:\n\n“${text}”`, { witnesses: [w.mcId, charId] });
+          c.memories.push({ subject: w.mcId, event: 'I wrote it down and left it where they would find it. Braver on paper.', importance: 5, emotionalValue: 4, day: w.time.day });
+          setToast(`📜 ${c.name} left you a letter — it's in the event log.`);
+          get().commit();
+        })
+        .catch(() => {});
+    }
   },
 
   // ---------- services ----------
@@ -843,6 +868,92 @@ export const useStore = create<AppState>((set, get) => ({
     if (err) setToast(err);
     else sfx('victory');
     commit();
+  },
+
+  aiDescribeRoom: async () => {
+    const { world, commit, setToast } = get();
+    if (!world.currentDungeon || !world.currentRoom) return;
+    set({ aiBusy: 'room' });
+    try {
+      const text = await describeRoom(loadLlmConfig(), world);
+      const w = get().world;
+      if (w.currentDungeon && w.currentRoom) {
+        const room = w.dungeons[w.currentDungeon].rooms[w.currentRoom];
+        room.description = text;
+        logEvent(w, 'flavor.room', { room: room.id }, `The room resolved into focus: ${text}`);
+        commit();
+      }
+    } catch (e) {
+      setToast(`The model stayed silent: ${e instanceof Error ? e.message : String(e)}`);
+    }
+    set({ aiBusy: null });
+  },
+
+  aiBuyRumor: async () => {
+    const { world, commit, setToast } = get();
+    const mc = world.characters[world.mcId];
+    const grounds = rumorGrounds(world);
+    if (!grounds.length) { setToast('The lamplighters have nothing tonight. A quiet city, briefly.'); return; }
+    const price = 20;
+    if (mc.money < price) { setToast(`A rumor costs ${price} copper. Lamp oil isn't free.`); return; }
+    mc.money -= price;
+    const ground = grounds[Math.floor(Math.random() * grounds.length)];
+    set({ aiBusy: 'rumor' });
+    let line = ground.fallback;
+    try {
+      line = await generateRumor(loadLlmConfig(), world, ground);
+    } catch {
+      // the fallback rumor is still true — the sim wrote it
+    }
+    const w = get().world;
+    w.characters[w.mcId].knowledge.push({ fact: `Rumor (${ground.kind}): ${line}`, day: w.time.day, accurate: true });
+    logEvent(w, 'rumor', { kind: ground.kind, price }, `A lamplighter leaned on their pole and sold ${w.characters[w.mcId].name} a rumor: “${line}”`, { location: w.partyLocation });
+    sfx('coin');
+    commit();
+    set({ aiBusy: null });
+  },
+
+  aiRewordBoard: async () => {
+    const { world, commit, setToast } = get();
+    const jobs = boardQuests(world);
+    if (!jobs.length) { setToast('The board is bare.'); return; }
+    set({ aiBusy: 'board' });
+    let changed = 0;
+    for (const q of jobs) {
+      try {
+        const text = await rewordQuest(loadLlmConfig(), world, q);
+        if (text.length > 20) {
+          get().world.quests[q.id].description = text;
+          changed++;
+        }
+      } catch {
+        break; // model unreachable — keep the rest as written
+      }
+    }
+    if (changed) {
+      setToast(`${changed} posting${changed === 1 ? '' : 's'} reworded in the posters' own voices.`);
+      commit();
+    } else {
+      setToast('The model stayed silent; the board keeps its plain hand.');
+    }
+    set({ aiBusy: null });
+  },
+
+  aiRewordEncounter: async () => {
+    const { world, commit, setToast } = get();
+    if (!world.pendingEncounter) return;
+    set({ aiBusy: 'encounter' });
+    try {
+      const text = await rewordEncounter(loadLlmConfig(), world);
+      const w = get().world;
+      if (w.pendingEncounter && text.length > 10) {
+        w.pendingEncounter.description = text;
+        commit();
+      }
+    } catch (e) {
+      setToast(`The model stayed silent: ${e instanceof Error ? e.message : String(e)}`);
+    }
+    set({ aiBusy: null });
   },
 
   identifyItem: (itemId) => {

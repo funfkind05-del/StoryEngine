@@ -219,6 +219,7 @@ export function FirstPersonView() {
 
   return (
     <div className="fpv" style={{ position: 'relative' }}>
+      <div className="fpv-frame" key={`${room.id}:${facing}`}>
       <svg viewBox="0 0 340 214" role="img" aria-label={`First-person view of ${room.name}, facing ${facing}`}>
         <rect x="0" y="0" width="340" height="214" fill={dk} />
         {/* ceiling / floor / side walls in perspective */}
@@ -330,6 +331,7 @@ export function FirstPersonView() {
           </>
         )}
       </svg>
+      </div>
       {monsterKey && !dark && (
         <div className="fpv-monster" title={veteran ? MONSTERS[monsterKey].name : 'Something hostile'}>
           <MonsterPortrait templateKey={monsterKey} size={76} world={world} />

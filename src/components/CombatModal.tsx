@@ -20,6 +20,8 @@ export function EncounterBanner() {
   const dismissEncounter = useStore((s) => s.dismissEncounter);
   const fight = useStore((s) => s.fight);
   const overrideEncounter = useStore((s) => s.overrideEncounter);
+  const aiRewordEncounter = useStore((s) => s.aiRewordEncounter);
+  const aiBusy = useStore((s) => s.aiBusy);
   const [editing, setEditing] = useState(false);
   const [counts, setCounts] = useState<Record<string, number>>({});
   const enc = world.pendingEncounter;
@@ -77,6 +79,7 @@ export function EncounterBanner() {
           <button className="primary" onClick={beginCombat}>🗡 Fight</button>
           {enc.source === 'dungeon' && <button onClick={() => fight(randomSeed())}>Resimulate (new seed)</button>}
           <button onClick={startEdit}>Override…</button>
+          <button disabled={aiBusy !== null} onClick={() => void aiRewordEncounter()} title="The GM voice: same creatures, same counts — sharper stakes.">{aiBusy === 'encounter' ? '…' : '✨ Reword'}</button>
           <button onClick={dismissEncounter} title="Set the encounter aside; in a dungeon the enemies remain in the room.">
             Not yet
           </button>

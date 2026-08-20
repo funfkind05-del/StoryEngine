@@ -30,6 +30,7 @@ import { COMPANION_ARCS } from './companions';
 import { MONSTERS } from './monsters';
 import { getAuctionLots, isAuctionDay, placeBid } from './auction';
 import { enterPitTrials, settleTournament } from './tournament';
+import { boardQuests, letterCandidates, roomFacts, rumorGrounds } from './flavorLlm';
 import { remakeMc } from './world';
 import { addMinutes } from './world';
 import { birthDayFor, relationshipBetween, runBirthdays, travelTo } from './world';
@@ -751,6 +752,60 @@ describe('round 4: companions, the Saltworks, and the calendar', () => {
     expect(COMPANION_ARCS).toHaveLength(5);
     for (const arc of COMPANION_ARCS) {
       expect(w.characters[arc.charId].sex, arc.charId).toBe('female');
+    }
+  });
+});
+
+
+describe('AI flavor stays grounded (round 5)', () => {
+  it('room facts carry the truth the model must keep', () => {
+    const w = freshWorld();
+    expect(roomFacts(w)).toBeNull(); // above ground
+    enterDungeon(w, 'DUN_OLDQUARTER_001');
+    const room = w.dungeons['DUN_OLDQUARTER_001'].rooms[w.currentRoom!];
+    room.enemies = 'alive';
+    room.encounterKey = 'skeleton';
+    const facts = roomFacts(w)!;
+    expect(facts).toContain('Crypts of Saint Varro');
+    expect(facts).toContain('Hostiles present');
+    expect(facts).toContain('pitch dark'); // no torch lit
+    lightTorch(w);
+    expect(roomFacts(w)).toContain('Torchlight');
+  });
+
+  it('rumor grounds only ever cite real world state, and each carries a true fallback', () => {
+    const w = freshWorld();
+    w.rivals = [{ id: 'RIV_X', name: 'Old Tench Gilded-Tooth', templateKey: 'dire-wolf', modifierKey: 'gilded', power: 2, scars: [], lastSeenDay: 1, grudge: 2, defeated: false }];
+    w.doom = { stage: 2, lastAdvanceDay: 1 } as never;
+    const grounds = rumorGrounds(w);
+    expect(grounds.length).toBeGreaterThanOrEqual(3);
+    const rival = grounds.find((g) => g.kind === 'rival');
+    expect(rival?.fact).toContain('Old Tench');
+    expect(rival?.fallback).toContain('Old Tench');
+    expect(grounds.find((g) => g.kind === 'doom')?.fact).toContain('stage 2');
+    for (const g of grounds) {
+      expect(g.fallback.length).toBeGreaterThan(10);
+    }
+  });
+
+  it('letters come only from party members whose hearts are in it', () => {
+    const w = freshWorld();
+    expect(letterCandidates(w)).toHaveLength(0);
+    const lyra = w.characters['CHAR_LYRA'];
+    lyra.relationships[w.mcId] = { affection: 7, trust: 5, respect: 4, attraction: 5, commitment: 2 };
+    expect(letterCandidates(w)).toContain('CHAR_LYRA'); // in party from seed
+    lyra.inParty = false;
+    expect(letterCandidates(w)).toHaveLength(0);
+  });
+
+  it('the board reword targets only open board jobs, never the spine or arcs', () => {
+    const w = freshWorld();
+    const jobs = boardQuests(w);
+    for (const q of jobs) {
+      expect(q.isMain).toBeFalsy();
+      expect(q.personal).toBeFalsy();
+      expect(q.guild).toBeFalsy();
+      expect(q.status).toBe('offered');
     }
   });
 });
