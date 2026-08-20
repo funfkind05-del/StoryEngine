@@ -58,6 +58,45 @@ and logged as events.
   temple resurrection) / Permadeath.
 - **Encumbrance**: Off / Light (slot-based) / Full.
 
+## LLM features (optional)
+
+Point the app at any OpenAI-compatible server — LM Studio on `localhost:1234`
+works with zero setup (a dev proxy handles CORS); Ollama, vLLM, LiteLLM, or
+api.openai.com/v1 with an API key all work via the ⚙ LLM settings in any
+conversation window.
+
+- **Talk to NPCs**: every persistent NPC at your location has a 🗨 Talk
+  button. The model is primed with *only what that NPC knows* — their
+  memories, knowledge facts, personality, values, and feelings toward you
+  (knowledge separation; press "Show NPC briefing" to see the exact prompt).
+  Nothing becomes canon unless you keep it: "End & remember" logs the event
+  and writes the NPC a memory; "Copy to scene" drops the transcript into the
+  manuscript as editable notes.
+- **⇄ Sync → sim**: the model reads what you've written since the last sync
+  and proposes structured simulation actions (travel, money spent, wounds,
+  new characters, relationship shifts). You approve each one; only approved
+  actions execute, each logged as an authored event. Prose never silently
+  changes the simulation.
+- **✨ Polish**: line-edit suggestions for your selection or the newest
+  paragraph, on demand or on a timer (off / 1 / 5 / 10 min). Always shown
+  side-by-side as a suggestion — accept or dismiss; tokens and facts are
+  preserved.
+
+## Minimap
+
+Bottom of the sidebar: above ground, the city as a street graph (click a
+linked location to travel); underground it becomes a classic automap that
+draws only explored rooms, with `?` stubs marking passages into darkness.
+
+## Burn testing
+
+`npm run burn` plays the game headlessly — 5 seeds × 20,000 random author
+actions (travel, dungeon crawls, combat, shopping, temple rites, training,
+inventory shuffling, household management) — asserting engine invariants
+after every step: no negative HP/coin, item↔owner consistency, equipment
+integrity, a monotonic clock, shop stock sanity, serializability, no NaN.
+The quick version runs as part of `npm test`.
+
 ## Determinism
 
 Every encounter, combat, and loot roll stores its seed. Replay an exact

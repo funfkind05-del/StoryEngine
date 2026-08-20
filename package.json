@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "burn": "BURN_ITERS=20000 BURN_SEEDS=5 vitest run src/engine/burn.test.ts"
   },
   "dependencies": {
     "react": "^19.2.8",

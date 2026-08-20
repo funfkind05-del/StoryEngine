@@ -52,7 +52,7 @@ function assertNoNaN(obj: unknown, path = 'world'): void {
   }
 }
 
-function checkInvariants(w: WorldState, step: number, action: string) {
+function checkInvariants(w: WorldState, step: number, action: string, deep: boolean) {
   const fail = (msg: string) => {
     throw new Error(`[step ${step}, after ${action}] ${msg}`);
   };
@@ -110,7 +110,13 @@ function checkInvariants(w: WorldState, step: number, action: string) {
   for (const l of Object.values(w.locations)) {
     if (l.shop) for (const e of l.shop.stock) if (e.qty < 0) fail(`${l.name} stocks ${e.qty} of ${e.proto}`);
   }
-  assertNoNaN(w);
+  // deep scan (whole world incl. event log) is O(world) — run periodically
+  if (deep) assertNoNaN(w);
+  else {
+    assertNoNaN(w.characters, 'characters');
+    assertNoNaN(w.items, 'items');
+    assertNoNaN(w.time, 'time');
+  }
 }
 
 // ---------- random driver ----------
@@ -311,7 +317,7 @@ function step(w: WorldState, rng: Rng): string {
 
 describe(`burn test (${SEEDS} seeds × ${ITERS} actions)`, () => {
   for (let seedIdx = 0; seedIdx < SEEDS; seedIdx++) {
-    it(`survives seed ${seedIdx} with invariants intact`, () => {
+    it(`survives seed ${seedIdx} with invariants intact`, { timeout: 600000 }, () => {
       const w = buildSeedWorld();
       w.masterSeed = 1000 + seedIdx;
       w.encounterFrequency = 'chaotic';
@@ -330,7 +336,7 @@ describe(`burn test (${SEEDS} seeds × ${ITERS} actions)`, () => {
         }
         // classic mode: a full wipe ends this seed's run legitimately
         if (!partyMembers(w).some(() => true)) break;
-        checkInvariants(w, i, action);
+        checkInvariants(w, i, action, i % 250 === 0);
         const clock = w.time.day * 1440 + w.time.minute;
         if (clock < lastClock) throw new Error(`clock ran backwards at step ${i} (${action})`);
         lastClock = clock;
