@@ -62,7 +62,7 @@ and logged as events.
 
 Five features, all optional, all with the same rule: the simulation decides what is true; the model only decides how it reads. Every one degrades gracefully when no LLM is reachable.
 
-- **✨ Describe** (Dungeon panel) — re-renders the current room's description from its real contents: dark stays dark, the chest stays a chest, the hostiles stay unengaged.
+- **✨ Describe** (Dungeon panel) — re-renders the current room's description from its real contents: dark stays dark, the chest stays a chest, the hostiles stay unengaged. The **auto** toggle beside it describes every room as you crawl: the stock line shows instantly, the model's richer one lands a moment later, logs to the event stream, and **persists for that story** — one render per room, kept in the save. Pitch-dark rooms wait until you light a torch.
 - **Buy a rumor (20c)** — anywhere the Lamplighters hold the street. Rumors are grounded in what is actually moving: living rivals, the Circle's clock, uncleared depths, active world events, today's festival. If the model is silent, the sim's own fallback rumor is still true.
 - **✨ Reword board** (Quests panel) — rewrites open job postings in each poster's voice; tasks, targets, and pay unchanged.
 - **Letters** — a companion whose heart is in it (affection 6+, or lover and beyond) sometimes leaves a letter overnight, written in her voice from her actual memories. It lands in the event log — and in the outline.

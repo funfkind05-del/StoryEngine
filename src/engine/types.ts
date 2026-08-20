@@ -417,6 +417,8 @@ export interface DungeonRoom {
   teleporter?: { to: RoomId };
   /** a key lies here, opening the locked door in `opensRoom` */
   key?: { taken: boolean; opensRoom: RoomId };
+  /** the model already rendered this room's description — it persists */
+  describedByLlm?: boolean;
   connections: Partial<Record<'north' | 'south' | 'east' | 'west' | 'down' | 'up', RoomId>>;
 }
 

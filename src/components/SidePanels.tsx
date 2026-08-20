@@ -904,6 +904,8 @@ function DungeonPanel() {
   const setMoveScheme = useStore((s) => s.setMoveScheme);
   const aiDescribeRoom = useStore((s) => s.aiDescribeRoom);
   const aiBusyD = useStore((s) => s.aiBusy);
+  const autoDescribe = useStore((s) => s.autoDescribe);
+  const setAutoDescribe = useStore((s) => s.setAutoDescribe);
   if (!world.currentDungeon || !world.currentRoom) {
     const entrances = Object.values(world.locations).filter((l) => l.dungeonId);
     return (
@@ -995,6 +997,9 @@ function DungeonPanel() {
         {room.lorebook && !room.lorebook.taken && <button onClick={lorebookAct}>📜 Take the writings</button>}
         {room.resource && !room.resource.gathered && <button onClick={gatherAct}>⛏ Gather {room.resource.proto.replace(/-/g, ' ')}</button>}
         <button disabled={aiBusyD !== null} onClick={() => void aiDescribeRoom()} title="Ask the model to re-render this room's description from the sim's facts — contents, dark, danger all stay true.">{aiBusyD === 'room' ? '…' : '✨ Describe'}</button>
+        <label className="small dim" title="Every room you enter: stock text shows instantly, the model's richer line lands and persists for this story a moment later. Dark rooms wait until you can see.">
+          <input type="checkbox" checked={autoDescribe} onChange={(e) => setAutoDescribe(e.target.checked)} /> auto
+        </label>
         <button onClick={campAct} title="Rest 8 hours underground: real recovery, real chance something finds the fire.">⛺ Camp</button>
         <button onClick={leaveDungeon}>Exit dungeon</button>
       </div>

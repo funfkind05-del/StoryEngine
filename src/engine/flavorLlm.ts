@@ -23,8 +23,15 @@ function ask(cfg: LlmConfig, system: string, user: string, temperature = 0.85): 
 // ---------- 1. fresh room descriptions ----------
 export function roomFacts(world: WorldState): string | null {
   if (!world.currentDungeon || !world.currentRoom) return null;
-  const d = world.dungeons[world.currentDungeon];
-  const room = d.rooms[world.currentRoom];
+  return roomFactsFor(world, world.currentDungeon, world.currentRoom);
+}
+
+/** Facts for a specific room — background describes must not drift to
+ *  wherever the party walked while the model was thinking. */
+export function roomFactsFor(world: WorldState, dungeonId: string, roomId: string): string | null {
+  const d = world.dungeons[dungeonId];
+  const room = d?.rooms[roomId];
+  if (!room) return null;
   const bits = [
     `Dungeon: ${d.name} (${d.dungeonType}), floor ${room.floor}.`,
     `Room: "${room.name}". Current description: "${room.description}"`,
@@ -37,8 +44,10 @@ export function roomFacts(world: WorldState): string | null {
   return bits.join('\n');
 }
 
-export async function describeRoom(cfg: LlmConfig, world: WorldState): Promise<string> {
-  const facts = roomFacts(world);
+export async function describeRoom(cfg: LlmConfig, world: WorldState, dungeonId?: string, roomId?: string): Promise<string> {
+  const facts = dungeonId && roomId
+    ? roomFactsFor(world, dungeonId, roomId)
+    : roomFacts(world);
   if (!facts) throw new Error('Not in a dungeon room.');
   const out = await ask(
     cfg,

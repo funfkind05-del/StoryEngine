@@ -31,7 +31,7 @@ import { COMPANION_ARCS } from './companions';
 import { MONSTERS } from './monsters';
 import { getAuctionLots, isAuctionDay, placeBid } from './auction';
 import { enterPitTrials, settleTournament } from './tournament';
-import { boardQuests, letterCandidates, roomFacts, rumorGrounds } from './flavorLlm';
+import { boardQuests, letterCandidates, roomFacts, roomFactsFor, rumorGrounds } from './flavorLlm';
 import { collectWorldArt } from './artFiles';
 import { remakeMc } from './world';
 import { addMinutes } from './world';
@@ -773,6 +773,21 @@ describe('AI flavor stays grounded (round 5)', () => {
     expect(facts).toContain('pitch dark'); // no torch lit
     lightTorch(w);
     expect(roomFacts(w)).toContain('Torchlight');
+  });
+
+  it('background describes target their own room, not wherever the party walked', () => {
+    const w = freshWorld();
+    enterDungeon(w, 'DUN_OLDQUARTER_001');
+    const d = w.dungeons['DUN_OLDQUARTER_001'];
+    const entry = w.currentRoom!;
+    const other = Object.values(d.rooms).find((r) => r.id !== entry && r.floor === 1)!;
+    other.description = 'A very specific sentence for the test.';
+    // party stays at the entry; facts are for the OTHER room
+    const facts = roomFactsFor(w, d.id, other.id)!;
+    expect(facts).toContain('A very specific sentence for the test.');
+    expect(facts).toContain(`"${other.name}"`);
+    // and the current-room path still matches the old behavior
+    expect(roomFacts(w)).toContain(d.rooms[entry].name);
   });
 
   it('rumor grounds only ever cite real world state, and each carries a true fallback', () => {

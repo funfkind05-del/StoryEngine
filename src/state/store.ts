@@ -13,7 +13,7 @@ import type {
 } from '../engine/types';
 import { buildSeedWorld } from '../data/seed';
 import { advanceUntilMorning, logEvent, nextId, partyMembers, tick, travelTo } from '../engine/world';
-import { campInDungeon, disarmTrap, enterDungeon, exitDungeon, lightTorch, moveInDungeon, searchRoom, takeKey, type MoveDir } from '../engine/dungeon';
+import { campInDungeon, disarmTrap, enterDungeon, exitDungeon, isDark, lightTorch, moveInDungeon, searchRoom, takeKey, type MoveDir } from '../engine/dungeon';
 import { generateDungeonEncounter, rollCityEncounter } from '../engine/encounter';
 import { closeCombat, resolveRound, startCombat, takeLoot } from '../engine/combat';
 import { openChest } from '../engine/loot';
@@ -221,6 +221,11 @@ interface AppState {
   contestAct: (kind: 'archery' | 'song', charId: string) => void;
 
   // AI flavor — the model writes prose around sim facts
+  /** auto-describe: stock text shows instantly, the model's richer line
+   *  lands and persists for this story a moment later */
+  autoDescribe: boolean;
+  setAutoDescribe: (on: boolean) => void;
+  maybeAutoDescribe: () => void;
   aiDescribeRoom: () => Promise<void>;
   aiBuyRumor: () => Promise<void>;
   aiRewordBoard: () => Promise<void>;
@@ -309,6 +314,9 @@ function initial(): { world: WorldState; snapshots: Snapshot[] } {
 
 const init = initial();
 
+// Auto-describe keeps at most one in-flight request per room.
+const describingRooms = new Set<string>();
+
 // Persisting the whole world on every keystroke is wasteful; debounce it.
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -327,6 +335,7 @@ export const useStore = create<AppState>((set, get) => ({
   moveScheme: (localStorage.getItem('storyengine.movescheme') === 'compass' ? 'compass' : 'relative') as 'compass' | 'relative',
   facing: 'north',
   aiBusy: null,
+  autoDescribe: localStorage.getItem('storyengine.autodescribe') !== '0',
   artVersion: 0,
   talk: null,
 
@@ -857,6 +866,7 @@ export const useStore = create<AppState>((set, get) => ({
     if (err) setToast(err);
     else sfx('fight');
     commit();
+    if (!err) get().maybeAutoDescribe(); // light reveals the walls at last
   },
 
   campAct: () => {
@@ -891,6 +901,39 @@ export const useStore = create<AppState>((set, get) => ({
     commit();
   },
 
+  setAutoDescribe: (on) => {
+    localStorage.setItem('storyengine.autodescribe', on ? '1' : '0');
+    set({ autoDescribe: on });
+    if (on) get().maybeAutoDescribe();
+  },
+
+  maybeAutoDescribe: () => {
+    const { world, autoDescribe } = get();
+    if (!autoDescribe || !world.currentDungeon || !world.currentRoom) return;
+    const dungeonId = world.currentDungeon;
+    const roomId = world.currentRoom;
+    const room = world.dungeons[dungeonId]?.rooms[roomId];
+    if (!room || room.describedByLlm) return; // once per room, per story
+    if (isDark(world)) return; // can't describe walls nobody can see
+    const key = `${dungeonId}:${roomId}`;
+    if (describingRooms.has(key)) return;
+    describingRooms.add(key);
+    void describeRoom(loadLlmConfig(), get().world, dungeonId, roomId)
+      .then((text) => {
+        describingRooms.delete(key);
+        const w = get().world;
+        const r = w.dungeons[dungeonId]?.rooms[roomId];
+        if (!r || r.describedByLlm || text.length < 15) return;
+        r.description = text;
+        r.describedByLlm = true;
+        logEvent(w, 'flavor.room', { room: roomId, auto: true }, `The room resolved into focus: ${text}`);
+        get().commit();
+      })
+      .catch(() => {
+        describingRooms.delete(key); // failed quietly; a later entry retries
+      });
+  },
+
   aiDescribeRoom: async () => {
     const { world, commit, setToast } = get();
     if (!world.currentDungeon || !world.currentRoom) return;
@@ -901,6 +944,7 @@ export const useStore = create<AppState>((set, get) => ({
       if (w.currentDungeon && w.currentRoom) {
         const room = w.dungeons[w.currentDungeon].rooms[w.currentRoom];
         room.description = text;
+        room.describedByLlm = true;
         logEvent(w, 'flavor.room', { room: room.id }, `The room resolved into focus: ${text}`);
         commit();
       }
@@ -1223,6 +1267,7 @@ export const useStore = create<AppState>((set, get) => ({
     enterDungeon(world, dungeonId);
     set({ prepDungeon: null, panel: 'dungeon' });
     commit({ autosave: `Entered ${world.dungeons[dungeonId].name}` });
+    get().maybeAutoDescribe();
   },
 
   leaveDungeon: () => {
@@ -1251,6 +1296,7 @@ export const useStore = create<AppState>((set, get) => ({
       setToast('The floor turns beneath you. Which way were you facing?');
     }
     commit();
+    get().maybeAutoDescribe();
   },
 
   keyAct: () => {
