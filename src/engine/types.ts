@@ -95,6 +95,9 @@ export interface Household {
   lastSparDay?: number; // training-yard use
   lastBrewDay?: number; // alchemy-room use
   lastHarvestDay?: number; // garden
+  lastPrayDay?: number; // shrine
+  lastFletchDay?: number; // forge annex
+  lastFeastDay?: number; // great hall
 }
 
 // ---------- Shops, inns, temples ----------

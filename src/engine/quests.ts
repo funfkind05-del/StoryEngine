@@ -90,6 +90,9 @@ export function acceptQuest(world: WorldState, id: string): string | null {
   if (world.partyLocation !== q.giverLocation) return 'You must be where the work is offered.';
   q.status = 'active';
   q.acceptedDay = world.time.day;
+  // a war room buys planning time
+  const home = Object.values(world.locations).find((l) => l.household);
+  if (q.deadlineDay !== undefined && home?.household?.upgrades.includes('war-room')) q.deadlineDay += 1;
   // kill objectives count from acceptance, not from lifetime tallies
   for (const o of q.objectives) {
     if (o.kind === 'kill') o.baseline = world.killCounts[o.templateKey] ?? 0;

@@ -128,8 +128,14 @@ Red Knives turf with blood between you, they come looking for you by name.
 Functional rooms unlock real actions at home: a **kitchen** cooks for the
 party for coppers (free with a **garden**), the **training yard** gives a
 daily sparring XP trickle, the **alchemy room** brews a potion a day into
-storage (**library** improves the formula), and the **workshop** mends worn
-and broken gear for material costs.
+storage (**library** improves the formula, the **enchanter's study** brews
+greater potions), and the **workshop** mends worn and broken gear (half
+cost with the **forge annex**, which also fletches 20 arrows a day). The
+later-book wings: a **shrine** whose daily prayer lifts curses, an
+**infirmary** that mends lasting injuries overnight, a **vault** earning
+2% monthly interest on the treasury, a **watchtower** that thins ambushes
+in the home district, a **war room** adding a day to job deadlines, and a
+**great hall** for weekly feasts that raise faction standing.
 
 ## A universe for twenty books
 
@@ -152,6 +158,21 @@ and broken gear for material costs.
   scar in the character sheet.
 - **Weather & calendar**: four 90-day seasons, daily deterministic weather
   (snow only in winter), shown in the topbar and fed to the scene drafter.
+
+## The Muse — the engine as co-plotter
+
+The Muse panel mines the live simulation for story hooks and ranks them by
+urgency — every idea grounded in cited sim facts, refreshed as the world
+changes. It sees what the sim knows: **secrets** (knowledge one character
+holds that another doesn't — the knowledge-separation system doing plot
+work), **deadlines** about to bite, **faction blood-debts** and patronage,
+**romance beats** where attraction has outrun commitment, **broken trust**,
+untreated **wounds**, **Chekhov items** the manuscript never mentioned,
+**forgotten cast**, unentered **dungeons** at the party's level, empty
+purses, neglected home scenes, turning **seasons** and storms. Each hook
+has *Use as outline* (pre-fills the Draft Scene tool) and *✨ Develop*
+(the LLM proposes three concrete directions plus a complication, bounded
+by the grounding facts). Nothing is canon; it's material.
 
 ## Character portraits
 

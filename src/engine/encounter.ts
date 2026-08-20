@@ -80,7 +80,10 @@ export function rollCityEncounter(world: WorldState): SimEvent | null {
   const knivesRep = mc.factionReputation['FAC_REDKNIVES'] ?? 0;
   const knivesTurf = (loc.factionInfluence['FAC_REDKNIVES'] ?? 0) >= 5;
   const vendetta = knivesTurf && knivesRep <= -3;
-  const chance = FREQ_CHANCE[world.encounterFrequency] * (loc.dangerRating / 6) * (vendetta ? 1.6 : 1);
+  // a watchtower at home makes the home district a harder place to ambush
+  const home = Object.values(world.locations).find((l) => l.household);
+  const watched = home?.household?.upgrades.includes('watchtower') && world.locations[home.id]?.district === loc.district;
+  const chance = FREQ_CHANCE[world.encounterFrequency] * (loc.dangerRating / 6) * (vendetta ? 1.6 : 1) * (watched ? 0.6 : 1);
   const seed = randomSeed();
   const rng = new Rng(seed);
   if (!rng.chance(Math.min(0.85, chance))) return null;

@@ -8,7 +8,7 @@ import type { Character, DungeonRoom } from '../engine/types';
 import { charactersAt, fmtTime, fmtWhen, locPath, xpForLevel } from '../engine/world';
 import { checkAllScenes } from '../engine/continuity';
 import { eventsToNotes } from '../engine/bridge';
-import { TIER_INFO, TIER_ORDER, UPGRADES, findHome } from '../engine/household';
+import { TIER_INFO, TIER_ORDER, UPGRADES, UPGRADE_EFFECTS, findHome } from '../engine/household';
 import {
   CLASSES,
   ITEM_PROTOS,
@@ -30,6 +30,8 @@ import { activeQuests, describeReward, objectiveDone, objectiveLabel, offeredQue
 import { MonsterPortrait } from './MonsterArt';
 import { CharacterPortrait } from './CharacterArt';
 import { activeSlot, listBooks } from '../engine/books';
+import { developIdea, generateStoryIdeas, type StoryIdea } from '../engine/muse';
+import { loadLlmConfig } from '../engine/npcChat';
 import { MONSTERS } from '../engine/monsters';
 import {
   chooseBackupFile,
@@ -43,6 +45,7 @@ import {
 const TABS: { key: PanelTab; label: string }[] = [
   { key: 'location', label: 'Location' },
   { key: 'quests', label: 'Quests' },
+  { key: 'muse', label: 'Muse' },
   { key: 'characters', label: 'People' },
   { key: 'party', label: 'Party' },
   { key: 'inventory', label: 'Inventory' },
@@ -70,6 +73,7 @@ export function SidePanels() {
       <div className="panel-body">
         {panel === 'location' && <LocationPanel />}
         {panel === 'quests' && <QuestsPanel />}
+        {panel === 'muse' && <MusePanel />}
         {panel === 'characters' && <CharactersPanel />}
         {panel === 'party' && <PartyPanel />}
         {panel === 'inventory' && <InventoryPanel />}
@@ -259,6 +263,64 @@ function LocationPanel() {
           ))}
         </>
       )}
+    </div>
+  );
+}
+
+// ---------- Muse ----------
+function MusePanel() {
+  const world = useStore((s) => s.world);
+  const setMuseOutline = useStore((s) => s.setMuseOutline);
+  const setToast = useStore((s) => s.setToast);
+  const [developed, setDeveloped] = useState<Record<string, { busy: boolean; text: string | null }>>({});
+  const ideas = generateStoryIdeas(world);
+  const develop = async (idea: StoryIdea) => {
+    setDeveloped((d) => ({ ...d, [idea.title]: { busy: true, text: null } }));
+    try {
+      const text = await developIdea(loadLlmConfig(), world, idea);
+      setDeveloped((d) => ({ ...d, [idea.title]: { busy: false, text } }));
+    } catch (e) {
+      setDeveloped((d) => ({ ...d, [idea.title]: { busy: false, text: null } }));
+      setToast(`Develop failed: ${e instanceof Error ? e.message : e}`);
+    }
+  };
+  return (
+    <div>
+      <h3>Muse</h3>
+      <p className="dim small">
+        Story hooks mined from the simulation right now — every one grounded in cited sim facts,
+        most pressing first. They refresh as the world changes. Nothing here is canon; it's material.
+      </p>
+      {ideas.length === 0 && <p className="dim">The world is quiet. Advance time, travel, or stir something up.</p>}
+      {ideas.map((idea) => {
+        const dev = developed[idea.title];
+        return (
+          <div key={idea.title} className="card">
+            <div className="row">
+              <span className="name grow">{idea.title}</span>
+              <Tag tone={idea.urgency >= 8 ? 'red' : idea.urgency >= 5 ? 'gold' : undefined}>{idea.kind}</Tag>
+            </div>
+            <p className="small">{idea.pitch}</p>
+            <details>
+              <summary>grounded in</summary>
+              {idea.grounding.map((g, i) => <p key={i} className="small dim">• {g}</p>)}
+            </details>
+            <div className="row">
+              <button
+                className="primary"
+                onClick={() => { setMuseOutline(idea.outline); setToast('Outline loaded into Draft Scene — write it or let the LLM take the first pass.'); }}
+                title="Open the Draft Scene box pre-filled with this idea's outline."
+              >
+                🪶 Use as outline
+              </button>
+              <button disabled={dev?.busy} onClick={() => void develop(idea)} title="Ask the LLM for three concrete directions plus a complication.">
+                {dev?.busy ? 'thinking…' : '✨ Develop'}
+              </button>
+            </div>
+            {dev?.text && <div className="sugg-text" style={{ marginTop: 6 }}>{dev.text}</div>}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -813,6 +875,9 @@ function HouseholdPanel() {
   const homeSpar = useStore((s) => s.homeSpar);
   const homeBrew = useStore((s) => s.homeBrew);
   const homeRepair = useStore((s) => s.homeRepair);
+  const homePray = useStore((s) => s.homePray);
+  const homeFletch = useStore((s) => s.homeFletch);
+  const homeFeast = useStore((s) => s.homeFeast);
   const homeId = findHome(world);
   const home = homeId ? world.locations[homeId] : null;
   const mc = world.characters[world.mcId];
@@ -836,16 +901,29 @@ function HouseholdPanel() {
       <h4>Build</h4>
       {UPGRADES.filter((u) => !hh.upgrades.includes(u.key)).map((u) => (
         <div key={u.key} className="row">
-          <span className="grow small">{u.label} {tierIdx < u.minTier && <span className="dim">(needs {TIER_INFO[TIER_ORDER[u.minTier]].label})</span>}</span>
-          <button disabled={tierIdx < u.minTier || mc.money < u.cost} onClick={() => homeBuyUpgrade(u.key)}>{u.cost}c</button>
+          <span className="grow small">
+            {u.label} {UPGRADE_EFFECTS[u.key] && <span className="dim">— {UPGRADE_EFFECTS[u.key]}</span>} {tierIdx < u.minTier && <span className="dim">(needs {TIER_INFO[TIER_ORDER[u.minTier]].label})</span>}
+          </span>
+          <button disabled={tierIdx < u.minTier || mc.money < u.cost} onClick={() => homeBuyUpgrade(u.key)}>{fmtMoney(u.cost)}</button>
         </div>
       ))}
       <h4>Use the house</h4>
       <div className="row">
         {hh.upgrades.includes('kitchen') && <button onClick={homeCook}>🍲 Cook{hh.upgrades.includes('garden') ? ' (garden: free)' : ''}</button>}
         {hh.upgrades.includes('training-yard') && <button onClick={homeSpar}>⚔ Spar in the yard</button>}
-        {hh.upgrades.includes('alchemy-room') && <button onClick={homeBrew}>⚗ Brew{hh.upgrades.includes('library') ? ' (library: better)' : ''}</button>}
+        {hh.upgrades.includes('alchemy-room') && <button onClick={homeBrew}>⚗ Brew{hh.upgrades.includes('enchanters-study') ? ' (study: greater)' : hh.upgrades.includes('library') ? ' (library: better)' : ''}</button>}
+        {hh.upgrades.includes('shrine') && <button onClick={homePray}>🕯 Pray</button>}
+        {hh.upgrades.includes('forge-annex') && <button onClick={homeFletch}>🏹 Fletch arrows</button>}
       </div>
+      {hh.upgrades.includes('great-hall') && (
+        <div className="row small">
+          <label>🍷 Host a feast for</label>
+          <select value="" onChange={(e) => { if (e.target.value) homeFeast(e.target.value); }}>
+            <option value="">choose a faction… (5g, weekly)</option>
+            {Object.values(world.factions).map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+          </select>
+        </div>
+      )}
       {hh.upgrades.includes('workshop') && (
         <div className="row small">
           <label>🔧 Repair</label>

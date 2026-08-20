@@ -38,7 +38,35 @@ export const UPGRADES: { key: string; label: string; cost: number; minTier: numb
   { key: 'stable', label: 'Stable', cost: 2200, minTier: 4 },
   { key: 'defensive-walls', label: 'Defensive Walls', cost: 8000, minTier: 4 },
   { key: 'dungeon-access', label: 'Dungeon Access', cost: 15000, minTier: 5 },
+  // the later-book wings
+  { key: 'shrine', label: 'Household Shrine', cost: 600, minTier: 2 },
+  { key: 'guest-quarters', label: 'Guest Quarters', cost: 800, minTier: 2 },
+  { key: 'infirmary', label: 'Infirmary', cost: 2200, minTier: 3 },
+  { key: 'vault', label: 'Vault', cost: 4000, minTier: 3 },
+  { key: 'watchtower', label: 'Watchtower', cost: 5000, minTier: 4 },
+  { key: 'forge-annex', label: 'Forge Annex', cost: 6000, minTier: 4 },
+  { key: 'war-room', label: 'War Room', cost: 9000, minTier: 4 },
+  { key: 'enchanters-study', label: 'Enchanter’s Study', cost: 12000, minTier: 5 },
+  { key: 'great-hall', label: 'Great Hall', cost: 20000, minTier: 5 },
 ];
+
+/** What each functional room actually does (shown in the Home panel). */
+export const UPGRADE_EFFECTS: Record<string, string> = {
+  kitchen: 'Cook for the party for coppers',
+  garden: 'Cooking becomes free and more filling',
+  'training-yard': 'Daily sparring XP',
+  'alchemy-room': 'Brew a potion a day into storage',
+  library: 'Better brewing formulae',
+  workshop: 'Repair worn and broken gear',
+  shrine: 'Daily prayer lifts curses and steadies nerves',
+  infirmary: 'Sleeping at home also mends lasting injuries',
+  vault: 'The treasury earns 2% monthly interest',
+  watchtower: 'Fewer ambushes in the home district',
+  'forge-annex': 'Repairs at half cost; fletch arrows daily',
+  'war-room': 'Accepted jobs get +1 day on their deadlines',
+  'enchanters-study': 'Brewing produces greater healing potions',
+  'great-hall': 'Host feasts to court the city’s factions',
+};
 
 export function findHome(world: WorldState): LocationId | null {
   const home = Object.values(world.locations).find((l) => l.household);
@@ -144,8 +172,9 @@ export function brewAtHome(world: WorldState): string | null {
   hh.lastBrewDay = world.time.day;
   mc.money -= cost;
   addMinutes(world, 120);
+  const withStudy = hh.upgrades.includes('enchanters-study');
   const withLibrary = hh.upgrades.includes('library');
-  const proto = withLibrary ? 'healing-potion' : 'minor-healing-potion';
+  const proto = withStudy ? 'greater-healing-potion' : withLibrary ? 'healing-potion' : 'minor-healing-potion';
   const potion = makeItem(world, proto, 1);
   potion.history.push(`Brewed at home on Day ${world.time.day}`);
   addToContainer(world, potion, 'home');
@@ -163,7 +192,8 @@ export function repairAtHome(world: WorldState, itemId: string): string | null {
   if (!item?.durability) return 'Nothing to mend there.';
   if (item.durability.current >= item.durability.max) return `${item.name} is sound.`;
   const missing = item.durability.max - item.durability.current;
-  const cost = Math.max(5, Math.ceil(missing / 2));
+  let cost = Math.max(5, Math.ceil(missing / 2));
+  if (hh.upgrades.includes('forge-annex')) cost = Math.max(3, Math.ceil(cost / 2));
   const mc = world.characters[world.mcId];
   if (mc.money < cost) return `Materials cost ${fmtMoney(cost)}.`;
   mc.money -= cost;
@@ -172,5 +202,69 @@ export function repairAtHome(world: WorldState, itemId: string): string | null {
   item.broken = false;
   item.history.push(`Repaired in the home workshop on Day ${world.time.day}`);
   logEvent(world, 'home.repair', { item: item.name, cost }, `${item.name} was made whole at the workbench (${fmtMoney(cost)}).`, { location: homeId });
+  return null;
+}
+
+/** Shrine: daily prayer — lifts curses, steadies the party. */
+export function prayAtShrine(world: WorldState): string | null {
+  const { err, homeId } = homeIfPresent(world);
+  if (err || !homeId) return err;
+  const hh = world.locations[homeId].household!;
+  if (!hh.upgrades.includes('shrine')) return 'No shrine.';
+  if (hh.lastPrayDay === world.time.day) return 'The candles are already lit today.';
+  hh.lastPrayDay = world.time.day;
+  addMinutes(world, 20);
+  const party = partyMembers(world);
+  const lifted: string[] = [];
+  for (const c of party) {
+    const before = c.statuses.length;
+    c.statuses = c.statuses.filter((s) => s.key !== 'cursed');
+    if (c.statuses.length < before) lifted.push(c.name);
+    c.tempBonuses.push({ stat: 'defense', amount: 1, roundsLeft: 10, source: 'Morning prayer' });
+  }
+  logEvent(world, 'home.pray', { lifted }, lifted.length ? `Prayer at the household shrine lifted the weight from ${lifted.join(', ')}.` : 'The household prayed together; the day feels steadier for it.', { location: homeId, witnesses: party.map((c) => c.id) });
+  return null;
+}
+
+/** Forge annex: fletch a bundle of arrows from scrap, once a day. */
+export function fletchArrows(world: WorldState): string | null {
+  const { err, homeId } = homeIfPresent(world);
+  if (err || !homeId) return err;
+  const hh = world.locations[homeId].household!;
+  if (!hh.upgrades.includes('forge-annex')) return 'No forge annex.';
+  if (hh.lastFletchDay === world.time.day) return 'The annex is out of seasoned shafts until tomorrow.';
+  const mc = world.characters[world.mcId];
+  const cost = 5;
+  if (mc.money < cost) return `Materials cost ${fmtMoney(cost)}.`;
+  hh.lastFletchDay = world.time.day;
+  mc.money -= cost;
+  addMinutes(world, 60);
+  const arrows = makeItem(world, 'arrow', 20);
+  addToContainer(world, arrows, 'party');
+  logEvent(world, 'home.fletch', { count: 20 }, 'Twenty fresh arrows went into the party quiver from the forge annex.', { location: homeId });
+  return null;
+}
+
+/** Great hall: host a feast to court a faction — once a week. */
+export function hostFeast(world: WorldState, factionId: string): string | null {
+  const { err, homeId } = homeIfPresent(world);
+  if (err || !homeId) return err;
+  const hh = world.locations[homeId].household!;
+  if (!hh.upgrades.includes('great-hall')) return 'No great hall to host in.';
+  if (hh.lastFeastDay !== undefined && world.time.day - hh.lastFeastDay < 7) return 'The household is still recovering from the last feast.';
+  const faction = world.factions[factionId];
+  if (!faction) return 'Court whom?';
+  const mc = world.characters[world.mcId];
+  const cost = 500;
+  if (mc.money < cost) return `A feast worth throwing costs ${fmtMoney(cost)}.`;
+  hh.lastFeastDay = world.time.day;
+  mc.money -= cost;
+  addMinutes(world, 240);
+  const party = partyMembers(world);
+  for (const c of party) {
+    c.factionReputation[factionId] = Math.max(-10, Math.min(10, (c.factionReputation[factionId] ?? 0) + 1));
+    eatFood(c, 80);
+  }
+  logEvent(world, 'home.feast', { faction: factionId, cost }, `The household feasted ${faction.name} in the great hall (${fmtMoney(cost)}). Bread was broken; standing rose.`, { location: homeId, witnesses: party.map((c) => c.id) });
   return null;
 }

@@ -9,7 +9,7 @@ import { SKILLS, SPELLS, resolveRound, startCombat } from './combat';
 import { MONSTERS } from './monsters';
 import { generateDungeon } from './dungeon';
 import { buildDraftPrompt } from './proseLlm';
-import { reorderScene, tick } from './world';
+import { reorderScene, tick, travelTo } from './world';
 import { Rng } from './rng';
 import type { WorldState } from './types';
 
@@ -202,5 +202,88 @@ describe('books (multi-world slots)', () => {
     deleteBook(slot);
     expect(activeSlot()).toBe('default');
     expect(localStorage.getItem(slotKeys(slot).project)).toBeNull();
+  });
+});
+
+describe('the Muse', () => {
+  it('mines grounded, urgency-sorted ideas from world state', async () => {
+    const { generateStoryIdeas } = await import('./muse');
+    const w = freshWorld();
+    // set up several latent hooks
+    const lyra = w.characters['CHAR_LYRA'];
+    lyra.relationships['CHAR_KAEL'] = { affection: 4, trust: 2, respect: 3, attraction: 5, commitment: 0 };
+    w.characters[w.mcId].factionReputation['FAC_REDKNIVES'] = -5;
+    const q = Object.values(w.quests).find((x) => x.status === 'offered')!;
+    q.status = 'active';
+    q.deadlineDay = w.time.day + 1;
+    const ideas = generateStoryIdeas(w);
+    expect(ideas.length).toBeGreaterThanOrEqual(5);
+    // urgency-sorted
+    for (let i = 1; i < ideas.length; i++) expect(ideas[i - 1].urgency).toBeGreaterThanOrEqual(ideas[i].urgency);
+    // the pressing hooks surface
+    expect(ideas.some((i) => i.kind === 'deadline')).toBe(true);
+    expect(ideas.some((i) => i.kind === 'faction' && i.title.includes('blood'))).toBe(true);
+    expect(ideas.some((i) => i.kind === 'romance' && i.title.includes('Lyra'))).toBe(true);
+    // the seed's knowledge asymmetry (Mara knows about Varga's crates) is found
+    expect(ideas.some((i) => i.kind === 'secret' && i.grounding.some((g) => g.includes('Varga')))).toBe(true);
+    // every idea is grounded and drafts an outline
+    for (const idea of ideas) {
+      expect(idea.grounding.length).toBeGreaterThan(0);
+      expect(idea.outline.length).toBeGreaterThan(20);
+    }
+  });
+});
+
+describe('household wings', () => {
+  it('shrine prays, annex fletches, great hall feasts, infirmary mends, war room extends, vault earns', async () => {
+    const { prayAtShrine, fletchArrows, hostFeast, buyUpgrade: buy } = await import('./household');
+    const { restAtHome } = await import('./services');
+    const { acceptQuest: accept, refreshJobs: refresh } = await import('./quests');
+    const { applyStatus: curse } = await import('./rules');
+    const w = freshWorld();
+    const mc = w.characters[w.mcId];
+    travelTo(w, 'LOC_KAELROOM');
+    mc.money = 100000;
+    const home = w.locations['LOC_KAELROOM'].household!;
+    home.tier = 'estate';
+    for (const key of ['shrine', 'forge-annex', 'great-hall', 'infirmary', 'war-room', 'vault']) {
+      expect(buy(w, key), key).toBeNull();
+    }
+    // shrine lifts curses, once a day
+    curse(mc, 'cursed');
+    expect(prayAtShrine(w)).toBeNull();
+    expect(mc.statuses.some((s) => s.key === 'cursed')).toBe(false);
+    expect(prayAtShrine(w)).toMatch(/already lit/);
+    // fletching stocks the party quiver
+    expect(fletchArrows(w)).toBeNull();
+    expect(w.partyInventory.map((i) => w.items[i]).some((i) => i?.proto === 'arrow' && (i.qty ?? 0) >= 20)).toBe(true);
+    // feast raises faction standing, weekly
+    expect(hostFeast(w, 'FAC_COINGUILD')).toBeNull();
+    expect(mc.factionReputation['FAC_COINGUILD']).toBe(1);
+    expect(hostFeast(w, 'FAC_COINGUILD')).toMatch(/recovering/);
+    // infirmary mends injuries overnight
+    rollInjury(mc, new Rng(3));
+    for (let i = 0; i < 20 && !mc.injuries.length; i++) rollInjury(mc, new Rng(i));
+    if (mc.injuries.length) {
+      expect(restAtHome(w)).toBeNull();
+      expect(mc.injuries.every((i) => i.treated)).toBe(true);
+    }
+    // war room extends accepted deadlines
+    for (let d = 0; d < 30 && !Object.values(w.quests).some((x) => x.status === 'offered' && x.deadlineDay !== undefined); d++) {
+      w.time.day += 1;
+      refresh(w);
+    }
+    const dq = Object.values(w.quests).find((x) => x.status === 'offered' && x.deadlineDay !== undefined);
+    if (dq) {
+      const before = dq.deadlineDay!;
+      travelTo(w, dq.giverLocation);
+      expect(accept(w, dq.id)).toBeNull();
+      expect(dq.deadlineDay).toBe(before + 1);
+    }
+    // vault interest lands monthly
+    home.treasury = 1000;
+    w.time = { day: 29, minute: 23 * 60 };
+    tick(w, 120); // crosses into day 30
+    expect(home.treasury).toBe(1020);
   });
 });

@@ -20,6 +20,7 @@ import {
   makeItem,
   performTempleService,
   removeUnits,
+  treatInjuries,
   templePrice,
   trainingCost,
 } from './rules';
@@ -109,10 +110,16 @@ export function restAtHome(world: WorldState): string | null {
   if (!home) return 'No home yet.';
   if (world.partyLocation !== home.id) return 'The party is not at home.';
   advanceUntilMorning(world);
+  const infirmary = home.household?.upgrades.includes('infirmary');
+  const mended: string[] = [];
   for (const c of partyMembers(world)) {
     c.statuses = c.statuses.filter((s) => s.key === 'cursed'); // home comfort cures all but curses
+    if (infirmary && c.injuries.some((i) => !i.treated)) {
+      treatInjuries(c);
+      mended.push(c.name);
+    }
   }
-  logEvent(world, 'rest.home', {}, 'The party slept in their own beds and woke whole.', { location: home.id });
+  logEvent(world, 'rest.home', { mended }, mended.length ? `The party slept in their own beds; the infirmary mended ${mended.join(', ')} (the scars remain).` : 'The party slept in their own beds and woke whole.', { location: home.id });
   return null;
 }
 

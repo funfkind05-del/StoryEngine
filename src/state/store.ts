@@ -54,11 +54,12 @@ import { activeSlot, deleteBook, newBookSlot, renameBook, setActiveSlot, touchBo
 import { draftScene } from '../engine/proseLlm';
 import { reorderScene } from '../engine/world';
 import { maybeCompanionMoment } from '../engine/moments';
-import { brewAtHome, cookAtHome, repairAtHome, sparAtHome } from '../engine/household';
+import { brewAtHome, cookAtHome, fletchArrows, hostFeast, prayAtShrine, repairAtHome, sparAtHome } from '../engine/household';
 
 export type PanelTab =
   | 'location'
   | 'quests'
+  | 'muse'
   | 'characters'
   | 'party'
   | 'inventory'
@@ -79,6 +80,8 @@ interface AppState {
   chestLoot: LootResult | null;
   /** dungeon id pending the adventure-preparation screen */
   prepDungeon: string | null;
+  /** outline handed from the Muse panel to the Draft Scene tool */
+  museOutline: string | null;
   /** live NPC conversation (LLM-driven) */
   talk: {
     npcId: string;
@@ -144,6 +147,9 @@ interface AppState {
   homeSpar: () => void;
   homeBrew: () => void;
   homeRepair: (itemId: string) => void;
+  homePray: () => void;
+  homeFletch: () => void;
+  homeFeast: (factionId: string) => void;
 
   // prose → sim sync (author-approved)
   applyProposals: (proposals: SyncProposal[]) => string[];
@@ -155,6 +161,7 @@ interface AppState {
   endTalk: (remember: boolean) => Promise<void>;
 
   // dungeon actions
+  setMuseOutline: (outline: string | null) => void;
   openPrep: (dungeonId: string) => void;
   cancelPrep: () => void;
   enterDungeonAt: (dungeonId: string) => void;
@@ -220,6 +227,7 @@ export const useStore = create<AppState>((set, get) => ({
   toast: null,
   chestLoot: null,
   prepDungeon: null,
+  museOutline: null,
   talk: null,
 
   commit: (opts) => {
@@ -547,6 +555,28 @@ export const useStore = create<AppState>((set, get) => ({
     commit();
   },
 
+  homePray: () => {
+    const { world, commit, setToast } = get();
+    const err = prayAtShrine(world);
+    if (err) setToast(err);
+    commit();
+  },
+
+  homeFletch: () => {
+    const { world, commit, setToast } = get();
+    const err = fletchArrows(world);
+    if (err) setToast(err);
+    commit();
+  },
+
+  homeFeast: (factionId) => {
+    const { world, commit, setToast } = get();
+    const err = hostFeast(world, factionId);
+    if (err) setToast(err);
+    commit({ autosave: 'Feast' });
+  },
+
+  setMuseOutline: (outline) => set({ museOutline: outline }),
   openPrep: (dungeonId) => set({ prepDungeon: dungeonId }),
   cancelPrep: () => set({ prepDungeon: null }),
 

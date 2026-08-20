@@ -186,6 +186,15 @@ export function tick(world: WorldState, minutes: number): SimEvent[] {
     remaining -= step;
     addMinutes(world, step);
     applySchedules(world);
+    // vault interest: 2% on the household treasury, monthly
+    const home = Object.values(world.locations).find((l) => l.household);
+    if (home?.household?.upgrades.includes('vault') && world.time.day % 30 === 0 && world.time.minute < 60 && home.household.treasury > 0) {
+      const interest = Math.floor(home.household.treasury * 0.02);
+      if (interest > 0) {
+        home.household.treasury += interest;
+        produced.push(logEvent(world, 'home.interest', { interest }, `The vault's careful lending returned ${interest} copper to the household treasury.`, { location: home.id }));
+      }
+    }
     // daily weather
     if (!world.weather || world.weather.day !== world.time.day) {
       const kind = weatherFor(world.masterSeed, world.time.day);

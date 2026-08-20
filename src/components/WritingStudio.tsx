@@ -37,7 +37,18 @@ export function WritingStudio() {
   const [draftOutline, setDraftOutline] = useState('');
   const [draftBusy, setDraftBusy] = useState(false);
   const draftSelectedScene = useStore((st) => st.draftSelectedScene);
+  const museOutline = useStore((st) => st.museOutline);
+  const setMuseOutline = useStore((st) => st.setMuseOutline);
   const lastPolishedText = useRef('');
+
+  // an outline handed over from the Muse panel opens the draft box pre-filled
+  useEffect(() => {
+    if (museOutline) {
+      setDraftOutline(museOutline);
+      setDrafting(true);
+      setMuseOutline(null);
+    }
+  }, [museOutline, setMuseOutline]);
 
   const sceneForHooks = world.scenes.find((s) => s.id === selectedSceneId);
 

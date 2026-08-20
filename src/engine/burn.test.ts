@@ -30,9 +30,10 @@ import {
   treasuryTransfer,
   useConsumable,
 } from './services';
-import { brewAtHome, buyUpgrade, cookAtHome, sparAtHome, upgradeTier } from './household';
+import { brewAtHome, buyUpgrade, cookAtHome, fletchArrows, hostFeast, prayAtShrine, sparAtHome, upgradeTier } from './household';
 import { acceptQuest, checkQuests, offeredQuestsAt, refreshJobs, turnInQuest } from './quests';
 import { maybeCompanionMoment } from './moments';
+import { generateStoryIdeas } from './muse';
 import { applyProposal } from './proseLlm';
 import { generateBackgroundNpc, promoteNpc } from './npc';
 import { OWNER_HOME, OWNER_PARTY, type PlannedAction, type WorldState } from './types';
@@ -287,12 +288,15 @@ function step(w: WorldState, rng: Rng): string {
   if (roll < 0.76) { treasuryTransfer(w, rng.int(1, 200), rng.chance(0.5) ? 'deposit' : 'withdraw'); return 'treasury'; }
   if (roll < 0.78) {
     if (rng.chance(0.4)) upgradeTier(w);
-    else if (rng.chance(0.5)) buyUpgrade(w, rng.pick(['kitchen', 'bath', 'storage', 'workshop', 'training-yard', 'alchemy-room', 'garden', 'armory', 'library']));
+    else if (rng.chance(0.5)) buyUpgrade(w, rng.pick(['kitchen', 'bath', 'storage', 'workshop', 'training-yard', 'alchemy-room', 'garden', 'armory', 'library', 'shrine', 'infirmary', 'vault', 'forge-annex', 'war-room', 'great-hall', 'watchtower', 'enchanters-study']));
     else {
       const which = rng.next();
-      if (which < 0.34) cookAtHome(w);
-      else if (which < 0.67) sparAtHome(w);
-      else brewAtHome(w);
+      if (which < 0.2) cookAtHome(w);
+      else if (which < 0.4) sparAtHome(w);
+      else if (which < 0.6) brewAtHome(w);
+      else if (which < 0.75) prayAtShrine(w);
+      else if (which < 0.9) fletchArrows(w);
+      else hostFeast(w, rng.pick(Object.keys(w.factions)));
     }
     return 'household';
   }
@@ -378,6 +382,12 @@ describe(`burn test (${SEEDS} seeds × ${ITERS} actions)`, () => {
         const clock = w.time.day * 1440 + w.time.minute;
         if (clock < lastClock) throw new Error(`clock ran backwards at step ${i} (${action})`);
         lastClock = clock;
+        // periodic muse pass: ideas must always be generable and grounded
+        if (i % 400 === 200) {
+          for (const idea of generateStoryIdeas(w)) {
+            if (!idea.grounding.length || !idea.outline) throw new Error(`ungrounded muse idea: ${idea.title}`);
+          }
+        }
         // periodic serialization round-trip
         if (i % 500 === 250) {
           const back = JSON.parse(JSON.stringify(w)) as WorldState;
