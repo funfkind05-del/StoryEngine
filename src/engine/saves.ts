@@ -55,6 +55,7 @@ export function migrateWorld(world: WorldState): WorldState {
   world.killCounts ??= {};
   world.monsterArt ??= {};
   world.characterArt ??= {};
+  world.outlinedUpTo ??= 0;
   if (!world.quests) {
     world.quests = {};
     seedQuests(world);

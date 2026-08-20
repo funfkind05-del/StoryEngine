@@ -159,6 +159,22 @@ in the home district, a **war room** adding a day to job deadlines, and a
 - **Weather & calendar**: four 90-day seasons, daily deterministic weather
   (snow only in winter), shown in the topbar and fed to the scene drafter.
 
+## Outline from play
+
+Play first, outline after: everything you do is already logged, and
+**🗺 Outline from play** (sidebar) cuts the session into scene-shaped
+beats — breaking on location changes, day turns, long gaps, and nights'
+rest; typed action / dialogue / exploration / domestic / business /
+transition; pure travel runs collapse into one journey beat. Each beat
+lists its facts and what it *leaves open* (fled enemies, fresh wounds,
+open jobs). One click turns selected beats into real scene stubs with
+correct sim headers (day, time, location, participants) and an [OUTLINE]
+fact block — which the 🪶 Draft Scene tool picks up automatically, and
+Compile strips from the final manuscript. ✨ Shape chapter asks the LLM
+for a title, throughline, per-scene goal/conflict/turn, merge suggestions,
+and a next-chapter hook — bounded by the beat facts. The outline cursor
+remembers where you left off; the next outline starts where this one ended.
+
 ## The Muse — the engine as co-plotter
 
 The Muse panel mines the live simulation for story hooks and ranks them by

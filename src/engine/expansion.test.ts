@@ -287,3 +287,74 @@ describe('household wings', () => {
     expect(home.treasury).toBe(1020);
   });
 });
+
+describe('outline from play', () => {
+  it('segments a played session into beats and creates scene stubs with correct headers', async () => {
+    const { buildOutline, createScenesFromBeats, eventsSinceOutline, outlineToText, markOutlined } = await import('./outline');
+    const { enterDungeon: enter } = await import('./dungeon');
+    const { generateDungeonEncounter: genEnc } = await import('./encounter');
+    const w = freshWorld();
+    w.outlinedUpTo = w.events.length; // start the session now
+
+    // --- a play session: talk-ish event, travel, dungeon, fight, sleep
+    travelTo(w, 'LOC_RATCATCHER');
+    travelTo(w, 'LOC_IRONMARKET_SQ');
+    travelTo(w, 'LOC_GRAVEROW');
+    travelTo(w, 'LOC_MAUSOLEUM');
+    enter(w, 'DUN_OLDQUARTER_001');
+    const d = w.dungeons['DUN_OLDQUARTER_001'];
+    const entry = d.rooms[w.currentRoom!];
+    entry.enemies = 'alive';
+    entry.encounterKey = 'giant-rat';
+    const enc = genEnc(w, 42);
+    if ('error' in enc) throw new Error(enc.error);
+    const combat = startCombat(w, enc);
+    let guard = 0;
+    while (combat.outcome === 'ongoing' && guard++ < 50) {
+      const t = combat.monsters.find((m) => m.alive && !m.fled);
+      resolveRound(w, combat.partyIds.map((id) => ({ actor: id, type: 'attack' as const, target: t?.id })));
+    }
+    const { exitDungeon: exit } = await import('./dungeon');
+    exit(w);
+    const { advanceUntilMorning: sleep } = await import('./world');
+    sleep(w);
+
+    // --- outline it
+    expect(eventsSinceOutline(w).length).toBeGreaterThan(5);
+    const beats = buildOutline(w);
+    expect(beats.length).toBeGreaterThanOrEqual(3); // travel legs / dungeon fight / night
+    // the combat beat exists, is action-typed, and carries the fight facts
+    const fightBeat = beats.find((b) => b.bullets.some((x) => x.includes('Combat began')))!;
+    expect(fightBeat).toBeTruthy();
+    expect(fightBeat.sceneType).toBe('action');
+    expect(fightBeat.bullets.some((x) => x.includes('Combat ended'))).toBe(true);
+    // a rest closes the final beat
+    expect(beats[beats.length - 1].bullets.some((x) => x.includes('slept'))).toBe(true);
+    // text render
+    const text = outlineToText(w, beats, 2);
+    expect(text).toContain('# Chapter 2');
+    expect(text).toContain('(action)');
+
+    // --- stubs carry correct sim headers
+    const before = w.scenes.length;
+    const made = createScenesFromBeats(w, beats, 2);
+    expect(w.scenes.length).toBe(before + beats.length);
+    const fightScene = made.find((s) => s.text.includes('Combat began'))!;
+    expect(fightScene.chapter).toBe(2);
+    expect(fightScene.day).toBe(fightBeat.day);
+    expect(fightScene.participants).toContain('CHAR_KAEL');
+    expect(fightScene.text).toContain('[OUTLINE]');
+    // cursor advanced: nothing left to outline
+    expect(buildOutline(w)).toHaveLength(0);
+    markOutlined(w);
+    expect(w.outlinedUpTo).toBe(w.events.length);
+  });
+
+  it('compile strips [OUTLINE] blocks from stubs', async () => {
+    const { renderSceneText, DEFAULT_COMPILE: opts } = await import('./compile');
+    const stub = `---\n[OUTLINE] (action)\n- Combat began: rats.\n---\n\nThe real prose the author wrote.`;
+    const out = renderSceneText(stub, opts);
+    expect(out).not.toContain('OUTLINE');
+    expect(out).toContain('The real prose');
+  });
+});

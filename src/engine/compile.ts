@@ -21,7 +21,7 @@ export const DEFAULT_COMPILE: CompileOptions = {
 
 const TOKEN_RE = /@\[([^\]]+)\]\(([A-Z]+_[A-Za-z0-9_]+)\)/g;
 // blocks the tooling writes: --- ... [LABEL] ... ---
-const SIM_BLOCK_RE = /\n?-{3,}\n\[(?:SIM NOTES|COMBAT LOG|CONVERSATION[^\]]*)\][\s\S]*?\n-{3,}\n?/g;
+const SIM_BLOCK_RE = /\n?-{3,}\n\[(?:SIM NOTES|COMBAT LOG|OUTLINE[^\]]*|CONVERSATION[^\]]*)\][\s\S]*?\n-{3,}\n?/g;
 const STAT_BLOCK_RE = /╔[═]+╗\n(?:║[^\n]*\n)+╚[═]+╝/g;
 
 export function renderSceneText(text: string, opts: CompileOptions): string {

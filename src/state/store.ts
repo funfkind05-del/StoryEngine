@@ -53,6 +53,7 @@ import { acceptQuest, checkQuests, declineQuest, refreshJobs, turnInQuest } from
 import { activeSlot, deleteBook, newBookSlot, renameBook, setActiveSlot, touchBook } from '../engine/books';
 import { draftScene } from '../engine/proseLlm';
 import { reorderScene } from '../engine/world';
+import { createScenesFromBeats, markOutlined, type OutlineBeat } from '../engine/outline';
 import { maybeCompanionMoment } from '../engine/moments';
 import { brewAtHome, cookAtHome, fletchArrows, hostFeast, prayAtShrine, repairAtHome, sparAtHome } from '../engine/household';
 
@@ -124,6 +125,8 @@ interface AppState {
   setCharacterArt: (charId: string, dataUri: string | null) => void;
 
   // scenes extras
+  outlineCreateScenes: (beats: OutlineBeat[], chapter: number) => number;
+  outlineMarkDone: () => void;
   moveScene: (id: SceneId, dir: -1 | 1) => void;
   draftSelectedScene: (outline: string) => Promise<string | null>;
 
@@ -405,6 +408,21 @@ export const useStore = create<AppState>((set, get) => ({
     world.characterArt ??= {};
     if (dataUri) world.characterArt[charId] = dataUri;
     else delete world.characterArt[charId];
+    commit();
+  },
+
+  outlineCreateScenes: (beats, chapter) => {
+    const { world, commit } = get();
+    const created = createScenesFromBeats(world, beats, chapter);
+    logEvent(world, 'outline.created', { chapter, scenes: created.map((s) => s.id) }, `Outline-from-play produced ${created.length} scene stubs for Chapter ${chapter}.`);
+    commit({ autosave: 'Outline created' });
+    if (created.length) set({ selectedSceneId: created[0].id });
+    return created.length;
+  },
+
+  outlineMarkDone: () => {
+    const { world, commit } = get();
+    markOutlined(world);
     commit();
   },
 

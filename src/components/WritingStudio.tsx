@@ -281,7 +281,16 @@ export function WritingStudio() {
         <button disabled={!!syncState?.busy} onClick={() => void runSync()} title="LLM reads what you've written since the last sync and proposes simulation actions. Nothing changes until you approve.">
           {syncState?.busy ? '⇄ reading…' : '⇄ Sync → sim'}
         </button>
-        <button onClick={() => setDrafting((d) => !d)} title="Have the LLM write a first pass of this scene from the sim's recent events plus your outline.">🪶 Draft scene…</button>
+        <button
+          onClick={() => {
+            if (!drafting && !draftOutline.trim()) {
+              const m = scene.text.match(/\[OUTLINE\][^\n]*\n([\s\S]*?)\n-{3,}/);
+              if (m) setDraftOutline(m[1].trim());
+            }
+            setDrafting((d) => !d);
+          }}
+          title="Have the LLM write a first pass of this scene from the sim's recent events plus your outline. Scene stubs from Outline-from-play pre-fill their beat facts."
+        >🪶 Draft scene…</button>
       </div>
 
       {drafting && (

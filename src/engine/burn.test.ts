@@ -34,6 +34,7 @@ import { brewAtHome, buyUpgrade, cookAtHome, fletchArrows, hostFeast, prayAtShri
 import { acceptQuest, checkQuests, offeredQuestsAt, refreshJobs, turnInQuest } from './quests';
 import { maybeCompanionMoment } from './moments';
 import { generateStoryIdeas } from './muse';
+import { buildOutline } from './outline';
 import { applyProposal } from './proseLlm';
 import { generateBackgroundNpc, promoteNpc } from './npc';
 import { OWNER_HOME, OWNER_PARTY, type PlannedAction, type WorldState } from './types';
@@ -386,6 +387,11 @@ describe(`burn test (${SEEDS} seeds × ${ITERS} actions)`, () => {
         if (i % 400 === 200) {
           for (const idea of generateStoryIdeas(w)) {
             if (!idea.grounding.length || !idea.outline) throw new Error(`ungrounded muse idea: ${idea.title}`);
+          }
+          for (const beat of buildOutline(w)) {
+            if (!beat.title || !beat.bullets.length || !w.locations[beat.location]) {
+              throw new Error(`malformed outline beat at step ${i}: ${beat.title}`);
+            }
           }
         }
         // periodic serialization round-trip

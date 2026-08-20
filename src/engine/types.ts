@@ -569,6 +569,8 @@ export interface WorldState {
   characterArt?: Record<string, string>;
   /** current weather; changes daily with the season */
   weather?: { kind: string; day: number };
+  /** index into events[] up to which outline-from-play has run */
+  outlinedUpTo?: number;
   counters: Record<string, number>; // id counters
   masterSeed: number;
 }

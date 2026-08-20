@@ -10,6 +10,7 @@ import { PrepModal } from './components/PrepModal';
 import { TalkModal } from './components/TalkModal';
 import { MiniMap } from './components/MiniMap';
 import { CompileModal } from './components/CompileModal';
+import { OutlineModal } from './components/OutlineModal';
 import type { EncounterFrequency } from './engine/types';
 
 function MomentBanner() {
@@ -55,6 +56,7 @@ function MoneyTracker() {
 export default function App() {
   const world = useStore((s) => s.world);
   const [showCompile, setShowCompile] = useState(false);
+  const [showOutline, setShowOutline] = useState(false);
   const advance = useStore((s) => s.advance);
   const sleepUntilMorning = useStore((s) => s.sleepUntilMorning);
   const setFrequency = useStore((s) => s.setFrequency);
@@ -107,6 +109,7 @@ export default function App() {
           <div className="scenes">
             <h3>Manuscript</h3>
             <button style={{ width: '100%', marginBottom: 4 }} onClick={addScene}>+ New scene (from sim state)</button>
+            <button style={{ width: '100%', marginBottom: 4 }} onClick={() => setShowOutline(true)}>🗺 Outline from play…</button>
             <button style={{ width: '100%', marginBottom: 8 }} onClick={() => setShowCompile(true)}>📖 Compile manuscript…</button>
             {chapters.map((ch) => (
               <div key={ch}>
@@ -141,6 +144,7 @@ export default function App() {
       <PrepModal />
       <TalkModal />
       {showCompile && <CompileModal onClose={() => setShowCompile(false)} />}
+      {showOutline && <OutlineModal onClose={() => setShowOutline(false)} />}
       {toast && <div className="toast">{toast}</div>}
     </div>
   );
