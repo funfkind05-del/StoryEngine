@@ -314,6 +314,14 @@ export interface Character {
   birthDay?: number;
   /** what's left after a failed risky resurrection */
   remains?: 'ashes' | 'beyondRecall';
+  /** ever marched with the party — deaths and anniversaries get weight */
+  wasParty?: boolean;
+  /** a memorial rite has been spoken for this fallen character */
+  memorialized?: boolean;
+  /** day a pregnancy began; cleared at the birth */
+  pregnantSince?: number;
+  /** [mother, father] for characters born in play */
+  parents?: [CharacterId, CharacterId];
   /** battle line: melee reaches the front rank only (Bard's Tale rows) */
   row?: 'front' | 'back';
   permanentBonuses: string[]; // human-readable, e.g. 'Blessing of the Flame: +1 WIS'
@@ -581,6 +589,8 @@ export interface Scene {
   participants: CharacterId[];
   text: string; // prose; entity refs as @[Name](ID)
   order: number;
+  /** which volume this scene belongs to (default 1) */
+  book?: number;
   /** character offset up to which prose→sim sync has already run */
   syncedUpTo?: number;
 }
@@ -621,6 +631,20 @@ export interface WorldState {
   auctionsWon?: string[];
   /** festival contests already won, as `${kind}:${day}` */
   contestsWon?: string[];
+  /** which volume of the series play is currently feeding */
+  bookNumber?: number;
+  /** where each book began (and the title it closed under) */
+  bookStarts?: { book: number; day: number; title?: string }[];
+  /** last known relationship stage per NPC toward the MC — crossings log */
+  relStages?: Record<CharacterId, string>;
+  /** party coin at last morning, for the day-summary ledger line */
+  lastMorningMoney?: number;
+  /** deaths awaiting their morning of mourning */
+  mourning?: { charId: CharacterId; day: number }[];
+  /** companion first-sight reactions already played, `${charId}:${locId}` */
+  companionSights?: Record<string, true>;
+  /** the recorded spine has been played to its end */
+  campaignComplete?: boolean;
   encumbrance: EncumbranceRule;
   /** survival needs (hunger/fatigue) tracked against story time */
   needsEnabled: boolean;

@@ -211,6 +211,17 @@ Bard's Tale bones, Elder Scrolls texture:
 - **8 factions** (+ Lamplighters' Union, the Tidecourt, the Bonewardens), **33 locations**, **69 monsters** across every level band to 44, **31 lorebooks**, **12 affixes**, **8 named uniques**, **24 achievements**, **6 world events**, **15 recipes**, **60+ item prototypes** including tomes that teach abilities and jewelry that ships enchanted.
 - **The calendar lives**: four **festivals** (Lamplight Vigil, Salt Blessing, Founding Revel, Night of Doors) with market discounts, warmer courting, and festival **contests** (archery butts, the song stage); the **Night Market auction** every 10th day (deterministic lots, the room bids back); the **Pit Trials** every 30th day — three bouts, rising purses, and the Champion of the Pit title.
 
+## The log round: everything the book needs, captured
+
+- **One world, many books** — the Saves panel's Series card closes Book N (titled, logged, chapter numbering reset) and opens Book N+1 in the same continuing world. Compile scopes to one volume or all; the sidebar shows the open book's scenes.
+- **Romance milestones are events now** — every stage crossing (smitten, lover, partner, spouse — and the coolings too) logs as a first-class event, and rising crossings hand the author the scene: a pending moment with the right hook (the confession, the morning after, the vow).
+- **Nightly digests** — every morning logs `day.summary`: streets walked, fights won, jobs settled, hearts moved, purse delta. Chapter seams, made automatically.
+- **Open threads** (Muse panel) — living rivals, waiting arcs, the idling spine, expiring troubles, unread enchantments, unascended veterans, unspoken rites, unturned keys. What a 20-book series must not drop, ranked by urgency.
+- **Grief with weight** — a companion's death leaves witness memories, a logged morning of mourning, a temple Memorial Rite (once, ever), and a remembrance event on every anniversary of the fall.
+- **First-sight color** — companions react to notable places in their own voice, once per place, straight into the log.
+- **Epilogue machinery** — finishing the spine writes EPILOGUE MATERIAL (hearts, the fallen, depths conquered, rivals left, titles); climax beats (⚑) flag themselves in the outline: conquests, revelations, championships, slain rivals, book ends.
+- **Family** — a wife may conceive (2%/day); the 270-day term logs its milestones (late-term she moves herself to the back rank, daring comment); the birth creates a real child character with both parents on the sheet, aging through the birthday system. The chronicle gets a next generation.
+
 ## The campaign spine — What Lies Beneath Blackwall
 
 An eight-stage main questline threads the eight dungeons in level order:

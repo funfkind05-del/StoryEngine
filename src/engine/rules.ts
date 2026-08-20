@@ -659,6 +659,7 @@ export const TEMPLE_SERVICES: TempleService[] = [
   { key: 'remove-curse', label: 'Remove Curse', basePrice: 750 },
   { key: 'mend-injuries', label: 'Mend Lasting Harm (injuries)', basePrice: 500 },
   { key: 'resurrection', label: 'Resurrection', basePrice: 3000, needsDead: true },
+  { key: 'memorial', label: 'Memorial Rite (for the fallen)', basePrice: 200, needsDead: true },
 ];
 
 /** Reputation with the temple's faction discounts or inflates prices. */
@@ -692,6 +693,10 @@ export function performTempleService(svcKey: string, target: Character): string 
         ? `${target.name}'s lasting wounds were mended: ${treated.join(', ')}. The scars remain.`
         : `${target.name} carries no lasting wounds.`;
     }
+    case 'memorial':
+      if (target.memorialized) return `${target.name}'s rite was already spoken. Once is what the dead ask.`;
+      target.memorialized = true;
+      return `The Flame spoke ${target.name}'s name into the smoke, and the party said the answering line. What was carried alone is carried together now.`;
     case 'resurrection':
       target.alive = true;
       target.diedOnDay = undefined;

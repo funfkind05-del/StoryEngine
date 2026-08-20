@@ -66,7 +66,9 @@ import { activeSlot, deleteBook, newBookSlot, renameBook, setActiveSlot, touchBo
 import { draftScene } from '../engine/proseLlm';
 import { reorderScene } from '../engine/world';
 import { createScenesFromBeats, markOutlined, type OutlineBeat } from '../engine/outline';
-import { maybeCompanionMoment } from '../engine/moments';
+import { maybeCompanionMoment, maybeCompanionSight } from '../engine/moments';
+import { checkRelationshipMilestones } from '../engine/romance';
+import { beginNextBook, currentBook } from '../engine/series';
 import { placeBid } from '../engine/auction';
 import { allCachedArt, collectWorldArt, deleteArt, importArtPack, initArtCache, saveArt } from '../engine/artFiles';
 import { contestArchery, contestSong, enterPitTrials } from '../engine/tournament';
@@ -213,6 +215,7 @@ interface AppState {
   setMoveScheme: (scheme: 'compass' | 'relative') => void;
   turnFacing: (dir: 'north' | 'south' | 'east' | 'west') => void;
   setRow: (charId: string, row: 'front' | 'back') => void;
+  closeBook: (title?: string) => void;
   torchAct: () => void;
   campAct: () => void;
   keyAct: () => void;
@@ -342,6 +345,7 @@ export const useStore = create<AppState>((set, get) => ({
   commit: (opts) => {
     const { world } = get();
     checkAchievements(world);
+    checkRelationshipMilestones(world);
     let snapshots = get().snapshots;
     if (opts?.autosave) {
       snapshots = pruneSnapshots([...snapshots, makeSnapshot(world, 'auto', opts.autosave)]);
@@ -369,6 +373,7 @@ export const useStore = create<AppState>((set, get) => ({
     rollCityEncounter(world);
     checkQuests(world);
     maybeCompanionMoment(world);
+    maybeCompanionSight(world);
     maybePatrolStop(world);
     // auto-insert the movement into the manuscript as editable prose,
     // destination embedded as an @[Name](ID) token
@@ -1307,6 +1312,14 @@ export const useStore = create<AppState>((set, get) => ({
     commit();
   },
 
+  closeBook: (title) => {
+    const { world, commit, setToast } = get();
+    beginNextBook(world, title);
+    sfx('victory');
+    setToast(`Book ${currentBook(world) - 1} closed. Book ${currentBook(world)} is open — same city, same consequences.`);
+    commit({ autosave: `Book ${currentBook(world)} begins` });
+  },
+
   search: () => {
     const { world, commit, setToast } = get();
     const res = searchRoom(world);
@@ -1514,6 +1527,7 @@ export const useStore = create<AppState>((set, get) => ({
       participants: partyMembers(world).map((c) => c.id),
       text: '',
       order: maxOrder + 1,
+      book: world.bookNumber ?? 1,
     };
     world.scenes.push(scene);
     commit();

@@ -140,6 +140,13 @@ function checkInvariants(w: WorldState, step: number, action: string, deep: bool
     fail(`torchMinutes out of range: ${w.torchMinutes}`);
   }
   if (w.tournament && (w.tournament.round < 1 || w.tournament.round > 3)) fail(`tournament round ${w.tournament.round}`);
+  if ((w.bookNumber ?? 1) < 1) fail(`bookNumber ${w.bookNumber}`);
+  for (const c of Object.values(w.characters)) {
+    if (c.pregnantSince !== undefined && c.pregnantSince > w.time.day) fail(`${c.name} pregnantSince in the future`);
+    if (c.parents) {
+      for (const pid of c.parents) if (!w.characters[pid]) fail(`${c.name} parent ${pid} missing`);
+    }
+  }
   if (deep) {
     // dungeon structural integrity: no passage, ring, or key points nowhere
     for (const d of Object.values(w.dungeons)) {

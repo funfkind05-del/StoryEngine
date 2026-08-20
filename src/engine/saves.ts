@@ -73,6 +73,15 @@ export function migrateWorld(world: WorldState): WorldState {
   world.tournamentDaysWon ??= [];
   world.auctionsWon ??= [];
   world.contestsWon ??= [];
+  world.bookNumber ??= 1;
+  world.bookStarts ??= [{ book: 1, day: 0 }];
+  world.relStages ??= {}; // baselines quietly on first milestone check
+  world.mourning ??= [];
+  world.companionSights ??= {};
+  for (const sc of world.scenes) sc.book ??= 1;
+  for (const c of Object.values(world.characters)) {
+    c.wasParty ??= c.inParty;
+  }
   world.writingStats ??= {};
   if (!world.quests) {
     world.quests = {};

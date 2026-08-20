@@ -145,6 +145,7 @@ export function buyTempleService(world: WorldState, locId: LocationId, svcKey: s
   if (svc.needsDead && target.alive) return `${target.name} is not dead.`;
   if (!svc.needsDead && !target.alive) return `${target.name} is beyond this rite; only resurrection can help.`;
   if (svc.key === 'resurrection' && target.remains === 'beyondRecall') return `The priests lay a hand on the urn and take it back. ${target.name} is beyond recall — no rite reaches that far.`;
+  if (svc.key === 'memorial' && target.memorialized) return `${target.name}'s rite was already spoken. Once is what the dead ask.`;
   const templeFaction = Object.keys(loc.factionInfluence).sort((a, b) => loc.factionInfluence[b] - loc.factionInfluence[a])[0] ?? null;
   let price = templePrice(world, svc, payer, templeFaction);
   if (price === Infinity) return 'The priests will not serve you. Your name is known here, and not kindly.';

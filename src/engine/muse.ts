@@ -401,3 +401,54 @@ export async function developIdea(cfg: LlmConfig, world: WorldState, idea: Story
   ];
   return (await chatWithNpc({ ...cfg, temperature: 0.9 }, messages)).trim();
 }
+
+
+// ---------- the dangling-threads board ----------
+export interface OpenThread {
+  kind: string;
+  label: string;
+  detail: string;
+  urgency: number; // higher = more pressing
+}
+
+/** Everything unresolved that a 20-book series would drop on the floor. */
+export function openThreads(world: WorldState): OpenThread[] {
+  const threads: OpenThread[] = [];
+  for (const r of livingRivals(world)) {
+    threads.push({ kind: 'rival', label: `${r.name} still lives`, detail: `Power ${r.power}, grudge ${r.grudge}${r.scars.length ? `, carrying ${r.scars[r.scars.length - 1]}` : ''}. It will come back until somebody ends it.`, urgency: 5 + Math.min(4, r.power) });
+  }
+  for (const q of Object.values(world.quests)) {
+    if (q.status === 'offered' && q.personal) {
+      const c = world.characters[q.personal];
+      threads.push({ kind: 'arc', label: `${c?.name ?? q.personal}: "${q.title}" waits`, detail: 'A personal chapter on offer and unplayed. Hearts do not hold forever.', urgency: 6 });
+    }
+    if (q.status === 'offered' && q.isMain) {
+      threads.push({ kind: 'spine', label: `The spine waits: "${q.title}"`, detail: world.doomEnabled !== false ? 'The Circle digs while the party dallies — the clock is ticking.' : 'The clock is paused, but the story is not moving.', urgency: 8 });
+    }
+  }
+  for (const ev of world.activeEvents ?? []) {
+    const left = ev.expiresDay - world.time.day;
+    if (left <= 2) threads.push({ kind: 'event', label: `Expiring: ${ev.kind}`, detail: `${ev.description} (${left <= 0 ? 'lapsing NOW' : `${left} day${left === 1 ? '' : 's'} left`} — lapsed troubles deepen the district's danger.)`, urgency: 9 });
+  }
+  const unidentified = Object.values(world.items).filter((i) => i.unidentified && typeof i.owner === 'string' && world.characters[i.owner]?.inParty);
+  if (unidentified.length) {
+    threads.push({ kind: 'item', label: `${unidentified.length} enchantment${unidentified.length === 1 ? '' : 's'} unread`, detail: `${unidentified.map((i) => i.name).slice(0, 3).join(', ')}${unidentified.length > 3 ? '…' : ''} — the College reads for coin; Kess reads for trust.`, urgency: 3 });
+  }
+  for (const c of Object.values(world.characters)) {
+    if (c.inParty && c.alive && !c.ascension && c.level >= 25) {
+      threads.push({ kind: 'ascension', label: `${c.name} stands at the threshold`, detail: `Level ${c.level} and unascended — the rite waits at the ${c.charClass} hall.`, urgency: 4 });
+    }
+    if (!c.alive && c.wasParty && !c.memorialized && c.remains !== 'beyondRecall') {
+      threads.push({ kind: 'grief', label: `No rite spoken for ${c.name}`, detail: 'The temple can still speak the memorial. Grief unspoken curdles on the page.', urgency: 6 });
+    }
+  }
+  for (const d of Object.values(world.dungeons)) {
+    for (const lockRoom of d.keysHeld ?? []) {
+      const r = d.rooms[lockRoom];
+      if (r?.lockedDoor && !r.lockedDoor.opened) {
+        threads.push({ kind: 'key', label: `A key burning a pocket`, detail: `The party carries the key to a door in ${d.name} and has not turned it.`, urgency: 3 });
+      }
+    }
+  }
+  return threads.sort((a, b) => b.urgency - a.urgency);
+}

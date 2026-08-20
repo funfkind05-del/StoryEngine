@@ -191,7 +191,9 @@ export default function App() {
   const path = locPath(world, world.currentDungeon ? world.dungeons[world.currentDungeon].entranceLocation : world.partyLocation);
   const room = world.currentDungeon && world.currentRoom ? world.dungeons[world.currentDungeon].rooms[world.currentRoom] : null;
 
-  const chapters = Array.from(new Set(world.scenes.map((s) => s.chapter))).sort((a, b) => a - b);
+  const bookNow = world.bookNumber ?? 1;
+  const bookScenes = world.scenes.filter((s) => (s.book ?? 1) === bookNow);
+  const chapters = Array.from(new Set(bookScenes.map((s) => s.chapter))).sort((a, b) => a - b);
 
   const district = world.currentDungeon
     ? world.locations[world.dungeons[world.currentDungeon].entranceLocation]?.district
@@ -200,6 +202,7 @@ export default function App() {
     <div className={`app${playMode ? ' play' : ''}`} data-district={district ?? ''}>
       <div className="topbar">
         <span className="title">Blackwall</span>
+        {(world.bookNumber ?? 1) > 1 && <span className="mono small" style={{ color: 'var(--accent)' }}>Bk {world.bookNumber}</span>}
         <span className="clock">{fmtWhen(world.time)}</span>
         <span className="dim small" title={`Weather: ${world.weather?.kind ?? 'clear'}`}>
           {WEATHER_GLYPH[world.weather?.kind ?? 'clear']} {calendarLabel(world.time.day)}
@@ -257,10 +260,11 @@ export default function App() {
             <button style={{ width: '100%', marginBottom: 4 }} onClick={addScene}>+ New scene (from sim state)</button>
             <button style={{ width: '100%', marginBottom: 4 }} onClick={() => setShowOutline(true)}>🗺 Outline from play…</button>
             <button style={{ width: '100%', marginBottom: 8 }} onClick={() => setShowCompile(true)}>📖 Compile manuscript…</button>
+            {bookNow > 1 && <p className="dim small">Book {bookNow} — earlier volumes live in Compile.</p>}
             {chapters.map((ch) => (
               <div key={ch}>
                 <h3>Chapter {ch}</h3>
-                {world.scenes
+                {bookScenes
                   .filter((s) => s.chapter === ch)
                   .sort((a, b) => a.order - b.order)
                   .map((s) => (

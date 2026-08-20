@@ -124,6 +124,9 @@ export function buildOutline(world: WorldState): OutlineBeat[] {
     };
     beat.sceneType = beatType(group);
     beat.title = beatTitle(world, beat, group);
+    // climaxes announce themselves in the outline
+    const CLIMAX = ['dungeon.conquered', 'campaign.revelation', 'campaign.complete', 'epilogue', 'tournament.champion', 'rival.slain', 'book.end'];
+    if (group.some((e) => CLIMAX.includes(e.kind))) beat.title = `⚑ ${beat.title}`;
     beats.push(beat);
     group = [];
   };

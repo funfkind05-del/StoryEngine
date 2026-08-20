@@ -28,6 +28,16 @@ import { RECIPES } from './crafting';
 import { useConsumable } from './services';
 import { FESTIVALS, festivalPriceMult, festivalToday } from './festivals';
 import { COMPANION_ARCS } from './companions';
+import { beginNextBook, currentBook, scenesInBook } from './series';
+import { checkRelationshipMilestones } from './romance';
+import { openThreads } from './muse';
+import { maybeCompanionSight } from './moments';
+import { DAILY_CONCEPTION_CHANCE, PREGNANCY_TERM_DAYS, dailyFamilyTick, eligibleSpouses } from './family';
+import { advanceUntilMorning } from './world';
+import { compileMarkdown } from './compile';
+import { DEFAULT_COMPILE } from './compile';
+import { buyTempleService as templeRite } from './services';
+import { advanceCampaign, mainQuests } from './campaign';
 import { MONSTERS } from './monsters';
 import { getAuctionLots, isAuctionDay, placeBid } from './auction';
 import { enterPitTrials, settleTournament } from './tournament';
@@ -1010,5 +1020,158 @@ describe('the maze round (round 7)', () => {
       }
     }
     expect(tested).toBeGreaterThanOrEqual(2);
+  });
+});
+
+
+describe('the log round (round 8): books, milestones, digests, threads, grief, sights, family', () => {
+  it('closing a book marks the boundary, resets chapters, and scopes compile', () => {
+    const w = freshWorld();
+    w.scenes[0].book = 1;
+    w.scenes[0].text = 'Book one prose here.';
+    expect(currentBook(w)).toBe(1);
+    beginNextBook(w, 'The Broken Crown');
+    expect(currentBook(w)).toBe(2);
+    expect(w.chapter).toBe(1);
+    expect(w.bookStarts).toHaveLength(2);
+    expect(w.bookStarts![0].title).toBe('The Broken Crown');
+    expect(w.events.some((e) => e.kind === 'book.end')).toBe(true);
+    expect(w.events.some((e) => e.kind === 'book.begin')).toBe(true);
+    // a new scene belongs to book 2; compile scopes cleanly
+    w.scenes.push({ ...w.scenes[0], id: 'SCN_B2', book: 2, order: 99, chapter: 1, text: 'Book two prose here.' });
+    expect(scenesInBook(w, 2)).toHaveLength(1);
+    const md1 = compileMarkdown(w, 'T', { ...DEFAULT_COMPILE, book: 1 });
+    const md2 = compileMarkdown(w, 'T', { ...DEFAULT_COMPILE, book: 2 });
+    expect(md1).toContain('Book one prose');
+    expect(md1).not.toContain('Book two prose');
+    expect(md2).toContain('Book two prose');
+  });
+
+  it('relationship stage crossings log events and hand the author the scene', () => {
+    const w = freshWorld();
+    checkRelationshipMilestones(w); // baseline pass — no events
+    expect(w.events.filter((e) => e.kind === 'romance.stage')).toHaveLength(0);
+    const lyra = w.characters['CHAR_LYRA'];
+    lyra.relationships[w.mcId] = { affection: 5, trust: 6, respect: 4, attraction: 6, commitment: 2 };
+    checkRelationshipMilestones(w);
+    const crossings = w.events.filter((e) => e.kind === 'romance.stage');
+    expect(crossings.length).toBeGreaterThan(0);
+    expect(w.pendingMoment?.npcId).toBe('CHAR_LYRA'); // the scene, on a plate
+    expect(w.pendingMoment?.teaser).toBe('the morning after'); // stranger -> lover in one leap
+    // no re-log while the stage holds
+    checkRelationshipMilestones(w);
+    expect(w.events.filter((e) => e.kind === 'romance.stage')).toHaveLength(crossings.length);
+  });
+
+  it('mornings digest the day into a chapter-seam summary', () => {
+    const w = freshWorld();
+    travelTo(w, 'LOC_RATCATCHER');
+    travelTo(w, 'LOC_IRONMARKET_SQ');
+    advanceUntilMorning(w, 'bed');
+    const digest = w.events.find((e) => e.kind === 'day.summary');
+    expect(digest).toBeTruthy();
+    expect(digest!.summary).toMatch(/streets? walked/);
+  });
+
+  it('the threads board surfaces rivals, waiting arcs, and unspoken rites', () => {
+    const w = freshWorld();
+    w.rivals = [{ id: 'RIV_T', name: 'Old Tench', templateKey: 'dire-wolf', modifierKey: 'gilded', power: 3, scars: [], lastSeenDay: 1, grudge: 3, defeated: false }];
+    const kess = w.characters['CHAR_KESS'];
+    kess.alive = false;
+    kess.wasParty = true;
+    const threads = openThreads(w);
+    expect(threads.some((t) => t.kind === 'rival' && t.label.includes('Old Tench'))).toBe(true);
+    expect(threads.some((t) => t.kind === 'arc')).toBe(true); // offered personal arcs
+    expect(threads.some((t) => t.kind === 'grief' && t.label.includes('Kess'))).toBe(true);
+    expect(threads[0].urgency).toBeGreaterThanOrEqual(threads[threads.length - 1].urgency);
+  });
+
+  it('death leaves grief, a morning of mourning, a rite, and an anniversary', () => {
+    const w = freshWorld();
+    w.deathRule = 'classic';
+    const lyra = w.characters['CHAR_LYRA'];
+    lyra.alive = false;
+    lyra.diedOnDay = w.time.day;
+    lyra.wasParty = true;
+    w.mourning = [{ charId: lyra.id, day: w.time.day }];
+    advanceUntilMorning(w, 'bed');
+    expect(w.events.some((e) => e.kind === 'mourning' && e.summary.includes('Lyra'))).toBe(true);
+    // the rite
+    w.characters[w.mcId].money = 10000;
+    expect(templeRite(w, 'LOC_TEMPLE', 'memorial', lyra.id)).toBeNull();
+    expect(lyra.memorialized).toBe(true);
+    expect(templeRite(w, 'LOC_TEMPLE', 'memorial', lyra.id)).toMatch(/already spoken/);
+    // the anniversary
+    w.time.day = lyra.diedOnDay + 360;
+    runBirthdays(w);
+    expect(w.events.some((e) => e.kind === 'remembrance' && e.summary.includes('Lyra'))).toBe(true);
+  });
+
+  it('companions react to notable places once, in their own voice', () => {
+    const w = freshWorld();
+    const mara = w.characters['CHAR_MARA'];
+    mara.inParty = true;
+    mara.location = w.partyLocation;
+    let saw = 0;
+    for (let i = 0; i < 40 && !saw; i++) {
+      w.time.minute = (w.time.minute + 37) % 1440;
+      w.partyLocation = 'LOC_TEMPLE';
+      maybeCompanionSight(w);
+      saw = w.events.filter((e) => e.kind === 'companion.sight').length;
+    }
+    expect(saw).toBeGreaterThanOrEqual(1);
+    // keep visiting: each companion reacts at most once per place
+    for (let i = 0; i < 60; i++) {
+      w.time.minute = (w.time.minute + 37) % 1440;
+      maybeCompanionSight(w);
+    }
+    const byChar = new Map<string, number>();
+    for (const e of w.events.filter((x) => x.kind === 'companion.sight')) {
+      const id = (e.data as { character: string }).character;
+      byChar.set(id, (byChar.get(id) ?? 0) + 1);
+    }
+    for (const [id, n] of byChar) expect(n, id).toBe(1);
+  });
+
+  it('a wife may conceive; the term runs its days; the birth is a person', () => {
+    const w = freshWorld();
+    const lyra = w.characters['CHAR_LYRA'];
+    lyra.relationships[w.mcId] = { affection: 8, trust: 8, respect: 7, attraction: 7, commitment: 9 };
+    expect(eligibleSpouses(w).map((c) => c.id)).toContain('CHAR_LYRA');
+    expect(DAILY_CONCEPTION_CHANCE).toBeLessThanOrEqual(0.05); // a small chance, as asked
+    let conceived = false;
+    for (let d = 1; d <= 600 && !conceived; d++) {
+      w.time.day = d;
+      dailyFamilyTick(w);
+      conceived = lyra.pregnantSince !== undefined;
+    }
+    expect(conceived).toBe(true);
+    expect(w.events.some((e) => e.kind === 'pregnancy')).toBe(true);
+    // late term: she moves herself off the front rank
+    lyra.inParty = true;
+    lyra.row = 'front';
+    w.time.day = lyra.pregnantSince! + Math.floor(PREGNANCY_TERM_DAYS * 0.55);
+    dailyFamilyTick(w);
+    expect(lyra.row).toBe('back');
+    // the birth
+    w.time.day = lyra.pregnantSince! + PREGNANCY_TERM_DAYS;
+    dailyFamilyTick(w);
+    expect(lyra.pregnantSince).toBeUndefined();
+    const child = Object.values(w.characters).find((c) => c.parents?.[0] === 'CHAR_LYRA');
+    expect(child).toBeTruthy();
+    expect(child!.parents![1]).toBe(w.mcId);
+    expect(child!.age).toBe(0);
+    expect(child!.birthDay).toBe(w.time.day % 360);
+    expect(w.events.some((e) => e.kind === 'birth' && e.summary.includes(child!.name))).toBe(true);
+  });
+
+  it('the finished spine writes its own epilogue material', () => {
+    const w = freshWorld();
+    const stage1 = mainQuests(w)[0];
+    advanceCampaign(w, { ...stage1, stage: 8, status: 'completed' });
+    expect(w.campaignComplete).toBe(true);
+    const epi = w.events.find((e) => e.kind === 'epilogue');
+    expect(epi).toBeTruthy();
+    expect(epi!.summary).toContain('EPILOGUE MATERIAL');
   });
 });

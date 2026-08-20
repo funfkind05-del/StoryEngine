@@ -261,6 +261,28 @@ export function advanceCampaign(world: WorldState, completed: Quest) {
     world.quests[q.id] = q;
     logEvent(world, 'campaign.offered', { stage: next.stage, quest: q.id }, next.offerText, { witnesses: partyMembers(world).map((c) => c.id) });
   } else {
+    world.campaignComplete = true;
     logEvent(world, 'campaign.complete', {}, 'The recorded spine of the campaign is complete. What Blackwall does with an unsealed, voiceless god below it is the author’s to write.');
+    logEvent(world, 'epilogue', {}, generateEpilogueText(world), { witnesses: partyMembers(world).map((c) => c.id) });
   }
+}
+
+/** A deterministic epilogue: the state of everything, as last-chapter prose fodder. */
+export function generateEpilogueText(world: WorldState): string {
+  const mc = world.characters[world.mcId];
+  const bits: string[] = [`EPILOGUE MATERIAL — Day ${world.time.day}.`];
+  const hearts = Object.values(world.characters)
+    .filter((c) => c.persistent && c.alive && !c.isMC)
+    .map((c) => ({ c, stage: world.relStages?.[c.id] }))
+    .filter((x) => x.stage && ['smitten', 'lover', 'partner', 'spouse'].includes(x.stage));
+  if (hearts.length) bits.push(`Hearts: ${hearts.map((h) => `${h.c.name} (${h.stage})`).join(', ')}.`);
+  const fallen = Object.values(world.characters).filter((c) => !c.alive && c.wasParty);
+  if (fallen.length) bits.push(`The fallen: ${fallen.map((c) => c.name).join(', ')}${fallen.some((c) => !c.memorialized) ? ' — not all of them given their rite' : ''}.`);
+  const conquered = Object.values(world.dungeons).filter((d) => d.bossDefeated).length;
+  bits.push(`${conquered} of ${Object.keys(world.dungeons).length} depths conquered.`);
+  const rivalsLeft = (world.rivals ?? []).filter((r) => !r.defeated);
+  bits.push(rivalsLeft.length ? `Still hunting them: ${rivalsLeft.map((r) => r.name).join(', ')}.` : 'No named enemy left standing.');
+  if (mc.title) bits.push(`${mc.name} ends this as ${mc.title}.`);
+  bits.push(`Book ${world.bookNumber ?? 1} of the chronicle.`);
+  return bits.join(' ');
 }

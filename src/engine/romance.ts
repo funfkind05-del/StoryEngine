@@ -207,3 +207,62 @@ export function haremMomentHook(world: WorldState, forId: string): { hook: strin
     teaser: 'about where she actually stands',
   };
 }
+
+
+// ---------- stage milestones: crossings are chapters ----------
+const STAGE_ORDER = ['stranger', 'acquaintance', 'friend', 'close', 'smitten', 'lover', 'partner', 'spouse'];
+
+const CROSSING_HOOKS: Record<string, { hook: string; teaser: string }> = {
+  smitten: {
+    hook: 'Something has shifted and you both know it. YOU have been looking at them too long and getting caught. This conversation is the one where neither of you names it — and both of you make it worse.',
+    teaser: 'something unspoken',
+  },
+  lover: {
+    hook: 'Last night changed things, or admitted what was already changed. This is the morning-after conversation: what this is, what it is not yet, and what you are each terrified the other will say first.',
+    teaser: 'the morning after',
+  },
+  partner: {
+    hook: 'It is not a question anymore; it is an arrangement of lives. Speak like someone choosing a future on purpose — logistics and tenderness in the same breath.',
+    teaser: 'choosing this, on purpose',
+  },
+  spouse: {
+    hook: 'Vows, or whatever Blackwall uses instead of vows. Say the thing you have never said plainly.',
+    teaser: 'the vow',
+  },
+};
+
+/**
+ * Detect stage crossings since last check. Crossings log first-class
+ * events (a harem book's spine), and rising into the deep stages hands
+ * the author a scene: a pending moment with the right hook.
+ */
+export function checkRelationshipMilestones(world: WorldState): void {
+  world.relStages ??= {};
+  const mc = world.characters[world.mcId];
+  for (const c of Object.values(world.characters)) {
+    if (!c.persistent || c.isMC) continue;
+    const stage = relationshipStage(c.relationships[world.mcId]);
+    const prev = world.relStages[c.id];
+    if (prev === undefined) {
+      world.relStages[c.id] = stage; // baseline quietly; no event spam on old saves
+      continue;
+    }
+    if (prev === stage) continue;
+    world.relStages[c.id] = stage;
+    if (!c.alive) continue;
+    const rising = STAGE_ORDER.indexOf(stage) > STAGE_ORDER.indexOf(prev);
+    logEvent(
+      world,
+      'romance.stage',
+      { character: c.id, from: prev, to: stage, rising },
+      rising
+        ? `${c.name} and ${mc.name}: what was ${STAGE_LABELS[prev as keyof typeof STAGE_LABELS] ?? prev} is now ${STAGE_LABELS[stage as keyof typeof STAGE_LABELS] ?? stage}. Neither of them announced it. It happened anyway.`
+        : `${c.name} and ${mc.name}: something cooled — ${STAGE_LABELS[prev as keyof typeof STAGE_LABELS] ?? prev} has fallen back to ${STAGE_LABELS[stage as keyof typeof STAGE_LABELS] ?? stage}. These things leave marks too.`,
+      { witnesses: [world.mcId, c.id] },
+    );
+    const crossing = CROSSING_HOOKS[stage];
+    if (rising && crossing && c.inParty && !world.pendingMoment && !world.combat) {
+      world.pendingMoment = { npcId: c.id, hook: crossing.hook, teaser: crossing.teaser };
+    }
+  }
+}

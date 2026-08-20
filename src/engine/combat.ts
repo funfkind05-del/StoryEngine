@@ -695,7 +695,10 @@ function finishCombat(world: WorldState, combat: CombatState) {
     if (combat.roomId && world.currentDungeon) {
       const room = world.dungeons[world.currentDungeon].rooms[combat.roomId];
       room.enemies = 'dead';
-      if (room.isBossRoom) world.dungeons[world.currentDungeon].bossDefeated = true;
+      if (room.isBossRoom && !world.dungeons[world.currentDungeon].bossDefeated) {
+        world.dungeons[world.currentDungeon].bossDefeated = true;
+        logEvent(world, 'dungeon.conquered', { dungeon: world.currentDungeon }, `${world.dungeons[world.currentDungeon].name} is CONQUERED — its warden is dead and its deepest door stands open.`, { witnesses: partyMembers(world).map((c) => c.id) });
+      }
     }
   } else if (combat.outcome === 'defeat') {
     // consequences depend on the death rule
@@ -707,8 +710,14 @@ function finishCombat(world: WorldState, combat: CombatState) {
       } else {
         c.alive = false;
         c.diedOnDay = world.time.day;
+        c.wasParty = true;
         c.statuses = [];
         logEvent(world, 'character.death', { character: c.id, rule: world.deathRule }, `${c.name} died. (${world.deathRule === 'classic' ? 'The body can be carried to a temple for resurrection.' : 'Permadeath: no resurrection.'})`);
+        world.mourning = [...(world.mourning ?? []), { charId: c.id, day: world.time.day }];
+        for (const other of combat.partyIds.map((pid) => world.characters[pid])) {
+          if (!other || !other.alive || other.id === c.id) continue;
+          other.memories.push({ subject: c.id, event: `I watched ${c.name} die and could not stop it.`, importance: 10, emotionalValue: -8, day: world.time.day });
+        }
       }
     }
     if (world.deathRule === 'story') {

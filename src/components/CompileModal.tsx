@@ -46,7 +46,8 @@ function TicTrendSection() {
 export function CompileModal({ onClose }: { onClose: () => void }) {
   const world = useStore((s) => s.world);
   const [title, setTitle] = useState('Blackwall');
-  const [opts, setOpts] = useState<CompileOptions>({ ...DEFAULT_COMPILE });
+  const [opts, setOpts] = useState<CompileOptions>({ ...DEFAULT_COMPILE, book: undefined });
+  const books = Array.from(new Set(world.scenes.map((sc) => sc.book ?? 1))).sort((a, b) => a - b);
   const stats = compileStats(world, opts);
   const set = (patch: Partial<CompileOptions>) => setOpts({ ...opts, ...patch });
   const fname = title.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'manuscript';
@@ -84,6 +85,10 @@ export function CompileModal({ onClose }: { onClose: () => void }) {
           <TicTrendSection />
           {recap && <div className="sugg-text" style={{ margin: '8px 0' }}>{recap}</div>}
           <div className="row" style={{ marginTop: 8 }}>
+            <select value={opts.book ?? 'all'} onChange={(e) => setOpts({ ...opts, book: e.target.value === 'all' ? undefined : parseInt(e.target.value, 10) })} title="Compile one volume of the series, or everything.">
+              <option value="all">All books</option>
+              {books.map((b) => <option key={b} value={b}>Book {b} only</option>)}
+            </select>
             <button className="primary" onClick={() => downloadFile(`${fname}.md`, compileMarkdown(world, title, opts), 'text/markdown')}>
               Download .md
             </button>

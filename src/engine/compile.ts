@@ -10,6 +10,8 @@ export interface CompileOptions {
   keepStatBlocks: boolean; // ╔══╗ system windows
   sceneSeparator: string; // between scenes within a chapter
   includeSceneTitles: boolean;
+  /** compile only this volume's scenes; undefined = all books */
+  book?: number;
 }
 
 export const DEFAULT_COMPILE: CompileOptions = {
@@ -47,9 +49,10 @@ export function compileStats(world: WorldState, opts: CompileOptions): CompiledS
   return { chapters: new Set(scenes.map((s) => s.chapter)).size, scenes: scenes.length, words };
 }
 
-function orderedChapters(world: WorldState): [number, Scene[]][] {
+function orderedChapters(world: WorldState, book?: number): [number, Scene[]][] {
   const chapters = new Map<number, Scene[]>();
   for (const s of [...world.scenes].sort((a, b) => a.order - b.order)) {
+    if (book !== undefined && (s.book ?? 1) !== book) continue;
     if (!chapters.has(s.chapter)) chapters.set(s.chapter, []);
     chapters.get(s.chapter)!.push(s);
   }
@@ -59,7 +62,7 @@ function orderedChapters(world: WorldState): [number, Scene[]][] {
 /** Markdown manuscript. */
 export function compileMarkdown(world: WorldState, title: string, opts: CompileOptions): string {
   const parts: string[] = [`# ${title}`, ''];
-  for (const [ch, scenes] of orderedChapters(world)) {
+  for (const [ch, scenes] of orderedChapters(world, opts.book)) {
     parts.push(`## Chapter ${ch}`, '');
     scenes.forEach((s, i) => {
       if (i > 0) parts.push('', opts.sceneSeparator, '');
@@ -79,7 +82,7 @@ function escapeHtml(s: string): string {
 /** Standalone printable HTML (browser print → PDF). */
 export function compileHtml(world: WorldState, title: string, opts: CompileOptions): string {
   const body: string[] = [`<h1>${escapeHtml(title)}</h1>`];
-  for (const [ch, scenes] of orderedChapters(world)) {
+  for (const [ch, scenes] of orderedChapters(world, opts.book)) {
     body.push(`<h2>Chapter ${ch}</h2>`);
     scenes.forEach((s, i) => {
       if (i > 0) body.push(`<p class="sep">${escapeHtml(opts.sceneSeparator)}</p>`);

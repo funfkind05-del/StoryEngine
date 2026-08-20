@@ -19,6 +19,7 @@ import { CLASSES, advanceNeeds, calendarLabel, needsBlocksHpRegen, needsBlocksSt
 import { expireWorldEvents, maybeSpawnWorldEvent } from './worldEvents';
 import { CITY_LORE_AT, loreById } from './codex';
 import { festivalToday } from './festivals';
+import { dailyFamilyTick } from './family';
 import { doomTick } from './campaign';
 
 // ---------- IDs ----------
@@ -225,6 +226,7 @@ export function tick(world: WorldState, minutes: number): SimEvent[] {
         produced.push(logEvent(world, 'festival', { name: fest.name }, `${fest.name} — ${fest.desc}`));
       }
       runBirthdays(world);
+      dailyFamilyTick(world);
       maybeSpawnWorldEvent(world);
       expireWorldEvents(world);
       doomTick(world);
@@ -278,10 +280,60 @@ export function tick(world: WorldState, minutes: number): SimEvent[] {
  * sleeping rough is half-rest — fatigue lingers, wounds knit slowly,
  * and in a dangerous district the night has teeth.
  */
+/** One line the outline can hang a chapter on: yesterday, digested. */
+function summarizeDay(world: WorldState, day: number): SimEvent[] {
+  const dayEvents = world.events.filter((e) => e.time.day === day && e.kind !== 'day.summary');
+  if (!dayEvents.length) return [];
+  const kinds = (k: string) => dayEvents.filter((e) => e.kind === k);
+  const combats = kinds('combat.end');
+  const wins = combats.filter((e) => (e.data as { outcome?: string }).outcome === 'victory').length;
+  const places = new Set(kinds('travel').map((e) => (e.data as { to?: string }).to).filter(Boolean));
+  const quests = kinds('quest.completed').length;
+  const hearts = kinds('romance.stage').length;
+  const deaths = kinds('character.death').length;
+  const party = partyMembers(world);
+  const purse = party.reduce((n, c) => n + c.money, 0);
+  const delta = world.lastMorningMoney === undefined ? 0 : purse - world.lastMorningMoney;
+  world.lastMorningMoney = purse;
+  const bits: string[] = [];
+  if (places.size) bits.push(`${places.size} street${places.size === 1 ? '' : 's'} walked`);
+  if (combats.length) bits.push(`${combats.length} fight${combats.length === 1 ? '' : 's'} (${wins} won)`);
+  if (quests) bits.push(`${quests} job${quests === 1 ? '' : 's'} settled`);
+  if (hearts) bits.push(`${hearts} heart${hearts === 1 ? '' : 's'} moved`);
+  if (deaths) bits.push(`${deaths} dead`);
+  if (delta) bits.push(`purse ${delta > 0 ? '+' : ''}${delta}c`);
+  if (!bits.length) return [];
+  return [logEvent(world, 'day.summary', { day, fights: combats.length, wins, quests, hearts, deaths, delta }, `Day ${day}, closed: ${bits.join(' · ')}.`, { witnesses: party.map((c) => c.id) })];
+}
+
+/** The morning after a death belongs to the dead. */
+function morningMourning(world: WorldState): SimEvent[] {
+  const due = (world.mourning ?? []).filter((m) => m.day < world.time.day);
+  if (!due.length) return [];
+  world.mourning = (world.mourning ?? []).filter((m) => m.day >= world.time.day);
+  const out: SimEvent[] = [];
+  for (const m of due) {
+    const dead = world.characters[m.charId];
+    if (!dead || dead.alive) continue; // resurrected before dawn — no wake needed
+    const lines: string[] = [];
+    for (const c of partyMembers(world)) {
+      if (c.isMC) continue;
+      if (c.values.includes('faith')) lines.push(`${c.name} kept the old vigil words going until dawn`);
+      else if (c.values.includes('order') || c.values.includes('loyalty')) lines.push(`${c.name} cleaned ${dead.name}'s gear twice and said nothing`);
+      else if (c.values.includes('cunning')) lines.push(`${c.name} made a joke ${dead.name} would have liked, and then couldn't finish it`);
+      else lines.push(`${c.name} sat with it`);
+      c.memories.push({ subject: m.charId, event: `The morning after we lost ${dead.name}.`, importance: 8, emotionalValue: -6, day: world.time.day });
+    }
+    out.push(logEvent(world, 'mourning', { character: m.charId }, `The morning belonged to ${dead.name}. ${lines.length ? lines.join('; ') + '.' : ''} A temple can still speak the memorial rite.`, { witnesses: partyMembers(world).map((c) => c.id) }));
+  }
+  return out;
+}
+
 export function advanceUntilMorning(world: WorldState, quality: 'bed' | 'rough' = 'rough'): SimEvent[] {
   const nowMin = world.time.minute;
   const target = 7 * 60;
   const minutes = nowMin < target ? target - nowMin : 1440 - nowMin + target;
+  const dayClosing = world.time.day; // the day being slept away
   const evts = tick(world, minutes);
   for (const c of partyMembers(world)) {
     const sick = c.statuses.some((s) => s.key === 'poisoned' || s.key === 'diseased');
@@ -299,6 +351,10 @@ export function advanceUntilMorning(world: WorldState, quality: 'bed' | 'rough' 
       c.stamina.current = Math.min(c.stamina.max, c.stamina.current + Math.ceil(c.stamina.max * 0.6));
     }
   }
+  // the night digests the day: a chapter-seam summary of what happened
+  evts.push(...summarizeDay(world, dayClosing));
+  // grief keeps its appointment with the morning
+  evts.push(...morningMourning(world));
   if (quality === 'bed') {
     evts.push(logEvent(world, 'rest', { kind: 'sleep' }, 'The party slept until morning in real beds.'));
   } else {
@@ -379,6 +435,14 @@ export function runBirthdays(world: WorldState): void {
     c.age += 1;
     if (c.inParty || c.isMC) {
       logEvent(world, 'birthday', { character: c.id, age: c.age }, `${c.name} turns ${c.age} today. ${c.isMC ? 'Another year on the ledger.' : 'The party knows, whether or not anyone admits to planning something.'}`, { witnesses: partyMembers(world).map((x) => x.id) });
+    }
+  }
+  // the dead keep their days too
+  for (const c of Object.values(world.characters)) {
+    if (c.alive || !c.wasParty || c.diedOnDay === undefined) continue;
+    if (world.time.day > c.diedOnDay && c.diedOnDay % 360 === dayOfYear) {
+      const years = Math.round((world.time.day - c.diedOnDay) / 360);
+      logEvent(world, 'remembrance', { character: c.id, years }, `${years} year${years === 1 ? '' : 's'} since ${c.name} fell. ${c.memorialized ? 'The rite was spoken; the day still knows its weight.' : 'No rite has ever been spoken for them.'}`, { witnesses: partyMembers(world).map((x) => x.id) });
     }
   }
 }

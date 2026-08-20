@@ -48,6 +48,9 @@ import { setCustomComposition, setThemeAudio, themeSource, type MusicTheme } fro
 import { festivalToday } from '../engine/festivals';
 import { AUCTION_LOCATION, getAuctionLots, isAuctionDay } from '../engine/auction';
 import { artSnapshot, getCharacterArtCached, getMonsterArtCached, subscribeArt } from '../engine/artFiles';
+import { openThreads } from '../engine/muse';
+import { currentBook, scenesInBook } from '../engine/series';
+import { PREGNANCY_TERM_DAYS } from '../engine/family';
 import { PIT_LOCATION, isPitTrialsDay } from '../engine/tournament';
 import { LOREBOOKS, loreById } from '../engine/codex';
 import { ACHIEVEMENTS } from '../engine/achievements';
@@ -440,6 +443,24 @@ function MusePanel() {
   return (
     <div>
       <h3>Muse</h3>
+      {(() => {
+        const threads = openThreads(world);
+        if (!threads.length) return null;
+        return (
+          <>
+            <h4>Open threads — what the series must not drop</h4>
+            {threads.slice(0, 8).map((t, i) => (
+              <div key={i} className="card">
+                <div className="row">
+                  <span className="name grow">{t.label}</span>
+                  <Tag tone={t.urgency >= 8 ? 'red' : t.urgency >= 6 ? 'gold' : undefined}>{t.kind}</Tag>
+                </div>
+                <p className="small dim">{t.detail}</p>
+              </div>
+            ))}
+          </>
+        );
+      })()}
       <p className="dim small">
         Story hooks mined from the simulation right now — every one grounded in cited sim facts,
         most pressing first. They refresh as the world changes. Nothing here is canon; it's material.
@@ -1110,6 +1131,9 @@ function RelationshipsPanel() {
               <CharacterPortrait charId={c.id} size={34} world={world} />
               <span className="name grow">{c.name}</span>
               <Tag tone={['Lover', 'Partner', 'Spouse'].includes(stage) ? 'gold' : undefined}>{stage}</Tag>
+              {c.pregnantSince !== undefined && (
+                <Tag tone="gold" >🤍 expecting — day {world.time.day - c.pregnantSince} of {PREGNANCY_TERM_DAYS}</Tag>
+              )}
             </div>
             <p className="dim small">values: {c.values.join(', ')}</p>
             <RelBar label="Affection" value={rel.affection} />
@@ -1573,6 +1597,8 @@ function SavesPanel() {
   const doExport = useStore((s) => s.doExport);
   const doImport = useStore((s) => s.doImport);
   const resetWorld = useStore((s) => s.resetWorld);
+  const closeBook = useStore((st) => st.closeBook);
+  const [bookTitle, setBookTitle] = useState('');
   const [newDeathRule, setNewDeathRule] = useState<'story' | 'classic' | 'permadeath'>('story');
   const [newResRule, setNewResRule] = useState<'safe' | 'risky'>('safe');
   const [newClass, setNewClass] = useState<'fighter' | 'rogue' | 'mage' | 'priest' | 'ranger' | 'bard' | 'monk' | 'spellblade' | 'warlock'>('fighter');
@@ -1654,6 +1680,20 @@ function SavesPanel() {
         <button onClick={doExport}>Export project (.json)</button>
         <button onClick={() => fileRef.current?.click()}>Import…</button>
         <input ref={fileRef} type="file" accept=".json" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) void doImport(f); e.target.value = ''; }} />
+      </div>
+      <h4>The series</h4>
+      <p className="dim small">
+        One world, many books. Book {currentBook(world)} is open — {scenesInBook(world, currentBook(world)).length} scene{scenesInBook(world, currentBook(world)).length === 1 ? '' : 's'} so far.
+        Closing a book marks the boundary in the log, resets chapter numbering, and carries every consequence forward.
+      </p>
+      <div className="row small">
+        <input type="text" className="grow" placeholder={`title for Book ${currentBook(world)} (optional)`} value={bookTitle} onChange={(e) => setBookTitle(e.target.value)} />
+        <button
+          className="primary"
+          onClick={() => { if (confirm(`Close Book ${currentBook(world)} and open Book ${currentBook(world) + 1}? The world continues; the manuscript starts a fresh volume.`)) { closeBook(bookTitle || undefined); setBookTitle(''); } }}
+        >
+          📕 Close Book {currentBook(world)}
+        </button>
       </div>
       <h4>New game</h4>
       <div className="row small">
