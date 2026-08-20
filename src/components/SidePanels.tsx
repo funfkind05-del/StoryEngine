@@ -38,7 +38,7 @@ import { loadLlmConfig } from '../engine/npcChat';
 import { MONSTERS } from '../engine/monsters';
 import { CARRIAGE_STOPS } from '../engine/services';
 import { RECIPES, canCraft } from '../engine/crafting';
-import { AFFIXES, ascensionOptions, callingOptions, transcendenceOptions } from '../engine/progression';
+import { AFFIXES, SET_FAMILIES, ascensionOptions, callingOptions, transcendenceOptions } from '../engine/progression';
 import { HEARTH_ACTIVITIES } from '../engine/hearth';
 import { classArtUrl, propUrl } from '../engine/artFiles';
 import { COMPANION_ARCS } from '../engine/companions';
@@ -429,14 +429,17 @@ function LocationPanel() {
             {sets.map((r) => (
               <div key={r.key} className="card">
                 <div className="row">
-                  {propUrl(`set-${r.key.replace(/-mail$/, '')}`) && (
-                    <img src={propUrl(`set-${r.key.replace(/-mail$/, '')}`)} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 4 }} />
+                  {propUrl(`set-${r.setKey}`) && (
+                    <img src={propUrl(`set-${r.setKey}`)} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 4 }} />
                   )}
                   <span className="name grow">{r.itemName}</span>
                   <Tag tone="gold">{r.tier}</Tag>
                 </div>
                 <p className="small dim" style={{ fontStyle: 'italic' }}>{r.lore}</p>
                 <p className="small">Traits: {r.affixes.map((a) => `${a.name} (+${a.amount} ${a.stat})`).join(' · ')}</p>
+                {SET_FAMILIES[r.setKey] && (
+                  <p className="small dim">Set of {SET_FAMILIES[r.setKey].pieces} ({SET_FAMILIES[r.setKey].label}): +{SET_FAMILIES[r.setKey].amount} {SET_FAMILIES[r.setKey].stat} — {SET_FAMILIES[r.setKey].wakes}.</p>
+                )}
                 <div className="row small">
                   <span className="grow dim">{r.needs.map((n) => `${countMaterial(world, n.proto)}/${n.qty} ${ITEM_PROTOS[n.proto]?.name ?? n.proto}`).join(' · ')}</span>
                   <button onClick={() => setCraftAct(r.key)} title={`${Math.round(r.minutes / 60)} hours at the bench.`}>Craft</button>
@@ -849,6 +852,9 @@ function PartyPanel() {
               ))}
             </div>
           )}
+          {(world.wants ?? []).filter((wnt) => wnt.charId === c.id).map((wnt) => (
+            <div key={wnt.key} className="row small"><Tag tone="gold">wants</Tag> <span className="small dim">{wnt.label}</span></div>
+          ))}
           {(c.attributePoints ?? 0) > 0 && (
             <div className="row small">
               <Tag tone="gold">{c.attributePoints} attribute point{c.attributePoints === 1 ? '' : 's'}</Tag>
@@ -1473,6 +1479,18 @@ function HouseholdPanel() {
           {world.items[iid]?.name}{world.items[iid]?.stackable ? ` ×${world.items[iid]?.qty ?? 1}` : ''}
         </p>
       ))}
+      {(() => {
+        const trophies = [...hh.storage, ...(world.partyLocation === homeId ? [] : [])].map((iid) => world.items[iid]).filter((it) => it && it.proto === 'boss-trophy');
+        if (!trophies.length) return null;
+        return (
+          <>
+            <h4>🏆 The trophy wall</h4>
+            {trophies.map((it) => (
+              <p key={it!.id} className="small" title={it!.lore ?? ''}>{it!.name} <span className="dim">— {it!.history[it!.history.length - 1] ?? ''}</span></p>
+            ))}
+          </>
+        );
+      })()}
       <h4>The hearth</h4>
       {(() => {
         const atHome = world.partyLocation === homeId;

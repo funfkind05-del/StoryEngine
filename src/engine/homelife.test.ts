@@ -1,0 +1,195 @@
+// Round 12: the house that lives — ambient events, the resident web,
+// wants, children who grow up, set bonuses that wake, and trophies.
+
+import { describe, expect, it } from 'vitest';
+import { buildSeedWorld } from '../data/seed';
+import { dailyHomeLife, fulfillWant } from './homelife';
+import { buyFirstHome } from './household';
+import { inviteToLive } from './hearth';
+import { relationshipBetween, travelTo } from './world';
+import { dailyFamilyTick, COMING_OF_AGE } from './family';
+import { giveGift } from './romance';
+import { SET_FAMILIES, affixMod, setBonusMod } from './progression';
+import { SET_RECIPES, craftSetPiece } from './crafting';
+import { addToContainer, makeItem } from './rules';
+import { autoResolve, startCombat } from './combat';
+import { enterDungeon } from './dungeon';
+import type { Character } from './types';
+
+function homeWithResidents(n: 1 | 2) {
+  const w = buildSeedWorld();
+  const mc = w.characters[w.mcId];
+  mc.money = 2000;
+  expect(buyFirstHome(w)).toBeNull();
+  const home = Object.values(w.locations).find((l) => l.household)!;
+  w.partyLocation = home.id;
+  const names = ['CHAR_LYRA', 'CHAR_MARA'].slice(0, n);
+  for (const id of names) {
+    const c = w.characters[id];
+    Object.assign(relationshipBetween(w, id, w.mcId), { affection: 7, trust: 7, attraction: 6, commitment: 5, respect: 5 });
+    expect(inviteToLive(w, c.id)).toBeNull();
+  }
+  return { w, mc, home };
+}
+
+describe('the house that lives', () => {
+  it('residents generate ambient life without the party lifting a finger', () => {
+    const { w } = homeWithResidents(1);
+    for (let d = 0; d < 30; d++) {
+      w.time.day += 1;
+      dailyHomeLife(w);
+    }
+    expect(w.events.filter((e) => e.kind === 'home.life').length).toBeGreaterThan(0);
+  });
+
+  it('two women under one roof grow a web of their own — alliances and frictions, logged', () => {
+    const { w } = homeWithResidents(2);
+    for (let d = 0; d < 120; d++) {
+      w.time.day += 1;
+      dailyHomeLife(w);
+    }
+    const alliances = w.events.filter((e) => e.kind === 'home.alliance');
+    const frictions = w.events.filter((e) => e.kind === 'home.friction');
+    expect(alliances.length).toBeGreaterThan(0);
+    expect(frictions.length).toBeGreaterThan(0);
+    // the dials between THEM moved, not just toward the MC
+    const rel = w.characters['CHAR_LYRA'].relationships['CHAR_MARA'];
+    expect(rel).toBeTruthy();
+    expect(Math.abs(rel!.affection) + rel!.trust).toBeGreaterThan(0);
+  });
+
+  it('wants surface, expire, and pay bond when heard', () => {
+    const { w } = homeWithResidents(1);
+    for (let d = 0; d < 20 && !(w.wants ?? []).length; d++) {
+      w.time.day += 1;
+      dailyHomeLife(w);
+    }
+    expect((w.wants ?? []).length).toBeGreaterThan(0);
+    const want = w.wants![0];
+    const rel = relationshipBetween(w, want.charId, w.mcId);
+    const before = rel.affection;
+    fulfillWant(w, want.charId, want.kind, want.kind === 'visit' ? want.locationId : want.kind === 'gift' ? want.giftKind : undefined);
+    expect((w.wants ?? []).find((x) => x.key === want.key)).toBeUndefined();
+    expect(rel.affection).toBeGreaterThanOrEqual(before);
+    expect(w.events.some((e) => e.kind === 'want.fulfilled')).toBe(true);
+  });
+
+  it('a visit-want completes on arrival with her along', () => {
+    const w = buildSeedWorld();
+    const lyra = w.characters['CHAR_LYRA'];
+    lyra.inParty = true;
+    w.wants = [{ key: 'visit-LOC_IRONMARKET_SQ', charId: lyra.id, label: 'x', day: w.time.day, kind: 'visit', locationId: 'LOC_IRONMARKET_SQ' }];
+    travelTo(w, 'LOC_RATCATCHER');
+    expect(w.wants.length).toBe(1);
+    travelTo(w, 'LOC_IRONMARKET_SQ');
+    expect(w.wants.length).toBe(0);
+  });
+
+  it('a gift-want completes only on the kind she was circling', () => {
+    const w = buildSeedWorld();
+    const mc = w.characters[w.mcId];
+    const lyra = w.characters['CHAR_LYRA'];
+    lyra.location = w.partyLocation;
+    w.wants = [{ key: 'gift-jewelry', charId: lyra.id, label: 'x', day: w.time.day, kind: 'gift', giftKind: 'jewelry' }];
+    const dagger = makeItem(w, 'dagger', 1);
+    addToContainer(w, dagger, mc);
+    expect(giveGift(w, lyra.id, dagger.id)).toBeNull();
+    expect(w.wants.length).toBe(1); // wrong kind
+    w.time.day += 1; // gift pacing
+    const ring = makeItem(w, 'ring-of-the-fox', 1);
+    addToContainer(w, ring, mc);
+    expect(giveGift(w, lyra.id, ring.id)).toBeNull();
+    expect(w.wants.length).toBe(0);
+  });
+});
+
+describe('children grow up', () => {
+  function makeChildOf(w: ReturnType<typeof buildSeedWorld>, age: number): Character {
+    const mother = w.characters['CHAR_LYRA'];
+    const child: Character = JSON.parse(JSON.stringify(w.characters[w.mcId]));
+    child.id = 'CHAR_CHILD_TEST';
+    child.name = 'Wren';
+    child.isMC = false;
+    child.age = age;
+    child.charClass = 'commoner';
+    child.level = 0;
+    child.abilities = [];
+    child.parents = [mother.id, w.mcId];
+    child.birthDay = w.time.day % 360;
+    child.memories = [];
+    w.characters[child.id] = child;
+    return child;
+  }
+
+  it('milestone birthdays write scenes and parents remember', () => {
+    const w = buildSeedWorld();
+    const child = makeChildOf(w, 6); // just turned six today
+    dailyFamilyTick(w);
+    const evt = w.events.find((e) => e.kind === 'family.milestone');
+    expect(evt).toBeTruthy();
+    expect(evt!.summary).toContain('wooden sword');
+    expect(w.characters['CHAR_LYRA'].memories.some((m) => m.subject === child.id)).toBe(true);
+  });
+
+  it('sixteen picks a trade: class, abilities, a sheet of their own', () => {
+    const w = buildSeedWorld();
+    const child = makeChildOf(w, COMING_OF_AGE);
+    dailyFamilyTick(w);
+    expect(child.charClass).not.toBe('commoner');
+    expect(w.events.some((e) => e.kind === 'family.coming-of-age')).toBe(true);
+  });
+});
+
+describe('set families and trophies', () => {
+  it('two Ashgrip pieces wake the family bonus; one does not', () => {
+    const w = buildSeedWorld();
+    const mc = w.characters[w.mcId];
+    w.partyLocation = 'LOC_FORGE';
+    for (const proto of [['iron-scrap', 11], ['ember-essence', 3], ['wyrm-scale', 1]] as const) {
+      addToContainer(w, makeItem(w, proto[0], proto[1]), mc);
+    }
+    expect(craftSetPiece(w, 'ashgrip')).toBeNull();
+    expect(craftSetPiece(w, 'ashgrip-band')).toBeNull();
+    const blade = mc.inventory.map((i) => w.items[i]).find((i) => i?.name === 'Ashgrip Blade')!;
+    const band = mc.inventory.map((i) => w.items[i]).find((i) => i?.name === 'Ashgrip Band')!;
+    expect(blade.setKey).toBe('ashgrip');
+    expect(band.setKey).toBe('ashgrip');
+    mc.equipment['main-hand'] = blade.id;
+    blade.equippedBy = mc.id;
+    expect(setBonusMod(w, mc, 'attack')).toBe(0);
+    mc.equipment['ring'] = band.id;
+    band.equippedBy = mc.id;
+    expect(setBonusMod(w, mc, 'attack')).toBe(SET_FAMILIES.ashgrip.amount);
+    expect(affixMod(w, mc, 'attack')).toBeGreaterThanOrEqual(SET_FAMILIES.ashgrip.amount + 2 + 1);
+  });
+
+  it('every set recipe belongs to a real family with a real station', () => {
+    const w = buildSeedWorld();
+    for (const r of SET_RECIPES) {
+      expect(SET_FAMILIES[r.setKey], r.key).toBeTruthy();
+      expect(w.locations[r.station], r.key).toBeTruthy();
+    }
+    for (const fam of Object.keys(SET_FAMILIES)) {
+      expect(SET_RECIPES.filter((r) => r.setKey === fam).length, fam).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it('a fallen warden becomes a trophy for the wall', () => {
+    const w = buildSeedWorld();
+    for (const c of Object.values(w.characters)) if (c.inParty || c.isMC) { c.level = 20; c.hp.max = 300; c.hp.current = 300; c.attributes.strength = 20; }
+    enterDungeon(w, 'DUN_OLDQUARTER_001');
+    const d = w.dungeons['DUN_OLDQUARTER_001'];
+    const bossRoom = Object.values(d.rooms).find((r) => r.isBossRoom)!;
+    w.currentRoom = bossRoom.id;
+    startCombat(w, {
+      seed: 7, description: 'the warden', monsters: [{ templateKey: 'giant-rat', count: 1 }],
+      source: 'dungeon', locationId: w.partyLocation, roomId: bossRoom.id,
+    });
+    autoResolve(w);
+    expect(d.bossDefeated).toBe(true);
+    const trophy = [...w.partyInventory].map((i) => w.items[i]).find((i) => i?.proto === 'boss-trophy');
+    expect(trophy).toBeTruthy();
+    expect(trophy!.name).toContain('Trophy:');
+    expect(w.events.some((e) => e.kind === 'trophy')).toBe(true);
+  });
+});

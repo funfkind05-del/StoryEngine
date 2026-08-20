@@ -456,7 +456,32 @@ export function chooseAscension(world: WorldState, charId: string, pathKey: stri
   return null;
 }
 
-/** Sum of equipped-affix contributions to a combat stat (both affix slots). */
+// ---------- crafted-set families (the ESO signature) ----------
+// A named piece is good; two of a pattern WAKE something. The family
+// bonus lives here with the other gear math.
+export const SET_FAMILIES: Record<string, { label: string; pieces: number; stat: NonNullable<Item['affix']>['stat']; amount: number; wakes: string }> = {
+  ashgrip: { label: 'Ashgrip', pieces: 2, stat: 'attack', amount: 3, wakes: 'the ember-ash in both pieces warms when they draw blood together' },
+  tidewalker: { label: 'Tidewalker', pieces: 2, stat: 'defense', amount: 3, wakes: 'the brine remembers the sea refusing to drown its wearer' },
+  edgesong: { label: 'Edgesong', pieces: 2, stat: 'critChance', amount: 6, wakes: 'the sigils harmonize — the hum finds the note that ends fights' },
+  lamplight: { label: 'Lamplight', pieces: 2, stat: 'evasion', amount: 3, wakes: 'the soot-lacquer drinks the light around the whole wearer' },
+};
+
+export function setBonusMod(world: WorldState, c: Character, stat: NonNullable<Item['affix']>['stat']): number {
+  const counts: Record<string, number> = {};
+  for (const iid of Object.values(c.equipment)) {
+    const it = iid ? world.items[iid] : null;
+    if (!it || it.broken || !it.setKey) continue;
+    counts[it.setKey] = (counts[it.setKey] ?? 0) + 1;
+  }
+  let total = 0;
+  for (const [key, n] of Object.entries(counts)) {
+    const fam = SET_FAMILIES[key];
+    if (fam && n >= fam.pieces && fam.stat === stat) total += fam.amount;
+  }
+  return total;
+}
+
+/** Sum of equipped-affix contributions to a combat stat (affixes + woken set families). */
 export function affixMod(world: WorldState, c: Character, stat: NonNullable<Item['affix']>['stat']): number {
   let total = 0;
   for (const iid of Object.values(c.equipment)) {
@@ -465,5 +490,5 @@ export function affixMod(world: WorldState, c: Character, stat: NonNullable<Item
     if (it.affix?.stat === stat) total += it.affix.amount;
     if (it.affix2?.stat === stat) total += it.affix2.amount;
   }
-  return total;
+  return total + setBonusMod(world, c, stat);
 }

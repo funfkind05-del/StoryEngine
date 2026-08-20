@@ -21,6 +21,7 @@ import { CITY_LORE_AT, loreById } from './codex';
 import { festivalToday } from './festivals';
 import { dailyFamilyTick } from './family';
 import { dailyHearthTick } from './hearth';
+import { checkVisitWants, dailyHomeLife } from './homelife';
 import { doomTick } from './campaign';
 
 // ---------- IDs ----------
@@ -120,13 +121,15 @@ export function travelTo(world: WorldState, dest: LocationId): SimEvent {
       logEvent(world, 'codex.found', { id: loreId }, `Standing in ${to.name}, the party pieced together "${entry.title}" — a Codex entry.`, { location: dest, witnesses: party.map((c) => c.id) });
     }
   }
-  return logEvent(
+  const evt = logEvent(
     world,
     'travel',
     { from: from?.id ?? null, to: dest, minutes },
     `The party traveled from ${from?.name ?? 'nowhere'} to ${to.name}. (${minutes} min)`,
     { location: dest, witnesses: party.map((c) => c.id) },
   );
+  checkVisitWants(world);
+  return evt;
 }
 
 // ---------- NPC schedules & background simulation ----------
@@ -230,6 +233,7 @@ export function tick(world: WorldState, minutes: number): SimEvent[] {
       runBirthdays(world);
       dailyFamilyTick(world);
       dailyHearthTick(world);
+      dailyHomeLife(world);
       maybeSpawnWorldEvent(world);
       expireWorldEvents(world);
       doomTick(world);

@@ -5,11 +5,12 @@
 // carries both parents in their sheet, and gives the series its next
 // generation of stakes. Books have been built on less.
 
-import type { Character, WorldState } from './types';
+import type { CharClass, Character, WorldState } from './types';
 import { Rng } from './rng';
 import { logEvent, partyMembers } from './world';
 import { relationshipStage } from './romance';
 import { findHome } from './household';
+import { CLASSES } from './rules';
 
 export const PREGNANCY_TERM_DAYS = 270;
 export const DAILY_CONCEPTION_CHANCE = 0.02;
@@ -91,10 +92,67 @@ function makeChild(world: WorldState, mother: Character, rng: Rng): Character {
 }
 
 /** Daily family tick: conception rolls, term milestones, births. */
+
+// ---------- growing up ----------
+// Children do not stay a birth announcement. Each birthday that
+// crosses a milestone writes a scene the saga will want; sixteen
+// picks a trade and turns a child into a person with a sheet.
+
+const CHILD_MILESTONES: Record<number, (world: WorldState, c: Character) => string> = {
+  1: (_world, c) => `${c.name} said a first word today. It was 'no'. Both parents claim this proves the child takes after the other one.`,
+  3: (world, c) => `${c.name} is now everywhere at once. Three separate hiding spots were discovered today, one of them genuinely concerning. ${world.characters[world.mcId].name} was proud before he was worried, and both were correct.`,
+  6: (_world, c) => `${c.name} came home with a wooden sword — Master Harrow's off-cut work, 'no charge, mind the grain' — and has held formal opinions about guard stances ever since supper.`,
+  8: (_world, c) => `${c.name} asked, at bedtime, in the flat voice children save for the real questions: 'What is under the city?' The answer given was mostly true. The silence afterward was mutual.`,
+  12: (_world, c) => `${c.name} shadowed the household's work all season and has started doing parts of it unasked — and correctly, which is worse, because now it cannot be discouraged.`,
+};
+
+export const COMING_OF_AGE = 16;
+
+function childClassFor(world: WorldState, c: Character, rng: Rng): CharClass {
+  // the trade finds the child: a parent's path, or the city's
+  const mother = c.parents?.[0] ? world.characters[c.parents[0]] : null;
+  const father = c.parents?.[1] ? world.characters[c.parents[1]] : null;
+  const pool: CharClass[] = [];
+  if (mother && mother.charClass !== 'commoner') pool.push(mother.charClass);
+  if (father && father.charClass !== 'commoner') pool.push(father.charClass);
+  pool.push(rng.pick(['fighter', 'rogue', 'bard', 'ranger', 'monk'] as CharClass[]));
+  return rng.pick(pool);
+}
+
+/** Fired on each child's birthday (ages already advanced upstream). */
+function childBirthdays(world: WorldState, rng: Rng) {
+  const dayOfYear = world.time.day % 360;
+  for (const c of Object.values(world.characters)) {
+    if (!c.alive || !c.parents || c.birthDay !== dayOfYear || world.time.day === 0) continue;
+    const line = CHILD_MILESTONES[c.age]?.(world, c);
+    if (line) {
+      logEvent(world, 'family.milestone', { character: c.id, age: c.age }, line, { witnesses: [world.mcId, ...(c.parents.filter((p) => world.characters[p]?.alive) as string[])] });
+      for (const pid of c.parents) {
+        const parent = world.characters[pid];
+        parent?.memories.push({ subject: c.id, event: line, importance: 8, emotionalValue: 7, day: world.time.day });
+      }
+    }
+    if (c.age === COMING_OF_AGE && c.charClass === 'commoner') {
+      const cls = childClassFor(world, c, rng);
+      c.charClass = cls;
+      c.occupation = `${CLASSES[cls].label.toLowerCase()} in training`;
+      c.level = 1;
+      c.abilities = Object.entries(CLASSES[cls].unlocks).filter(([lvl]) => parseInt(lvl, 10) <= 1).map(([, k]) => k);
+      c.attributes.strength += rng.int(0, 2);
+      c.attributes.dexterity += rng.int(0, 2);
+      c.attributes.constitution += rng.int(0, 2);
+      c.hp.max += 6;
+      c.hp.current = c.hp.max;
+      logEvent(world, 'family.coming-of-age', { character: c.id, charClass: cls }, `${c.name} turned ${COMING_OF_AGE} and chose — or was chosen by — the ${CLASSES[cls].label.toLowerCase()}'s trade. Sixteen years since a birth announcement in this log, and now there is a NAME on a guild ledger. The saga has a next generation.`, { witnesses: partyMembers(world).map((x) => x.id) });
+    }
+  }
+}
+
 export function dailyFamilyTick(world: WorldState): void {
   const day = world.time.day;
   const rng = new Rng((world.masterSeed ^ (day * 179426549)) >>> 0);
   const mc = world.characters[world.mcId];
+  childBirthdays(world, rng);
   // conception
   for (const wife of eligibleSpouses(world)) {
     // a night shared at the hearth weights the dice threefold

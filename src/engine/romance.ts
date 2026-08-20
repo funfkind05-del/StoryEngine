@@ -7,6 +7,7 @@
 
 import type { Character, Item, RelationshipValues, WorldState } from './types';
 import { noteAttention } from './hearth';
+import { fulfillWant } from './homelife';
 import { festivalToday } from './festivals';
 import { Rng, randomSeed } from './rng';
 import { addMinutes, logEvent, relationshipBetween } from './world';
@@ -72,6 +73,7 @@ export function giveGift(world: WorldState, npcId: string, itemId: string): stri
   mc.inventory = mc.inventory.filter((i) => i !== itemId);
   item.owner = npc.id;
   npc.inventory.push(itemId);
+  fulfillWant(world, npcId, 'gift', item.kind);
   item.history.push(`Given to ${npc.name} by ${mc.name} on Day ${world.time.day}`);
   addMinutes(world, 10);
   // what it says
@@ -170,6 +172,7 @@ export function spendTimeWith(world: WorldState, npcId: string, activityKey: str
   npc.memories.push({ subject: mc.id, event: line, importance: 4, emotionalValue: 4, day: world.time.day });
   noteAttention(world, npc.id);
   logEvent(world, 'date', { npc: npc.id, activity: act.key }, line, { location: world.partyLocation, witnesses: [mc.id, npc.id] });
+  fulfillWant(world, npc.id, 'date');
   return null;
 }
 

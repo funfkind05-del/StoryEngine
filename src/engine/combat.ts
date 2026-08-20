@@ -24,6 +24,7 @@ import {
   addToContainer,
   applyStatus,
   consumeItem,
+  makeItem,
   cureStatus,
   hasStatus,
   injuryAttackMod,
@@ -777,8 +778,17 @@ function finishCombat(world: WorldState, combat: CombatState) {
       room.enemies = 'dead';
       room.clearedDay = world.time.day;
       if (room.isBossRoom && !world.dungeons[world.currentDungeon].bossDefeated) {
-        world.dungeons[world.currentDungeon].bossDefeated = true;
-        logEvent(world, 'dungeon.conquered', { dungeon: world.currentDungeon }, `${world.dungeons[world.currentDungeon].name} is CONQUERED — its warden is dead and its deepest door stands open.`, { witnesses: partyMembers(world).map((c) => c.id) });
+        const conqueredDungeon = world.dungeons[world.currentDungeon];
+        conqueredDungeon.bossDefeated = true;
+        logEvent(world, 'dungeon.conquered', { dungeon: world.currentDungeon }, `${conqueredDungeon.name} is CONQUERED — its warden is dead and its deepest door stands open.`, { witnesses: partyMembers(world).map((c) => c.id) });
+        // the proof comes home: a trophy for the wall above the hearth
+        const bossName = MONSTERS[conqueredDungeon.bossKey]?.name ?? 'the warden';
+        const trophy = makeItem(world, 'boss-trophy', 1);
+        trophy.name = `Trophy: ${bossName}`;
+        trophy.lore = `Taken from ${conqueredDungeon.name} the day its warden fell. A house that holds this holds the story.`;
+        trophy.history.push(`Claimed in ${conqueredDungeon.name} on Day ${world.time.day}`);
+        addToContainer(world, trophy, 'party');
+        logEvent(world, 'trophy', { dungeon: conqueredDungeon.id, item: trophy.id }, `The party took a trophy of ${bossName} — something for the wall at home, when there is a wall, so the house can keep the score.`, { witnesses: partyMembers(world).map((c) => c.id) });
       }
     }
   } else if (combat.outcome === 'defeat') {

@@ -176,6 +176,8 @@ export function gatherResource(world: WorldState): string | null {
 
 export interface SetRecipe {
   key: string;
+  /** family for the 2-piece bonus (progression.SET_FAMILIES) */
+  setKey: string;
   label: string;
   station: string; // location id
   stationName: string;
@@ -192,6 +194,7 @@ export interface SetRecipe {
 export const SET_RECIPES: SetRecipe[] = [
   {
     key: 'ashgrip',
+    setKey: 'ashgrip',
     label: 'Forge the Ashgrip Blade',
     station: 'LOC_FORGE',
     stationName: 'Harrow\u2019s Forge',
@@ -206,6 +209,7 @@ export const SET_RECIPES: SetRecipe[] = [
   },
   {
     key: 'tidewalker',
+    setKey: 'tidewalker',
     label: 'Fit the Tidewalker Hauberk',
     station: 'LOC_SALTMERE',
     stationName: 'Saltmere\u2019s drying racks',
@@ -220,6 +224,7 @@ export const SET_RECIPES: SetRecipe[] = [
   },
   {
     key: 'edgesong',
+    setKey: 'edgesong',
     label: 'Cut the Edgesong Runes',
     station: 'LOC_EDGEDHALL',
     stationName: 'the Edged Hall',
@@ -234,6 +239,7 @@ export const SET_RECIPES: SetRecipe[] = [
   },
   {
     key: 'lamplight-mail',
+    setKey: 'lamplight',
     label: 'Rivet the Lamplight Mail',
     station: 'LOC_LAMPHALL',
     stationName: 'Lamplighters\u2019 Hall',
@@ -245,6 +251,66 @@ export const SET_RECIPES: SetRecipe[] = [
     affixes: [{ name: 'of the Lamplight', stat: 'evasion', amount: 3 }, { name: 'of the Wall', stat: 'defense', amount: 2 }],
     needs: [{ proto: 'iron-scrap', qty: 8 }, { proto: 'leather-strips', qty: 5 }, { proto: 'night-herbs', qty: 2 }],
     minutes: 420,
+  },
+  {
+    key: 'ashgrip-band',
+    setKey: 'ashgrip',
+    label: 'Forge the Ashgrip Band',
+    station: 'LOC_FORGE',
+    stationName: 'Harrow\u2019s Forge',
+    baseProto: 'iron-band',
+    itemName: 'Ashgrip Band',
+    lore: 'The pattern-book\u2019s footnote: the blade wants a keeper. A ring of the same quench, worn sword-hand, so the metal knows its own.',
+    quality: 'superior',
+    tier: 'rare',
+    affixes: [{ name: 'of the Warlord', stat: 'attack', amount: 1 }, { name: 'of the Adder', stat: 'critChance', amount: 3 }],
+    needs: [{ proto: 'iron-scrap', qty: 3 }, { proto: 'ember-essence', qty: 1 }],
+    minutes: 180,
+  },
+  {
+    key: 'tidewalker-charm',
+    setKey: 'tidewalker',
+    label: 'Cure the Tidewalker Charm',
+    station: 'LOC_SALTMERE',
+    stationName: 'Saltmere\u2019s drying racks',
+    baseProto: 'iron-band',
+    itemName: 'Tidewalker Charm',
+    lore: 'A knot of brine-cured cord and scale on an iron band. The sea keeps refusing; the charm keeps count.',
+    quality: 'superior',
+    tier: 'rare',
+    affixes: [{ name: 'of the Wall', stat: 'defense', amount: 1 }, { name: 'of the Fox', stat: 'evasion', amount: 1 }],
+    needs: [{ proto: 'leather-strips', qty: 2 }, { proto: 'bogroot', qty: 2 }],
+    minutes: 180,
+  },
+  {
+    key: 'edgesong-locket',
+    setKey: 'edgesong',
+    label: 'Cut the Edgesong Locket',
+    station: 'LOC_EDGEDHALL',
+    stationName: 'the Edged Hall',
+    baseProto: 'iron-band',
+    itemName: 'Edgesong Locket',
+    lore: 'A sliver of the greatsword\u2019s off-cut steel, sigil-scored, worn at the throat where the hum can reach the blood.',
+    quality: 'superior',
+    tier: 'rare',
+    affixes: [{ name: 'of the Wind', stat: 'initiative', amount: 1 }, { name: 'of the Adder', stat: 'critChance', amount: 2 }],
+    needs: [{ proto: 'iron-scrap', qty: 2 }, { proto: 'silver-ash', qty: 2 }],
+    minutes: 180,
+  },
+  {
+    key: 'lamplight-band',
+    setKey: 'lamplight',
+    label: 'Rivet the Lamplight Band',
+    station: 'LOC_LAMPHALL',
+    stationName: 'Lamplighters\u2019 Hall',
+    baseProto: 'iron-band',
+    itemName: 'Lamplight Band',
+    lore: 'Union issue, soot-lacquered like the mail. Ladder-crews touch it before a bad round. Spares exist for the same reason the mail\u2019s do.',
+    quality: 'superior',
+    tier: 'rare',
+    affixes: [{ name: 'of the Lamplight', stat: 'evasion', amount: 1 }, { name: 'of the Wall', stat: 'defense', amount: 1 }],
+    needs: [{ proto: 'iron-scrap', qty: 2 }, { proto: 'night-herbs', qty: 1 }],
+    minutes: 150,
   },
 ];
 
@@ -267,6 +333,7 @@ export function craftSetPiece(world: WorldState, key: string): string | null {
   item.tier = recipe.tier;
   item.affix = { ...recipe.affixes[0] };
   item.affix2 = { ...recipe.affixes[1] };
+  item.setKey = recipe.setKey;
   item.lore = recipe.lore;
   item.value = Math.round(item.value * 5 + 800);
   if (item.damage) item.damage = `${item.damage}+2`.replace(/\+(\d+)\+2$/, (_m, n) => `+${parseInt(n, 10) + 2}`);

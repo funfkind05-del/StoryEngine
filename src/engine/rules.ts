@@ -232,6 +232,8 @@ export const ITEM_PROTOS: Record<string, ItemProto> = {
   'grimoire-wither': { key: 'grimoire-wither', name: 'Grimoire of the Thin Places', kind: 'misc', slot: 'none', tier: 'rare', effectKey: 'teach-wither', value: 1000 },
   'folio-spark-edge': { key: 'folio-spark-edge', name: 'Folio of the Edged Hall', kind: 'misc', slot: 'none', tier: 'rare', effectKey: 'teach-spark-edge', value: 950 },
   // enchanted jewelry: ships with its magic already awake
+  'boss-trophy': { key: 'boss-trophy', name: 'Trophy', kind: 'treasure', slot: 'none', tier: 'rare', value: 350 },
+  'iron-band': { key: 'iron-band', name: 'Iron Band', kind: 'jewelry', slot: 'ring', tier: 'common', value: 120 },
   'ring-of-the-fox': { key: 'ring-of-the-fox', name: 'Ring of the Fox', kind: 'jewelry', slot: 'ring', tier: 'rare', value: 700, affix: { name: 'of the Fox', stat: 'evasion', amount: 2 } },
   'ring-of-the-bull': { key: 'ring-of-the-bull', name: 'Ring of the Bull', kind: 'jewelry', slot: 'ring', tier: 'rare', value: 750, affix: { name: 'of the Bull', stat: 'attack', amount: 1 } },
   'amulet-of-the-wall': { key: 'amulet-of-the-wall', name: 'Amulet of the Wall', kind: 'jewelry', slot: 'amulet', tier: 'rare', value: 800, affix: { name: 'of the Wall', stat: 'defense', amount: 2 } },

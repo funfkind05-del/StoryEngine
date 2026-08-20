@@ -86,6 +86,16 @@ export type HomeTier =
   | 'large-household'
   | 'estate';
 
+export interface Want {
+  key: string;
+  charId: string;
+  label: string;
+  day: number; // offered
+  kind: 'visit' | 'gift' | 'date' | 'hearth';
+  locationId?: string; // visit
+  giftKind?: string; // gift: item.kind to give
+}
+
 export interface Household {
   tier: HomeTier;
   upgrades: string[]; // e.g. 'training-yard', 'armory', 'library'
@@ -156,6 +166,8 @@ export interface Item {
   affix?: { name: string; stat: 'attack' | 'defense' | 'critChance' | 'evasion' | 'initiative'; amount: number };
   /** second affix — only on hot rolls; the dual-affix rares */
   affix2?: { name: string; stat: 'attack' | 'defense' | 'critChance' | 'evasion' | 'initiative'; amount: number };
+  /** crafted-set family: 2+ equipped pieces wake the family bonus */
+  setKey?: string;
   /** enchantment present but unread — can't be equipped until identified */
   unidentified?: boolean;
   /** named uniques carry a history worth putting in a book */
@@ -669,6 +681,8 @@ export interface WorldState {
   hearthDays?: Record<string, string>;
   /** last shared night (weights spouse conception in family.ts) */
   nightTogether?: { npcId: string; day: number };
+  /** small daily wishes companions surface (homelife.ts) */
+  wants?: Want[];
   writsDone?: string[];
   encumbrance: EncumbranceRule;
   /** survival needs (hunger/fatigue) tracked against story time */

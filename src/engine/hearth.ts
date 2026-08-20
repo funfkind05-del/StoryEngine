@@ -8,6 +8,7 @@ import type { Character, RelationshipValues, WorldState } from './types';
 import { addMinutes, logEvent, relationshipBetween } from './world';
 import { findHome } from './household';
 import { relationshipStage, type RelationshipStage } from './romance';
+import { fulfillWant } from './homelife';
 
 const STAGE_RANK: RelationshipStage[] = ['stranger', 'acquaintance', 'friend', 'close', 'smitten', 'lover', 'partner', 'spouse'];
 function atLeast(stage: RelationshipStage, floor: RelationshipStage): boolean {
@@ -119,6 +120,7 @@ export function hearthTime(world: WorldState, npcId: string, actKey: string): st
   const line = act.line(c, mc);
   c.memories.push({ subject: world.mcId, event: act.memory(mc), importance: 6, emotionalValue: 6, day: world.time.day });
   logEvent(world, 'hearth', { npc: c.id, activity: act.key }, line, { location: home, witnesses: [mc.id, c.id] });
+  fulfillWant(world, npcId, 'hearth');
   // retiring together is how spouse pregnancies actually start —
   // family.ts rolls daily for spouses; a shared night weights the dice
   if (act.key === 'hearth-night') world.nightTogether = { npcId, day: world.time.day };
