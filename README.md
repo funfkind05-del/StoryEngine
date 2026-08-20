@@ -102,7 +102,7 @@ With an `IDEOGRAM_API_KEY` in `~/Evolution/.env`, the 🎨 buttons paint for you
 
 ## Generated art on disk (`tools/genart.mjs`)
 
-`node tools/genart.mjs` batch-paints the whole bestiary (curated prompts, skips existing files) and eight per-theme **dungeon corridor backdrops** into `public/bestiary/` and `public/dungeons/` (gitignored — regenerable, not source), with manifests the app loads at boot. Monster plates resolve custom upload → generated file → drawn SVG. The corridor view composites the painted backdrop under its interactive geometry, and the Enter Dungeon screen gets a full-bleed hero painting per dungeon type.
+`npx tsx tools/genart.mjs` batch-paints the whole bestiary, the seed cast's **character portraits** (`public/portraits/`), (curated prompts, skips existing files) and eight per-theme **dungeon corridor backdrops** into `public/bestiary/` and `public/dungeons/` (gitignored — regenerable, not source), with manifests the app loads at boot. Monster plates resolve custom upload → generated file → drawn SVG. The corridor view composites the painted backdrop under its interactive geometry, and the Enter Dungeon screen gets a full-bleed hero painting per dungeon type.
 
 ## Custom art storage
 

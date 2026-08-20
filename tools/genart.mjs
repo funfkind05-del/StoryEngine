@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 // run with `npx tsx tools/genart.mjs` — these are TypeScript modules
 import { MONSTERS } from '../src/engine/monsters';
 import { ART_STYLE_PREFIX, MONSTER_ART_PROMPTS } from '../src/engine/artPrompts';
+import { buildSeedWorld } from '../src/data/seed';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -110,9 +111,40 @@ async function runDungeons() {
   console.log(`dungeons done: ${made} new, manifest ${files.length}`);
 }
 
+// ---- character portraits: the seed cast, from their sheets ----
+async function runCharacters() {
+  const dir = join(root, 'public', 'portraits');
+  mkdirSync(dir, { recursive: true });
+  const world = buildSeedWorld();
+  const cast = Object.values(world.characters).filter((c) => c.persistent);
+  console.log(`portraits: ${cast.length} characters`);
+  let made = 0, skipped = 0, failed = 0;
+  for (const c of cast) {
+    const file = join(dir, `${c.id}.png`);
+    if (existsSync(file)) { skipped++; continue; }
+    const desc = `${c.sex === 'female' ? 'a woman' : 'a man'}, age ${c.age}, ${c.occupation} in a grim low-fantasy city. ${c.description} Head and shoulders portrait.`;
+    try {
+      const buf = await generate(PREFIX(c.name, desc));
+      writeFileSync(file, buf);
+      made++;
+      console.log(`  [${made + skipped + failed}/${cast.length}] ${c.id} — ${c.name} (${Math.round(buf.length / 1024)} KB)`);
+    } catch (e) {
+      failed++;
+      console.log(`  FAILED ${c.id}: ${e.message}`);
+      await sleep(2000);
+    }
+    await sleep(400);
+  }
+  const files = readdirSync(dir).filter((f) => f.endsWith('.png')).map((f) => f.replace(/\.png$/, ''));
+  writeFileSync(join(dir, 'manifest.json'), JSON.stringify(files));
+  console.log(`portraits done: ${made} new, ${skipped} existing, ${failed} failed, manifest ${files.length}`);
+}
+
 const args = process.argv.slice(2);
 const doMonsters = args.length === 0 || args.includes('--monsters');
 const doDungeons = args.length === 0 || args.includes('--dungeons');
+const doCharacters = args.length === 0 || args.includes('--characters');
 if (doDungeons) await runDungeons();
 if (doMonsters) await runMonsters();
+if (doCharacters) await runCharacters();
 console.log('ALL DONE');

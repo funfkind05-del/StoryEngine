@@ -49,6 +49,7 @@ export function allCachedArt(): Record<string, string> {
 // treats them as a middle layer: custom upload > generated file > drawn plate.
 const serverBestiary = new Set<string>();
 const serverDungeons = new Set<string>();
+const serverPortraits = new Set<string>();
 
 export async function initServerArt(): Promise<void> {
   try {
@@ -59,7 +60,11 @@ export async function initServerArt(): Promise<void> {
     const d = await fetch('/dungeons/manifest.json');
     if (d.ok) for (const k of (await d.json()) as string[]) serverDungeons.add(k);
   } catch { /* no generated backdrops yet */ }
-  if (serverBestiary.size || serverDungeons.size) notifyArt();
+  try {
+    const p = await fetch('/portraits/manifest.json');
+    if (p.ok) for (const k of (await p.json()) as string[]) serverPortraits.add(k);
+  } catch { /* no generated portraits yet */ }
+  if (serverBestiary.size || serverDungeons.size || serverPortraits.size) notifyArt();
 }
 
 export function serverMonsterArtUrl(templateKey: string): string | undefined {
@@ -68,6 +73,10 @@ export function serverMonsterArtUrl(templateKey: string): string | undefined {
 
 export function dungeonBackdropUrl(pattern: string): string | undefined {
   return serverDungeons.has(pattern) ? `/dungeons/${pattern}.png` : undefined;
+}
+
+export function serverPortraitUrl(charId: string): string | undefined {
+  return serverPortraits.has(charId) ? `/portraits/${charId}.png` : undefined;
 }
 
 // ---------- IndexedDB plumbing ----------
