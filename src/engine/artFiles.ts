@@ -44,6 +44,32 @@ export function allCachedArt(): Record<string, string> {
   return { ...cache };
 }
 
+// ---------- generated art on the dev server's disk ----------
+// tools/genart.mjs writes PNGs + manifests under public/; the app
+// treats them as a middle layer: custom upload > generated file > drawn plate.
+const serverBestiary = new Set<string>();
+const serverDungeons = new Set<string>();
+
+export async function initServerArt(): Promise<void> {
+  try {
+    const b = await fetch('/bestiary/manifest.json');
+    if (b.ok) for (const k of (await b.json()) as string[]) serverBestiary.add(k);
+  } catch { /* no generated bestiary yet */ }
+  try {
+    const d = await fetch('/dungeons/manifest.json');
+    if (d.ok) for (const k of (await d.json()) as string[]) serverDungeons.add(k);
+  } catch { /* no generated backdrops yet */ }
+  if (serverBestiary.size || serverDungeons.size) notifyArt();
+}
+
+export function serverMonsterArtUrl(templateKey: string): string | undefined {
+  return serverBestiary.has(templateKey) ? `/bestiary/${templateKey}.png` : undefined;
+}
+
+export function dungeonBackdropUrl(pattern: string): string | undefined {
+  return serverDungeons.has(pattern) ? `/dungeons/${pattern}.png` : undefined;
+}
+
 // ---------- IndexedDB plumbing ----------
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {

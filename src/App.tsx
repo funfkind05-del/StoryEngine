@@ -14,6 +14,7 @@ import { OutlineModal } from './components/OutlineModal';
 import type { EncounterFrequency } from './engine/types';
 import { BEHIND, LEFT_OF, RIGHT_OF, type Cardinal } from './components/FirstPersonView';
 import { loadCustomCompositions, setThemeAudio } from './sound';
+import { initServerArt } from './engine/artFiles';
 import { festivalToday } from './engine/festivals';
 import { loadMusicFiles } from './engine/musicFiles';
 
@@ -131,6 +132,7 @@ export default function App() {
   // stored AI compositions + uploaded audio themes + custom art load once at boot
   useEffect(() => {
     void initArt();
+    void initServerArt();
     loadCustomCompositions();
     void loadMusicFiles().then((files) => {
       for (const [theme, blob] of Object.entries(files)) {

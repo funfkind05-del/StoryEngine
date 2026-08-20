@@ -4,7 +4,7 @@
 // data URI), so generated or commissioned art drops straight in.
 
 import { useSyncExternalStore } from 'react';
-import { artSnapshot, getMonsterArtCached, subscribeArt } from '../engine/artFiles';
+import { artSnapshot, getMonsterArtCached, serverMonsterArtUrl, subscribeArt } from '../engine/artFiles';
 import type { WorldState } from '../engine/types';
 import { MONSTERS } from '../engine/monsters';
 
@@ -336,7 +336,7 @@ export function MonsterPortrait({
   world?: WorldState;
 }) {
   useSyncExternalStore(subscribeArt, artSnapshot); // re-render on art changes
-  const custom = getMonsterArtCached(templateKey) ?? world?.monsterArt?.[templateKey];
+  const custom = getMonsterArtCached(templateKey) ?? world?.monsterArt?.[templateKey] ?? serverMonsterArtUrl(templateKey);
   if (custom) {
     return <img src={custom} width={size} height={size} className="monster-portrait" alt={templateKey} />;
   }

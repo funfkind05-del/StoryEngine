@@ -6,6 +6,8 @@ import { useStore } from '../state/store';
 import { CLASSES, fmtMoney } from '../engine/rules';
 import { Bar, Tag } from './common';
 import { CharacterPortrait } from './CharacterArt';
+import { themePatternFor } from './FirstPersonView';
+import { dungeonBackdropUrl } from '../engine/artFiles';
 
 export function PrepModal() {
   const world = useStore((s) => s.world);
@@ -40,6 +42,13 @@ export function PrepModal() {
       <div className="modal" style={{ width: 'min(620px, 94vw)' }}>
         <div className="modal-head">⛏ {d.name}</div>
         <div className="modal-body">
+          {dungeonBackdropUrl(themePatternFor(d.dungeonType)) && (
+            <img
+              src={dungeonBackdropUrl(themePatternFor(d.dungeonType))}
+              alt={d.dungeonType}
+              style={{ width: '100%', maxHeight: 190, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--border)', marginBottom: 8 }}
+            />
+          )}
           <p className="dim small">{d.dungeonType} · {d.floors} floors · recommended level {d.recommendedLevel} · via {world.locations[d.entranceLocation]?.name}</p>
           <h4>Party</h4>
           {party.map((c) => (

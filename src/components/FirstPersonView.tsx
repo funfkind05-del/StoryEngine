@@ -6,9 +6,11 @@
 // crypts, slime in the flooded runs, rivets in the vaults.
 
 import { useStore } from '../state/store';
+import { useSyncExternalStore } from 'react';
 import { MonsterPortrait } from './MonsterArt';
 import { isDark } from '../engine/dungeon';
 import { MONSTERS } from '../engine/monsters';
+import { artSnapshot, dungeonBackdropUrl, subscribeArt } from '../engine/artFiles';
 
 export type Cardinal = 'north' | 'south' | 'east' | 'west';
 export const LEFT_OF: Record<Cardinal, Cardinal> = { north: 'west', west: 'south', south: 'east', east: 'north' };
@@ -265,7 +267,13 @@ function SideAccents({ kind, dim, v }: { kind: PatternKind; dim: string; v: numb
   }
 }
 
+/** The wall-theme pattern key for a dungeon type (shared with prep). */
+export function themePatternFor(dungeonType: string): string {
+  return themeFor(dungeonType).pattern;
+}
+
 export function FirstPersonView() {
+  useSyncExternalStore(subscribeArt, artSnapshot); // backdrop manifest may load late
   const world = useStore((s) => s.world);
   const facing = useStore((s) => s.facing);
   const move = useStore((s) => s.move);
@@ -287,6 +295,7 @@ export function FirstPersonView() {
   const chest = room.chest && !room.chest.opened;
   const stairs = room.connections.down ? 'down' : room.connections.up ? 'up' : null;
   const dark = isDark(world);
+  const backdrop = dungeonBackdropUrl(theme.pattern);
   const variant = roomVariant(room.id);
   const monsterKey = hostile && room.encounterKey && MONSTERS[room.encounterKey] ? room.encounterKey : null;
   const veteran = monsterKey ? (world.killCounts?.[monsterKey] ?? 0) >= 5 : false;
@@ -325,8 +334,12 @@ export function FirstPersonView() {
         <polygon points="0,0 120,64 120,150 0,214" fill="url(#fpv-sidegrad-l)" />
         <polygon points="340,0 220,64 220,150 340,214" fill="url(#fpv-sidegrad-r)" />
         <rect x="120" y="64" width="100" height="86" fill={wall} />
+        {/* the painted atmosphere: Ideogram's corridor for this theme */}
+        {backdrop && !dark && (
+          <image href={backdrop} x="0" y="0" width="340" height="214" preserveAspectRatio="xMidYMid slice" opacity="0.72" />
+        )}
         {/* flagstone floor: courses converging on the far wall */}
-        <g stroke={dim} strokeWidth="0.6" opacity="0.55">
+        <g stroke={dim} strokeWidth="0.6" opacity={backdrop ? 0.25 : 0.55}>
           <line x1="0" y1="214" x2="130" y2="150" />
           <line x1="85" y1="214" x2="152" y2="150" />
           <line x1="170" y1="214" x2="170" y2="150" />
@@ -337,7 +350,7 @@ export function FirstPersonView() {
           <path d="M 108 162 q 62 -6 124 0" fill="none" />
         </g>
         {/* ceiling beams */}
-        <g stroke={dim} strokeWidth="0.6" opacity="0.4">
+        <g stroke={dim} strokeWidth="0.6" opacity={backdrop ? 0.18 : 0.4}>
           <path d="M 30 12 q 140 12 280 0" fill="none" />
           <path d="M 74 34 q 96 8 192 0" fill="none" />
           <path d="M 104 52 q 66 5 132 0" fill="none" />

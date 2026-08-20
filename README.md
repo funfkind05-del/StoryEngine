@@ -100,6 +100,10 @@ conversation window.
 
 With an `IDEOGRAM_API_KEY` in `~/Evolution/.env`, the 🎨 buttons paint for you: **Generate** renders the selected monster from the curated prompt list (dark-fantasy RPG portraits, gritty digital painting, moody lighting — 46 hand-written monster prompts, house-style fallback for the rest), **Batch…** fills in every monster without custom art (one confirmed API call each, resumable), and each character card's 🎨 paints a portrait from their sheet. The key never reaches the browser — a dev-server middleware reads it per-request (key changes apply instantly), calls Ideogram, downloads the image, and hands the client a data URI stored in IndexedDB like any upload.
 
+## Generated art on disk (`tools/genart.mjs`)
+
+`node tools/genart.mjs` batch-paints the whole bestiary (curated prompts, skips existing files) and eight per-theme **dungeon corridor backdrops** into `public/bestiary/` and `public/dungeons/` (gitignored — regenerable, not source), with manifests the app loads at boot. Monster plates resolve custom upload → generated file → drawn SVG. The corridor view composites the painted backdrop under its interactive geometry, and the Enter Dungeon screen gets a full-bleed hero painting per dungeon type.
+
 ## Custom art storage
 
 Uploaded monster plates and character portraits live in **IndexedDB** (browser storage with a disk-sized quota), not the save file — localStorage's ~5MB cap no longer limits art, and snapshots stopped cloning image payloads. Legacy saves migrate automatically on boot (a toast reports how many pieces moved). Project exports bundle the art (`artPack`) so a `.json` still moves machines whole; imports restore it.
