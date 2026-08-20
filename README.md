@@ -97,6 +97,40 @@ after every step: no negative HP/coin, item↔owner consistency, equipment
 integrity, a monotonic clock, shop stock sanity, serializability, no NaN.
 The quick version runs as part of `npm test`.
 
+## How story time advances
+
+Every sim action costs time automatically — the clock forces the story
+forward without the author reaching for "advance time":
+
+| Action | Time |
+|---|---|
+| Travel within a district | 10 min |
+| Travel between districts | 30 min |
+| Dungeon room move | 5 min |
+| Search a room / disarm a trap | 10 / 5 min |
+| Combat | 1 min per round + 5 min aftermath |
+| Buy or sell at a shop | 5 min |
+| Hot meal | 30 min |
+| Temple rite | 30 min |
+| Guild training | 4 hours |
+| NPC conversation | ~5 min per exchange (when kept) |
+| Sleep (inn, home, or rough) | until 7:00 next morning |
+
+Manual controls (+10m, +1h, until morning) remain for pacing scenes. While
+time passes, scheduled NPCs move, shops restock, background events fire, and
+needs climb.
+
+## Survival needs
+
+Hunger (~3/hour) and fatigue (~5/hour awake) are tracked per character
+against story time (toggle in Saves → World rules). Past 60 they bite —
+fatigue costs attack/defense, hunger stops stamina recovery; past 85 the
+penalties steepen, starvation halts healing and slowly grinds HP down
+(never below 1 — hunger creates story pressure, not deaths). Eat at any
+location serving food (🍲 party meal), carry bread/rations, and sleep to
+clear fatigue. The prep screen warns before you take a hungry, exhausted
+party underground.
+
 ## Determinism
 
 Every encounter, combat, and loot roll stores its seed. Replay an exact

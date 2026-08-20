@@ -260,6 +260,8 @@ export interface Character {
   critChance: number; // percent
   resistances: Record<string, number>; // e.g. { poison: 2, fire: 1 }
 
+  /** survival needs, 0 (sated/rested) .. 100 (starving/collapsing) */
+  needs: { hunger: number; fatigue: number };
   statuses: ActiveStatus[];
   tempBonuses: TempBonus[];
   permanentBonuses: string[]; // human-readable, e.g. 'Blessing of the Flame: +1 WIS'
@@ -487,6 +489,8 @@ export type EncumbranceRule = 'off' | 'light' | 'full';
 export interface WorldState {
   deathRule: DeathRule;
   encumbrance: EncumbranceRule;
+  /** survival needs (hunger/fatigue) tracked against story time */
+  needsEnabled: boolean;
   /** shared expedition supplies (owner = OWNER_PARTY) */
   partyInventory: ItemId[];
   time: WorldTime;

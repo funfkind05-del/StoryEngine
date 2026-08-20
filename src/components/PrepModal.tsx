@@ -32,6 +32,7 @@ export function PrepModal() {
   const estColor = est === 'EASY' ? 'var(--accent2)' : est === 'MODERATE' ? 'var(--accent)' : 'var(--danger)';
   const totalCoin = party.reduce((s, c) => s + c.money, 0);
   const hurt = party.filter((c) => c.hp.current < c.hp.max || c.statuses.length > 0);
+  const needy = world.needsEnabled ? party.filter((c) => c.needs.hunger >= 60 || c.needs.fatigue >= 60) : [];
 
   return (
     <div className="modal-backdrop">
@@ -61,6 +62,9 @@ export function PrepModal() {
           </div>
           {hurt.length > 0 && (
             <p className="warn soft small">Not at full strength: {hurt.map((c) => c.name).join(', ')}. Consider rest, potions, or the temple first.</p>
+          )}
+          {needy.length > 0 && (
+            <p className="warn soft small">Hungry or tired: {needy.map((c) => c.name).join(', ')}. A meal and a bed cost less than a funeral.</p>
           )}
           <div className="row" style={{ marginTop: 10 }}>
             <button className="primary" onClick={() => enterDungeonAt(d.id)}>ENTER DUNGEON</button>

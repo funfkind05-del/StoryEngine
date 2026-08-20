@@ -161,8 +161,8 @@ export const ITEM_PROTOS: Record<string, ItemProto> = {
   torch: { key: 'torch', name: 'Torch', kind: 'supply', slot: 'none', tier: 'mundane', stackable: true, value: 2 },
   rope: { key: 'rope', name: 'Rope (50 ft)', kind: 'supply', slot: 'none', tier: 'mundane', stackable: true, value: 10 },
   lockpick: { key: 'lockpick', name: 'Lockpick', kind: 'tool', slot: 'none', tier: 'mundane', stackable: true, value: 5 },
-  bread: { key: 'bread', name: 'Bread', kind: 'supply', slot: 'none', tier: 'mundane', stackable: true, value: 1 },
-  ration: { key: 'ration', name: 'Trail Ration', kind: 'supply', slot: 'none', tier: 'mundane', stackable: true, value: 4 },
+  bread: { key: 'bread', name: 'Bread', kind: 'supply', slot: 'none', tier: 'mundane', effectKey: 'food-25', stackable: true, value: 1 },
+  ration: { key: 'ration', name: 'Trail Ration', kind: 'supply', slot: 'none', tier: 'mundane', effectKey: 'food-40', stackable: true, value: 4 },
   // weapons & armor (shop stock)
   dagger: { key: 'dagger', name: 'Dagger', kind: 'weapon', slot: 'main-hand', tier: 'mundane', damage: '1d4+1', durability: 50, value: 90 },
   'iron-shortsword': { key: 'iron-shortsword', name: 'Iron Shortsword', kind: 'weapon', slot: 'main-hand', tier: 'common', damage: '1d6+1', durability: 80, value: 220 },
@@ -278,6 +278,11 @@ export function consumeItem(world: WorldState, item: Item, target: Character, rn
     const healed = rng.roll(item.healing);
     target.hp.current = Math.min(target.hp.max, target.hp.current + healed);
     lines.push(`${item.name} consumed. ${target.name} restored ${healed} HP.`);
+  }
+  if (item.effectKey?.startsWith('food-')) {
+    const amount = parseInt(item.effectKey.slice(5), 10) || 20;
+    eatFood(target, amount);
+    lines.push(`${target.name} ate the ${item.name.toLowerCase()}${target.needs.hunger <= 10 ? ' and is well fed' : ''}.`);
   }
   switch (item.effectKey) {
     case 'mana-30': {
@@ -395,6 +400,70 @@ export function statusAttackMod(c: Character): number {
 export function statusDefenseMod(c: Character): number {
   return c.statuses.reduce((m, s) => m + (STATUS_RULES[s.key].defenseMod ?? 0), 0)
     + c.tempBonuses.filter((b) => b.stat === 'defense').reduce((m, b) => m + b.amount, 0);
+}
+
+// ---------- Survival needs ----------
+// Hunger climbs ~3/hour (a full day unfed ≈ 72 — deep in the penalties);
+// fatigue ~5/hour awake (a normal day ends around 80 — bed calls).
+export const NEEDS = {
+  hungerPerHour: 3,
+  fatiguePerHour: 5,
+  uncomfortable: 60,
+  critical: 85,
+};
+
+export interface NeedsWarning {
+  line: string;
+}
+
+/** Advance one character's needs by `minutes`; returns threshold-crossing warnings. */
+export function advanceNeeds(c: Character, minutes: number): string[] {
+  const warnings: string[] = [];
+  const cross = (before: number, after: number, at: number, line: string) => {
+    if (before < at && after >= at) warnings.push(line);
+  };
+  const h0 = c.needs.hunger;
+  const f0 = c.needs.fatigue;
+  c.needs.hunger = Math.min(100, c.needs.hunger + (NEEDS.hungerPerHour * minutes) / 60);
+  c.needs.fatigue = Math.min(100, c.needs.fatigue + (NEEDS.fatiguePerHour * minutes) / 60);
+  cross(h0, c.needs.hunger, NEEDS.uncomfortable, `${c.name} is hungry — it's been too long since a real meal.`);
+  cross(h0, c.needs.hunger, NEEDS.critical, `${c.name} is starving. Strength is going out of them.`);
+  cross(f0, c.needs.fatigue, NEEDS.uncomfortable, `${c.name} is flagging — they need sleep before long.`);
+  cross(f0, c.needs.fatigue, NEEDS.critical, `${c.name} is dead on their feet, stumbling through exhaustion.`);
+  return warnings;
+}
+
+export function eatFood(c: Character, amount: number) {
+  c.needs.hunger = Math.max(0, c.needs.hunger - amount);
+}
+
+export function sleepOff(c: Character) {
+  c.needs.fatigue = 0;
+}
+
+/** Combat/regen penalties from unmet needs. */
+export function needsAttackMod(c: Character): number {
+  let mod = 0;
+  if (c.needs.hunger >= NEEDS.critical) mod -= 2;
+  if (c.needs.fatigue >= NEEDS.critical) mod -= 3;
+  else if (c.needs.fatigue >= NEEDS.uncomfortable) mod -= 1;
+  return mod;
+}
+
+export function needsDefenseMod(c: Character): number {
+  let mod = 0;
+  if (c.needs.fatigue >= NEEDS.critical) mod -= 2;
+  else if (c.needs.fatigue >= NEEDS.uncomfortable) mod -= 1;
+  return mod;
+}
+
+/** Starving characters stop recovering HP; the badly tired regain no stamina. */
+export function needsBlocksHpRegen(c: Character): boolean {
+  return c.needs.hunger >= NEEDS.critical;
+}
+
+export function needsBlocksStaminaRegen(c: Character): boolean {
+  return c.needs.hunger >= NEEDS.uncomfortable || c.needs.fatigue >= NEEDS.critical;
 }
 
 // ---------- Temple services ----------

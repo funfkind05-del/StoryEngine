@@ -10,6 +10,8 @@ import {
   hasStatus,
   levelUpAvailable,
   makeItem,
+  needsAttackMod,
+  needsDefenseMod,
   addToContainer,
   slotCapacity,
   slotsUsed,
@@ -18,6 +20,7 @@ import {
 } from './rules';
 import {
   buyFromShop,
+  buyMeal,
   buyTempleService,
   depositItem,
   moveToParty,
@@ -269,5 +272,56 @@ describe('home storage & treasury', () => {
     expect(depositItem(w, swordId)).toBeNull();
     expect(home.storage).toContain(swordId);
     expect(w.items[swordId].owner).toBe('HOME_STORAGE');
+  });
+});
+
+describe('survival needs', () => {
+  it('hunger and fatigue climb with story time and are visible as warnings', () => {
+    const w = freshWorld();
+    const kael = w.characters[w.mcId];
+    kael.needs = { hunger: 0, fatigue: 0 };
+    tick(w, 12 * 60); // half a day
+    expect(kael.needs.hunger).toBeCloseTo(36, 0);
+    expect(kael.needs.fatigue).toBeCloseTo(60, 0);
+    expect(w.events.some((e) => e.kind === 'needs' && e.summary.includes('flagging'))).toBe(true);
+  });
+
+  it('penalizes the starving and exhausted, blocks regen, and never kills outright', () => {
+    const w = freshWorld();
+    const kael = w.characters[w.mcId];
+    kael.needs = { hunger: 90, fatigue: 90 };
+    expect(needsAttackMod(kael)).toBe(-5);
+    expect(needsDefenseMod(kael)).toBe(-2);
+    kael.hp.current = 5;
+    tick(w, 240);
+    expect(kael.hp.current).toBeLessThan(5); // starvation grinds
+    kael.hp.current = 2;
+    tick(w, 2000);
+    expect(kael.hp.current).toBe(1); // but never kills on its own
+  });
+
+  it('meals, rations, and sleep restore needs', () => {
+    const w = freshWorld();
+    const kael = w.characters[w.mcId];
+    kael.needs = { hunger: 80, fatigue: 80 };
+    kael.money = 100;
+    expect(buyMeal(w, 'LOC_DOCK_0042')).toBeNull(); // tavern serves food
+    expect(kael.needs.hunger).toBeLessThanOrEqual(21); // -60, +30min drift
+    const bread = makeItem(w, 'bread', 2);
+    addToContainer(w, bread, kael);
+    const before = kael.needs.hunger;
+    useConsumable(w, bread.id, kael.id);
+    expect(kael.needs.hunger).toBeLessThan(before);
+    expect(bread.qty).toBe(1);
+    const preSleepHunger = kael.needs.hunger;
+    tick(w, 60);
+    expect(restAtInn(w, 'LOC_DOCK_0042', 0)).toBeNull();
+    expect(kael.needs.fatigue).toBe(0); // slept off
+    expect(kael.needs.hunger).toBeGreaterThan(preSleepHunger); // but woke hungry
+    // needs off: nothing moves
+    w.needsEnabled = false;
+    const frozen = { ...kael.needs };
+    tick(w, 300);
+    expect(kael.needs).toEqual(frozen);
   });
 });

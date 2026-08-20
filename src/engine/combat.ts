@@ -26,6 +26,8 @@ import {
   consumeItem,
   cureStatus,
   hasStatus,
+  needsAttackMod,
+  needsDefenseMod,
   statusAttackMod,
   statusDefenseMod,
   tickStatusesRound,
@@ -87,7 +89,8 @@ function charDamage(world: WorldState, c: Character, rng: Rng, bonus: number): n
 }
 
 function charDefense(world: WorldState, c: Character): number {
-  let def = c.defense + c.evasion + Math.floor((c.attributes.dexterity - 10) / 2) + statusDefenseMod(c);
+  let def = c.defense + c.evasion + Math.floor((c.attributes.dexterity - 10) / 2) + statusDefenseMod(c)
+    + (world.needsEnabled ? needsDefenseMod(c) : 0);
   for (const slot of ['armor', 'off-hand'] as const) {
     const id = c.equipment[slot];
     const it = id ? world.items[id] : null;
@@ -363,7 +366,8 @@ function swingAt(
 ) {
   const t = MONSTERS[m.templateKey];
   const roll = rng.die(20);
-  const toHit = roll + c.attack + c.accuracy + Math.floor(c.skills.swordsmanship / 2) + (skill?.toHitMod ?? 0) + statusAttackMod(c);
+  const toHit = roll + c.attack + c.accuracy + Math.floor(c.skills.swordsmanship / 2) + (skill?.toHitMod ?? 0) + statusAttackMod(c)
+    + (world.needsEnabled ? needsAttackMod(c) : 0);
   const detail = skill ? skill.name : weaponOf(world, c)?.name ?? 'bare hands';
   if (roll !== 20 && (roll === 1 || toHit < t.defense)) {
     record({ round: combat.round, actor: c.id, actorName: c.name, action: skill ? 'skill' : 'attack', targetName: m.name, detail, roll, result: 'miss', text: `${c.name} ${skill ? `used ${skill.name} against` : 'attacked'} ${m.name} and missed. (roll ${roll})` });

@@ -13,7 +13,7 @@ import type {
   WorldTime,
 } from './types';
 import { Rng } from './rng';
-import { CLASSES, tickStatusesOverTime, xpForLevel as xpForLevelRule } from './rules';
+import { CLASSES, advanceNeeds, needsBlocksHpRegen, needsBlocksStaminaRegen, sleepOff, tickStatusesOverTime, xpForLevel as xpForLevelRule } from './rules';
 
 // ---------- IDs ----------
 export function nextId(world: WorldState, prefix: string): string {
@@ -200,12 +200,22 @@ export function tick(world: WorldState, minutes: number): SimEvent[] {
       }
     }
     // Party natural recovery while time passes outside combat —
-    // unless something untreated is eating at them
+    // unless sickness or unmet needs interfere
     for (const c of partyMembers(world)) {
+      if (world.needsEnabled) {
+        for (const line of advanceNeeds(c, step)) {
+          produced.push(logEvent(world, 'needs', { character: c.id, hunger: Math.round(c.needs.hunger), fatigue: Math.round(c.needs.fatigue) }, line));
+        }
+      }
       const sick = c.statuses.some((s) => s.key === 'poisoned' || s.key === 'diseased' || s.key === 'bleeding');
-      if (!sick && c.hp.current < c.hp.max) c.hp.current = Math.min(c.hp.max, c.hp.current + Math.ceil(step / 60));
+      const starving = world.needsEnabled && needsBlocksHpRegen(c);
+      if (!sick && !starving && c.hp.current < c.hp.max) c.hp.current = Math.min(c.hp.max, c.hp.current + Math.ceil(step / 60));
+      if (starving && c.hp.current > 1) c.hp.current -= Math.ceil(step / 120); // hunger grinds them down
+      if (c.hp.current < 1) c.hp.current = 1;
       if (c.mana.current < c.mana.max) c.mana.current = Math.min(c.mana.max, c.mana.current + Math.ceil(step / 30));
-      if (c.stamina.current < c.stamina.max) c.stamina.current = Math.min(c.stamina.max, c.stamina.current + Math.ceil(step / 20));
+      if (!(world.needsEnabled && needsBlocksStaminaRegen(c)) && c.stamina.current < c.stamina.max) {
+        c.stamina.current = Math.min(c.stamina.max, c.stamina.current + Math.ceil(step / 20));
+      }
       for (const line of tickStatusesOverTime(c, step)) {
         produced.push(logEvent(world, 'status.tick', { character: c.id }, line));
       }
@@ -219,10 +229,11 @@ export function advanceUntilMorning(world: WorldState): SimEvent[] {
   const target = 7 * 60;
   const minutes = nowMin < target ? target - nowMin : 1440 - nowMin + target;
   const evts = tick(world, minutes);
-  // Sleeping restores fully — unless untreated sickness interferes
+  // Sleeping restores fully — unless untreated sickness or starvation interferes
   for (const c of partyMembers(world)) {
+    sleepOff(c);
     const sick = c.statuses.some((s) => s.key === 'poisoned' || s.key === 'diseased');
-    if (!sick) c.hp.current = c.hp.max;
+    if (!sick && !(world.needsEnabled && needsBlocksHpRegen(c))) c.hp.current = c.hp.max;
     c.mana.current = c.mana.max;
     c.stamina.current = c.stamina.max;
   }

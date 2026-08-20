@@ -12,6 +12,7 @@ import {
   addToContainer,
   applyTraining,
   consumeItem,
+  eatFood,
   fmtMoney,
   hasRoomFor,
   levelUpAvailable,
@@ -22,7 +23,7 @@ import {
   trainingCost,
 } from './rules';
 import { Rng, randomSeed } from './rng';
-import { advanceUntilMorning, logEvent, partyMembers } from './world';
+import { addMinutes, advanceUntilMorning, logEvent, partyMembers } from './world';
 
 // ---------- Shops ----------
 export function buyFromShop(world: WorldState, locId: LocationId, entryIdx: number, buyer: Character): string | null {
@@ -38,6 +39,7 @@ export function buyFromShop(world: WorldState, locId: LocationId, entryIdx: numb
   }
   buyer.money -= entry.price;
   entry.qty -= 1;
+  addMinutes(world, 5);
   item.history.push(`Bought at ${loc.name} on Day ${world.time.day} for ${fmtMoney(entry.price)}`);
   addToContainer(world, item, buyer);
   logEvent(world, 'shop.buy', { item: entry.proto, price: entry.price, shop: locId }, `${buyer.name} bought ${item.name} at ${loc.name} for ${fmtMoney(entry.price)}.`, { location: locId });
@@ -52,6 +54,7 @@ export function sellToShop(world: WorldState, locId: LocationId, itemId: string,
   if (item.equippedBy) return 'Unequip it first.';
   const price = Math.max(1, Math.floor(item.value * loc.shop.buyRate * (item.broken ? 0.2 : 1)));
   seller.money += price;
+  addMinutes(world, 5);
   item.history.push(`Sold to ${loc.name} on Day ${world.time.day} for ${fmtMoney(price)}`);
   removeUnits(world, item, 1);
   // the shop now stocks one, if it's a catalog item
@@ -124,6 +127,7 @@ export function buyTempleService(world: WorldState, locId: LocationId, svcKey: s
   if (price === Infinity) return 'The priests will not serve you. Your name is known here, and not kindly.';
   if (payer.money < price) return `Not enough coin (${fmtMoney(price)}).`;
   payer.money -= price;
+  addMinutes(world, 30);
   const line = performTempleService(svc.key, target);
   logEvent(world, 'temple.service', { service: svc.key, target: target.id, price }, `${svc.label} at ${loc.name} for ${fmtMoney(price)}: ${line}`, { location: locId, witnesses: partyMembers(world).map((c) => c.id) });
   return null;
@@ -142,6 +146,7 @@ export function trainAt(world: WorldState, locId: LocationId, charId: string): s
   const payer = world.characters[world.mcId];
   if (payer.money < cost) return `Training costs ${fmtMoney(cost)}.`;
   payer.money -= cost;
+  addMinutes(world, 240); // an afternoon of drills, lessons, and bruises
   const notes = applyTraining(c);
   logEvent(
     world,
@@ -222,12 +227,29 @@ export function treasuryTransfer(world: WorldState, amount: number, direction: '
   return null;
 }
 
+// ---------- Meals ----------
+/** A hot meal at any location that serves food: feeds the whole party. */
+export function buyMeal(world: WorldState, locId: LocationId): string | null {
+  const loc = world.locations[locId];
+  if (!loc?.services.includes('food')) return 'No kitchen here.';
+  const party = partyMembers(world);
+  const cost = 5 * party.length;
+  const mc = world.characters[world.mcId];
+  if (mc.money < cost) return `A meal for ${party.length} costs ${fmtMoney(cost)}.`;
+  mc.money -= cost;
+  addMinutes(world, 30);
+  for (const c of party) eatFood(c, 60);
+  logEvent(world, 'meal', { cost, at: locId }, `The party ate a hot meal at ${loc.name} (${fmtMoney(cost)}).`, { location: locId, witnesses: party.map((c) => c.id) });
+  return null;
+}
+
 // ---------- Consumables outside combat ----------
 export function useConsumable(world: WorldState, itemId: string, targetId: string): string | null {
   const item = world.items[itemId];
   const target = world.characters[targetId];
   if (!item || !target) return 'No such item.';
-  if (item.kind !== 'potion') return 'Not drinkable.';
+  const edible = item.kind === 'potion' || item.effectKey?.startsWith('food-');
+  if (!edible) return 'Not consumable.';
   const rng = new Rng(randomSeed());
   const res = consumeItem(world, item, target, rng);
   const remaining = item.owner ? item.qty ?? 0 : 0;

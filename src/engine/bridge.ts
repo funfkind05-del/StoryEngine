@@ -7,6 +7,7 @@
 import type { CombatLogEntry, SimEvent, WorldState } from './types';
 import { Rng } from './rng';
 import { fmtWhen } from './world';
+import { CLASSES, fmtMoney, levelUpAvailable, xpForLevel } from './rules';
 
 const HIT_VERBS = ['caught', 'struck', 'ripped into', 'slammed into', 'tore across', 'hammered', 'bit into'];
 const MISS_TEXT = [
@@ -123,6 +124,34 @@ const TRAVEL_TEXT = [
   'From there it was a short walk to {DEST}.',
   '{MC} took them through the streets to {DEST}.',
 ];
+
+/**
+ * LitRPG "system window": a boxed stat block rendered from live sim
+ * state, for dropping into the manuscript. Because it reads the
+ * simulation at insertion time, the numbers are canonical — the
+ * continuity problem the genre usually suffers simply can't happen.
+ */
+export function statBlock(world: WorldState, charId: string): string {
+  const c = world.characters[charId];
+  if (!c) return '';
+  const cls = CLASSES[c.charClass];
+  const a = c.attributes;
+  const skills = Object.entries(c.skills).filter(([, v]) => v > 0).map(([k, v]) => `${k[0].toUpperCase()}${k.slice(1)} ${v}`);
+  const lines = [
+    `${c.name.toUpperCase()} — ${cls.label} · Level ${c.level}`,
+    `XP: ${c.xp} / ${xpForLevel(c.level)}${levelUpAvailable(c) ? '  ◆ LEVEL UP AVAILABLE ◆' : ''}`,
+    `HP ${c.hp.current}/${c.hp.max} · Mana ${c.mana.current}/${c.mana.max} · Stamina ${c.stamina.current}/${c.stamina.max}`,
+    `STR ${a.strength} · DEX ${a.dexterity} · CON ${a.constitution} · INT ${a.intelligence} · WIS ${a.wisdom} · CHA ${a.charisma}`,
+    `Attack ${c.attack} · Defense ${c.defense} · Crit ${c.critChance}%`,
+  ];
+  if (c.abilities.length) lines.push(`Abilities: ${c.abilities.map((k) => k.replace(/-/g, ' ')).join(', ')}`);
+  if (skills.length) lines.push(`Skills: ${skills.join(', ')}`);
+  if (c.statuses.length) lines.push(`Conditions: ${c.statuses.map((s) => s.key).join(', ')}`);
+  lines.push(`Coin: ${fmtMoney(c.money)}`);
+  const width = Math.max(...lines.map((l) => l.length));
+  const bar = '═'.repeat(width + 2);
+  return ['╔' + bar + '╗', ...lines.map((l) => '║ ' + l.padEnd(width) + ' ║'), '╚' + bar + '╝'].join('\n');
+}
 
 /**
  * One editable prose sentence for a completed travel action. The

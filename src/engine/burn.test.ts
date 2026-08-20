@@ -17,6 +17,7 @@ import { SKILLS, SPELLS, closeCombat, resolveRound, startCombat, takeLoot } from
 import { openChest } from './loot';
 import {
   buyFromShop,
+  buyMeal,
   buyTempleService,
   depositItem,
   moveToParty,
@@ -62,6 +63,9 @@ function checkInvariants(w: WorldState, step: number, action: string, deep: bool
     if (c.hp.current < 0 || c.hp.current > c.hp.max) fail(`${c.name} HP ${c.hp.current}/${c.hp.max}`);
     if (c.mana.current < 0 || c.stamina.current < 0) fail(`${c.name} negative mana/stamina`);
     if (c.money < 0) fail(`${c.name} has negative money: ${c.money}`);
+    if (c.needs.hunger < 0 || c.needs.hunger > 100 || c.needs.fatigue < 0 || c.needs.fatigue > 100) {
+      fail(`${c.name} needs out of range: hunger ${c.needs.hunger}, fatigue ${c.needs.fatigue}`);
+    }
     if (!c.alive && c.inParty && w.deathRule === 'story') fail(`dead ${c.name} still in party under story mode`);
     if (!w.locations[c.location] && !c.location.startsWith('ROOM')) fail(`${c.name} at unknown location ${c.location}`);
     // inventory backrefs
@@ -222,10 +226,14 @@ function step(w: WorldState, rng: Rng): string {
     if (loc.shop?.buys && sellable.length) sellToShop(w, loc.id, rng.pick(sellable), mc);
     return 'shop-sell';
   }
-  if (roll < 0.54) {
+  if (roll < 0.52) {
     const loc = w.locations[w.partyLocation];
     if (loc.innRooms?.length) restAtInn(w, loc.id, rng.int(0, loc.innRooms.length - 1));
     return 'inn';
+  }
+  if (roll < 0.54) {
+    buyMeal(w, w.partyLocation);
+    return 'meal';
   }
   if (roll < 0.58) {
     const loc = w.locations[w.partyLocation];

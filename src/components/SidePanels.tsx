@@ -12,6 +12,7 @@ import { TIER_INFO, TIER_ORDER, UPGRADES, findHome } from '../engine/household';
 import {
   CLASSES,
   ITEM_PROTOS,
+  NEEDS,
   STATUS_RULES,
   TEMPLE_SERVICES,
   fmtMoney,
@@ -78,6 +79,7 @@ function LocationPanel() {
   const train = useStore((s) => s.train);
   const homeRest = useStore((s) => s.homeRest);
   const openTalk = useStore((s) => s.openTalk);
+  const eatMeal = useStore((s) => s.eatMeal);
   const loc = world.locations[world.partyLocation];
   const mc = world.characters[world.mcId];
   if (!loc) return <p>Nowhere?</p>;
@@ -151,6 +153,11 @@ function LocationPanel() {
           })}
           <p className="dim small">To sell, use the Inventory panel while you're here{loc.shop.buys ? '' : ' (this shop does not buy)'}.</p>
         </>
+      )}
+      {loc.services.includes('food') && (
+        <div className="row" style={{ marginTop: 8 }}>
+          <button onClick={eatMeal}>🍲 Buy a hot meal for the party ({fmtMoney(5 * party.length)})</button>
+        </div>
       )}
       {loc.innRooms && (
         <>
@@ -325,6 +332,7 @@ function CharactersPanel() {
 // ---------- Party ----------
 function PartyPanel() {
   const world = useStore((s) => s.world);
+  const openTalk = useStore((s) => s.openTalk);
   const party = Object.values(world.characters).filter((c) => c.inParty && c.alive);
   return (
     <div>
@@ -334,6 +342,7 @@ function PartyPanel() {
           <div className="row">
             <span className="name grow">{c.name} <span className="dim small">{CLASSES[c.charClass].label}</span></span>
             <span className="mono dim">L{c.level} · {c.xp}/{xpForLevel(c.level)} xp</span>
+            {!c.isMC && !world.combat && <button onClick={() => openTalk(c.id)}>🗨 Talk</button>}
           </div>
           {levelUpAvailable(c) && <Tag tone="gold">LEVEL AVAILABLE — trainer: {CLASSES[c.charClass].trainer}</Tag>}
           {c.statuses.length > 0 && (
@@ -345,6 +354,14 @@ function PartyPanel() {
           <Bar value={c.mana.current} max={c.mana.max} color="var(--info)" />
           <div className="small dim">Stamina {c.stamina.current}/{c.stamina.max}</div>
           <Bar value={c.stamina.current} max={c.stamina.max} color="var(--accent2)" />
+          {world.needsEnabled && (
+            <>
+              <div className="small dim">Hunger {Math.round(c.needs.hunger)}/100 {c.needs.hunger >= NEEDS.critical ? '— starving' : c.needs.hunger >= NEEDS.uncomfortable ? '— hungry' : ''}</div>
+              <Bar value={c.needs.hunger} max={100} color={c.needs.hunger >= NEEDS.uncomfortable ? 'var(--danger)' : 'var(--text-dim)'} />
+              <div className="small dim">Fatigue {Math.round(c.needs.fatigue)}/100 {c.needs.fatigue >= NEEDS.critical ? '— exhausted' : c.needs.fatigue >= NEEDS.uncomfortable ? '— tired' : ''}</div>
+              <Bar value={c.needs.fatigue} max={100} color={c.needs.fatigue >= NEEDS.uncomfortable ? 'var(--danger)' : 'var(--text-dim)'} />
+            </>
+          )}
           <div className="small">
             {Object.entries(c.equipment).map(([slot, iid]) => (
               <Tag key={slot}>{slot}: {world.items[iid!]?.name ?? '—'}{world.items[iid!]?.broken ? ' (broken)' : ''}</Tag>
@@ -391,7 +408,7 @@ function ItemCard({ iid, ownerChar }: { iid: string; ownerChar?: string }) {
       <div className="row">
         {ownerChar && it.slot !== 'none' && !equipped && <button onClick={() => equip(iid)}>Equip</button>}
         {equipped && <button onClick={() => unequip(iid)}>Unequip</button>}
-        {it.kind === 'potion' && !world.combat?.active && (inParty || ownerChar) && <button onClick={() => drinkPotion(iid)}>Use</button>}
+        {(it.kind === 'potion' || it.effectKey?.startsWith('food-')) && !world.combat?.active && (inParty || ownerChar) && <button onClick={() => drinkPotion(iid)}>Use</button>}
         {ownerChar && !equipped && <button onClick={() => poolItem(iid)} title="Move to shared party supplies">→ party</button>}
         {inParty && <button onClick={() => unpoolItem(iid)}>→ personal</button>}
         {atHome && !equipped && !inHome && <button onClick={() => homeDeposit(iid)}>→ storage</button>}
@@ -769,6 +786,7 @@ function SavesPanel() {
   const fileRef = useRef<HTMLInputElement>(null);
   const setDeathRule = useStore((s) => s.setDeathRule);
   const setEncumbrance = useStore((s) => s.setEncumbrance);
+  const setNeedsEnabled = useStore((s) => s.setNeedsEnabled);
   return (
     <div>
       <h3>Saves & Rules</h3>
@@ -779,6 +797,13 @@ function SavesPanel() {
           <option value="story">Story Mode (companions survive defeat)</option>
           <option value="classic">Classic RPG (dead; temple resurrection)</option>
           <option value="permadeath">Permadeath</option>
+        </select>
+      </div>
+      <div className="row small">
+        <label className="grow">Survival needs (food & sleep)</label>
+        <select value={world.needsEnabled ? 'on' : 'off'} onChange={(e) => setNeedsEnabled(e.target.value === 'on')}>
+          <option value="on">Tracked (hunger & fatigue matter)</option>
+          <option value="off">Off</option>
         </select>
       </div>
       <div className="row small">

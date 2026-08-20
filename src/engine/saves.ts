@@ -27,7 +27,7 @@ export function pruneSnapshots(snaps: Snapshot[]): Snapshot[] {
 }
 
 export function restoreSnapshot(snap: Snapshot): WorldState {
-  return JSON.parse(snap.world) as WorldState;
+  return migrateWorld(JSON.parse(snap.world) as WorldState);
 }
 
 export function persistProject(world: WorldState, snapshots: Snapshot[]) {
@@ -44,11 +44,36 @@ export function persistProject(world: WorldState, snapshots: Snapshot[]) {
   }
 }
 
+/** Fill fields added after a save was written, so old saves keep working. */
+export function migrateWorld(world: WorldState): WorldState {
+  world.needsEnabled ??= true;
+  world.deathRule ??= 'story';
+  world.encumbrance ??= 'light';
+  world.partyInventory ??= [];
+  for (const c of Object.values(world.characters)) {
+    c.needs ??= { hunger: 25, fatigue: 30 };
+    c.statuses ??= [];
+    c.tempBonuses ??= [];
+    c.permanentBonuses ??= [];
+    c.abilities ??= [];
+    c.resistances ??= {};
+    c.charClass ??= 'commoner';
+    c.evasion ??= 0;
+  }
+  for (const l of Object.values(world.locations)) {
+    if (l.household) {
+      l.household.storage ??= [];
+      l.household.treasury ??= 0;
+    }
+  }
+  return world;
+}
+
 export function loadProject(): { world: WorldState; snapshots: Snapshot[] } | null {
   const raw = localStorage.getItem(PROJECT_KEY);
   if (!raw) return null;
   try {
-    const world = JSON.parse(raw) as WorldState;
+    const world = migrateWorld(JSON.parse(raw) as WorldState);
     const snapsRaw = localStorage.getItem(SNAPSHOTS_KEY);
     const snapshots = snapsRaw ? (JSON.parse(snapsRaw) as Snapshot[]) : [];
     return { world, snapshots };
@@ -76,7 +101,7 @@ export async function importProject(file: File): Promise<{ world: WorldState; sn
   try {
     const data = JSON.parse(await file.text());
     if (!data.world) return null;
-    return { world: data.world as WorldState, snapshots: (data.snapshots ?? []) as Snapshot[] };
+    return { world: migrateWorld(data.world as WorldState), snapshots: (data.snapshots ?? []) as Snapshot[] };
   } catch {
     return null;
   }

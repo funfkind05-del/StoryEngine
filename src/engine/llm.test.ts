@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildSeedWorld } from '../data/seed';
 import { buildNpcSystemPrompt } from './npcChat';
+import { statBlock } from './bridge';
 import { applyProposal } from './proseLlm';
 import { lastParagraph } from './proseLlm';
 import type { WorldState } from './types';
@@ -37,6 +38,41 @@ describe('NPC prompt: knowledge separation', () => {
     const prompt2 = buildNpcSystemPrompt(w, 'CHAR_MARA', 'CHAR_KAEL');
     expect(prompt2).toContain('Kael protected Mara');
     expect(prompt2).toContain('trust them');
+  });
+});
+
+describe('companion & spouse prompts', () => {
+  it('briefs the model on party life, wounds, and romance stage', () => {
+    const w = freshWorld();
+    const lyra = w.characters['CHAR_LYRA'];
+    let prompt = buildNpcSystemPrompt(w, 'CHAR_LYRA', 'CHAR_KAEL');
+    expect(prompt).toContain('same adventuring party');
+    // wounded companion
+    lyra.hp.current = 3;
+    prompt = buildNpcSystemPrompt(w, 'CHAR_LYRA', 'CHAR_KAEL');
+    expect(prompt).toContain('badly hurt');
+    // romance progression: falling → committed → spouse
+    lyra.relationships['CHAR_KAEL'] = { affection: 5, trust: 4, respect: 4, attraction: 6, commitment: 0 };
+    expect(buildNpcSystemPrompt(w, 'CHAR_LYRA', 'CHAR_KAEL')).toContain('falling for Kael');
+    lyra.relationships['CHAR_KAEL'].commitment = 6;
+    expect(buildNpcSystemPrompt(w, 'CHAR_LYRA', 'CHAR_KAEL')).toContain('committed partners');
+    lyra.relationships['CHAR_KAEL'].commitment = 9;
+    const spousePrompt = buildNpcSystemPrompt(w, 'CHAR_LYRA', 'CHAR_KAEL');
+    expect(spousePrompt).toContain('your husband'); // Kael is male; word keys off the POV
+    expect(spousePrompt).toContain('Love does not make you agreeable');
+    // damaged trust under a bond is surfaced
+    lyra.relationships['CHAR_KAEL'].trust = -3;
+    expect(buildNpcSystemPrompt(w, 'CHAR_LYRA', 'CHAR_KAEL')).toContain('damaged your trust');
+  });
+
+  it('renders a LitRPG stat block from live state', () => {
+    const w = freshWorld();
+    const block = statBlock(w, 'CHAR_KAEL');
+    expect(block).toContain('KAEL — Fighter · Level 1');
+    expect(block).toContain('HP 16/16');
+    expect(block).toContain('╔');
+    w.characters['CHAR_KAEL'].xp = 150;
+    expect(statBlock(w, 'CHAR_KAEL')).toContain('LEVEL UP AVAILABLE');
   });
 });
 

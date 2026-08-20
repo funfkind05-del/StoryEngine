@@ -7,6 +7,7 @@ import { useStore } from '../state/store';
 import { checkScene } from '../engine/continuity';
 import { fmtTime, partyMembers } from '../engine/world';
 import { extractActions, lastParagraph, polishText, type SyncProposal } from '../engine/proseLlm';
+import { statBlock } from '../engine/bridge';
 import { loadLlmConfig } from '../engine/npcChat';
 
 const AUTOPOLISH_KEY = 'storyengine.autopolish.v1';
@@ -220,6 +221,12 @@ export function WritingStudio() {
           <option value="">Insert Item…</option>
           {ownedItems.map((i) => (
             <option key={i.id} value={i.id}>{i.name} ({world.characters[i.owner!]?.name})</option>
+          ))}
+        </select>
+        <select value="" title="Insert a LitRPG system window rendered from live simulation state — the numbers are canonical at the moment of insertion." onChange={(e) => { if (e.target.value) insertAtCursor('\n' + statBlock(world, e.target.value) + '\n'); }}>
+          <option value="">Insert Stat Block…</option>
+          {Object.values(world.characters).filter((c) => c.inParty && c.alive).map((c) => (
+            <option key={c.id} value={c.id}>{c.name} — L{c.level}</option>
           ))}
         </select>
         <span className="grow" />

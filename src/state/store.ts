@@ -22,6 +22,7 @@ import { promoteNpc } from '../engine/npc';
 import { buyUpgrade, upgradeTier } from '../engine/household';
 import {
   buyFromShop,
+  buyMeal,
   buyTempleService,
   depositItem,
   moveToParty,
@@ -104,6 +105,8 @@ interface AppState {
   treasuryMove: (amount: number, dir: 'deposit' | 'withdraw') => void;
   setDeathRule: (r: WorldState['deathRule']) => void;
   setEncumbrance: (r: WorldState['encumbrance']) => void;
+  setNeedsEnabled: (on: boolean) => void;
+  eatMeal: () => void;
 
   // prose → sim sync (author-approved)
   applyProposals: (proposals: SyncProposal[]) => string[];
@@ -321,6 +324,19 @@ export const useStore = create<AppState>((set, get) => ({
   setEncumbrance: (r) => {
     const { world, commit } = get();
     world.encumbrance = r;
+    commit();
+  },
+
+  setNeedsEnabled: (on) => {
+    const { world, commit } = get();
+    world.needsEnabled = on;
+    commit();
+  },
+
+  eatMeal: () => {
+    const { world, commit, setToast } = get();
+    const err = buyMeal(world, world.partyLocation);
+    if (err) setToast(err);
     commit();
   },
 

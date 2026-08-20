@@ -81,15 +81,48 @@ export function buildNpcSystemPrompt(world: WorldState, npcId: CharacterId, povI
     `It is Day ${world.time.day}, ${fmtTime(world.time)}. You are at ${loc?.name ?? 'somewhere in the city'}${loc?.atmosphere ? ` (${loc.atmosphere.toLowerCase()})` : ''}, ${npc.activity}.`,
   );
 
+  // Companions get the shared-life framing: party, household, wounds
+  if (npc.inParty) {
+    const others = Object.values(world.characters).filter((c) => c.inParty && c.alive && c.id !== npc.id && c.id !== povId);
+    const home = Object.values(world.locations).find((l) => l.household);
+    const hpFrac = npc.hp.current / Math.max(1, npc.hp.max);
+    lines.push(
+      '',
+      '=== YOUR PLACE IN THE PARTY ===',
+      `You travel and fight beside ${pov.name} as part of the same adventuring party${others.length ? `, along with ${others.map((c) => c.name).join(', ')}` : ''}. You have shared roads, camps, wounds, and coin.`,
+    );
+    if (home?.household?.residents.includes(npc.id)) {
+      lines.push(`You live at ${home.name} with the rest of the household.`);
+    }
+    if (hpFrac < 0.35) lines.push(`You are badly hurt right now (${npc.hp.current}/${npc.hp.max} HP) — it colors your mood and patience.`);
+    else if (hpFrac < 0.75) lines.push(`You are carrying wounds (${npc.hp.current}/${npc.hp.max} HP).`);
+  }
+
   const rel = npc.relationships[povId];
   lines.push('', `=== THE PERSON TALKING TO YOU ===`, `${pov.name}${pov.isMC ? '' : ` (${pov.occupation})`} is speaking with you.`);
   if (rel) {
     lines.push(
       `Your feelings toward ${pov.name}: you ${stance(rel.trust, 'do not trust them', 'are still taking their measure', 'trust them')}, ` +
       `${stance(rel.respect, 'think little of them', 'reserve judgment on their competence', 'respect them')}, ` +
-      `and ${stance(rel.affection, 'dislike them', 'feel no particular warmth', 'are genuinely fond of them')}.` +
-      (rel.attraction >= 3 ? ` You find them attractive, though you needn't show it plainly.` : ''),
+      `and ${stance(rel.affection, 'dislike them', 'feel no particular warmth', 'are genuinely fond of them')}.`,
     );
+    // Romance stage from attraction + commitment — a partner is a full
+    // person with their own goals, not a bonus attached to the MC.
+    const povSpouseWord = pov.sex === 'female' ? 'wife' : pov.sex === 'male' ? 'husband' : 'spouse';
+    if (rel.commitment >= 8 && rel.attraction >= 4) {
+      lines.push(`${pov.name} is your ${povSpouseWord} — you have built a life together. Speak with the shorthand, teasing, and bluntness of long intimacy. Love does not make you agreeable: you still argue from your own values (${npc.values.join(', ')}) and keep your own aims.`);
+    } else if (rel.commitment >= 5 && rel.attraction >= 3) {
+      lines.push(`You and ${pov.name} are committed partners. There is real intimacy and real friction; you speak plainly and expect the same.`);
+    } else if (rel.attraction >= 5 && rel.affection >= 4) {
+      lines.push(`You are falling for ${pov.name} and it unsettles you. Show it sideways — in what you notice, not what you announce.`);
+    } else if (rel.attraction >= 3) {
+      lines.push(`You find ${pov.name} attractive, though you needn't show it plainly.`);
+    }
+    if (rel.commitment >= 5 && rel.trust <= -2) {
+      lines.push(`Something has damaged your trust in ${pov.name} despite the bond — it sits under every word.`);
+    }
+  } else if (npc.inParty) {
+    lines.push(`You have only recently joined up with ${pov.name}; you are still taking their measure.`);
   } else {
     lines.push(`You have no history with ${pov.name}. They are a stranger; react accordingly.`);
   }
