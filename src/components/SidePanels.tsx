@@ -878,10 +878,31 @@ function HouseholdPanel() {
   const homePray = useStore((s) => s.homePray);
   const homeFletch = useStore((s) => s.homeFletch);
   const homeFeast = useStore((s) => s.homeFeast);
+  const homeBuyFirst = useStore((s) => s.homeBuyFirst);
   const homeId = findHome(world);
   const home = homeId ? world.locations[homeId] : null;
   const mc = world.characters[world.mcId];
-  if (!home?.household) return <p className="dim">No home yet.</p>;
+  if (!home?.household) {
+    return (
+      <div>
+        <h3>No roof of his own</h3>
+        <p>
+          {mc.name} rents a bed by the night — the Broken Crown charges for every one of them — and owns
+          nothing he can't carry. No storage, no treasury, no household. Sleeping without a paid bed means
+          doorways, half-rest, and whatever the street decides to take.
+        </p>
+        <h4>For sale</h4>
+        <div className="card">
+          <div className="name">A cheap two-room flat, Ratcatcher Lane</div>
+          <p className="small">Over a chandler's shop. Thin walls, a door that locks, a key of his own. The first thing in Blackwall that would actually be his.</p>
+          <button className="primary" disabled={mc.money < TIER_INFO['cheap-apartment'].cost} onClick={homeBuyFirst}>
+            Buy — {fmtMoney(TIER_INFO['cheap-apartment'].cost)} {mc.money < TIER_INFO['cheap-apartment'].cost && <span className="dim">(you have {fmtMoney(mc.money)})</span>}
+          </button>
+        </div>
+        <p className="dim small">Once bought, the whole household ladder opens: upgrades, storage, treasury, and every wing up to the estate.</p>
+      </div>
+    );
+  }
   const hh = home.household;
   const tierIdx = TIER_ORDER.indexOf(hh.tier);
   const next = tierIdx < TIER_ORDER.length - 1 ? TIER_ORDER[tierIdx + 1] : null;

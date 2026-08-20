@@ -240,11 +240,13 @@ describe('household wings', () => {
     const { restAtHome } = await import('./services');
     const { acceptQuest: accept, refreshJobs: refresh } = await import('./quests');
     const { applyStatus: curse } = await import('./rules');
+    const { buyFirstHome: buyHome } = await import('./household');
     const w = freshWorld();
     const mc = w.characters[w.mcId];
-    travelTo(w, 'LOC_KAELROOM');
     mc.money = 100000;
-    const home = w.locations['LOC_KAELROOM'].household!;
+    expect(buyHome(w)).toBeNull();
+    travelTo(w, 'LOC_HOME');
+    const home = w.locations['LOC_HOME'].household!;
     home.tier = 'estate';
     for (const key of ['shrine', 'forge-annex', 'great-hall', 'infirmary', 'war-room', 'vault']) {
       expect(buy(w, key), key).toBeNull();

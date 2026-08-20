@@ -9,7 +9,7 @@ import { combatToAuthorLog, combatToProse, travelSentence } from './bridge';
 import { checkAllScenes, checkScene } from './continuity';
 import { advanceUntilMorning, partyMembers, tick, travelTo } from './world';
 import { generateBackgroundNpc, promoteNpc } from './npc';
-import { buyUpgrade, upgradeTier } from './household';
+import { buyFirstHome, buyUpgrade, upgradeTier } from './household';
 import type { PlannedAction, WorldState } from './types';
 
 function freshWorld(): WorldState {
@@ -31,7 +31,7 @@ describe('world & time', () => {
     const w = freshWorld();
     const kael = w.characters[w.mcId];
     kael.hp.current = 3;
-    advanceUntilMorning(w);
+    advanceUntilMorning(w, 'bed');
     expect(kael.hp.current).toBe(kael.hp.max);
     expect(w.time.minute).toBe(7 * 60);
     // Mara should be at the market at midday
@@ -209,16 +209,26 @@ describe('continuity checker', () => {
 });
 
 describe('household', () => {
-  it('gates upgrades by money and tier', () => {
+  it('nothing is his until he buys it; then upgrades gate by money and tier', () => {
     const w = freshWorld();
     const mc = w.characters[w.mcId];
+    // no home at the start of the story
+    expect(Object.values(w.locations).some((l) => l.household)).toBe(false);
+    expect(buyUpgrade(w, 'armory')).toBe('No home to upgrade.');
+    expect(upgradeTier(w)).toBe('No home to upgrade.');
+    mc.money = 100;
+    expect(buyFirstHome(w)).toMatch(/Keep saving/);
+    mc.money = 900;
+    expect(buyFirstHome(w)).toBeNull(); // the milestone: 800c, cash on the nail
+    const home = Object.values(w.locations).find((l) => l.household)!;
+    expect(home.household!.tier).toBe('cheap-apartment');
+    expect(mc.money).toBe(100);
     expect(buyUpgrade(w, 'armory')).toMatch(/needs at least/);
     expect(upgradeTier(w)).toMatch(/Not enough coin/);
     mc.money = 10000;
     expect(upgradeTier(w)).toBeNull();
+    expect(home.household!.tier).toBe('small-house');
     expect(buyUpgrade(w, 'kitchen')).toBeNull();
-    const home = Object.values(w.locations).find((l) => l.household)!;
-    expect(home.household!.tier).toBe('cheap-apartment');
     expect(home.household!.upgrades).toContain('kitchen');
   });
 });

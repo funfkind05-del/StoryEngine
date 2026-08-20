@@ -30,7 +30,7 @@ import {
   treasuryTransfer,
   useConsumable,
 } from './services';
-import { brewAtHome, buyUpgrade, cookAtHome, fletchArrows, hostFeast, prayAtShrine, sparAtHome, upgradeTier } from './household';
+import { brewAtHome, buyFirstHome, buyUpgrade, cookAtHome, findHome, fletchArrows, hostFeast, prayAtShrine, sparAtHome, upgradeTier } from './household';
 import { acceptQuest, checkQuests, offeredQuestsAt, refreshJobs, turnInQuest } from './quests';
 import { maybeCompanionMoment } from './moments';
 import { generateStoryIdeas } from './muse';
@@ -42,6 +42,8 @@ import { OWNER_HOME, OWNER_PARTY, type PlannedAction, type WorldState } from './
 const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
 const ITERS = parseInt(env.BURN_ITERS ?? '1500', 10);
 const SEEDS = parseInt(env.BURN_SEEDS ?? '3', 10);
+// shift into fresh seed territory: BURN_OFFSET=100 burns worlds 100..104
+const OFFSET = parseInt(env.BURN_OFFSET ?? '0', 10);
 
 // ---------- invariants ----------
 function assertNoNaN(obj: unknown, path = 'world'): void {
@@ -288,6 +290,10 @@ function step(w: WorldState, rng: Rng): string {
   }
   if (roll < 0.76) { treasuryTransfer(w, rng.int(1, 200), rng.chance(0.5) ? 'deposit' : 'withdraw'); return 'treasury'; }
   if (roll < 0.78) {
+    if (!findHome(w)) {
+      if (w.characters[w.mcId].money >= 800 && rng.chance(0.5)) buyFirstHome(w);
+      return 'household';
+    }
     if (rng.chance(0.4)) upgradeTier(w);
     else if (rng.chance(0.5)) buyUpgrade(w, rng.pick(['kitchen', 'bath', 'storage', 'workshop', 'training-yard', 'alchemy-room', 'garden', 'armory', 'library', 'shrine', 'infirmary', 'vault', 'forge-annex', 'war-room', 'great-hall', 'watchtower', 'enchanters-study']));
     else {
@@ -358,8 +364,9 @@ function step(w: WorldState, rng: Rng): string {
   return 'idle';
 }
 
-describe(`burn test (${SEEDS} seeds × ${ITERS} actions)`, () => {
-  for (let seedIdx = 0; seedIdx < SEEDS; seedIdx++) {
+describe(`burn test (${SEEDS} seeds × ${ITERS} actions, offset ${OFFSET})`, () => {
+  for (let s = 0; s < SEEDS; s++) {
+    const seedIdx = OFFSET + s;
     it(`survives seed ${seedIdx} with invariants intact`, { timeout: 600000 }, () => {
       const w = buildSeedWorld();
       w.masterSeed = 1000 + seedIdx;

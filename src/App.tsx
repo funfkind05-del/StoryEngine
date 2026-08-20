@@ -95,7 +95,13 @@ export default function App() {
         <label>advance</label>
         <button onClick={() => advance(10)} disabled={!!world.combat}>+10m</button>
         <button onClick={() => advance(60)} disabled={!!world.combat}>+1h</button>
-        <button onClick={sleepUntilMorning} disabled={!!world.combat || !!world.currentDungeon}>until morning</button>
+        <button
+          onClick={sleepUntilMorning}
+          disabled={!!world.combat || !!world.currentDungeon}
+          title="Sleep where you stand. Without a paid bed this is sleeping rough: half-rest, lingering fatigue, and in bad districts the night has teeth. Rent a room or buy a home for real sleep."
+        >
+          {world.locations[world.partyLocation]?.household ? 'until morning' : 'sleep rough'}
+        </button>
         <label>encounters</label>
         <select value={world.encounterFrequency} onChange={(e) => setFrequency(e.target.value as EncounterFrequency)}>
           <option value="low">low</option>

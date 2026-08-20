@@ -73,6 +73,46 @@ export function findHome(world: WorldState): LocationId | null {
   return home?.id ?? null;
 }
 
+/**
+ * Nothing is his until he buys it: the first home is a purchase, not a
+ * given. A cheap two-room flat off Ratcatcher Lane, cash on the nail.
+ */
+export function buyFirstHome(world: WorldState): string | null {
+  if (findHome(world)) return 'You already own a home.';
+  const mc = world.characters[world.mcId];
+  const info = TIER_INFO['cheap-apartment'];
+  if (mc.money < info.cost) return `The flat costs ${fmtMoney(info.cost)}, cash on the nail. Keep saving.`;
+  mc.money -= info.cost;
+  addMinutes(world, 60);
+  const id = 'LOC_HOME';
+  world.locations[id] = {
+    id,
+    name: `${mc.name}’s Cheap Apartment`,
+    type: 'residence',
+    district: 'Dock Ward',
+    parent: 'LOC_RATCATCHER',
+    description: 'Two rooms over a chandler’s shop on Ratcatcher Lane. The key is heavy, old, and — for the first time in this city — his.',
+    atmosphere: 'Tallow smoke, and, faintly, ownership.',
+    services: [],
+    factionInfluence: { FAC_REDKNIVES: 5 },
+    dangerRating: 4,
+    connections: ['LOC_RATCATCHER'],
+    state: 'open',
+    mapPos: { x: 27, y: 70 },
+    household: { tier: 'cheap-apartment', upgrades: [], residents: [mc.id], storage: [], treasury: 0 },
+  };
+  const lane = world.locations['LOC_RATCATCHER'];
+  if (lane && !lane.connections.includes(id)) lane.connections.push(id);
+  logEvent(
+    world,
+    'household.purchased',
+    { location: id, cost: info.cost },
+    `${mc.name} bought the flat over the chandler’s for ${fmtMoney(info.cost)}. No more paying for a bed by the night.`,
+    { location: id, witnesses: partyMembers(world).map((c) => c.id) },
+  );
+  return null;
+}
+
 export function upgradeTier(world: WorldState): string | null {
   const homeId = findHome(world);
   if (!homeId) return 'No home to upgrade.';

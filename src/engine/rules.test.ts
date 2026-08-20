@@ -31,6 +31,7 @@ import {
   useConsumable,
 } from './services';
 import { grantXp, tick, travelTo } from './world';
+import { buyFirstHome } from './household';
 import { resolveRound, startCombat } from './combat';
 import { Rng } from './rng';
 import type { WorldState } from './types';
@@ -255,13 +256,18 @@ describe('home storage & treasury', () => {
     const kael = w.characters[w.mcId];
     const potionId = kael.inventory.find((i) => w.items[i]?.proto === 'minor-healing-potion')!;
     // not at home yet
-    expect(depositItem(w, potionId)).toMatch(/at home/);
+    expect(depositItem(w, potionId)).toMatch(/No home/);
     expect(moveToParty(w, potionId)).toBeNull();
     expect(w.partyInventory.some((i) => w.items[i]?.proto === 'minor-healing-potion')).toBe(true);
-    travelTo(w, 'LOC_KAELROOM');
-    kael.money = 500;
+    // nothing permanent until he buys: the flat costs 800
+    kael.money = 100;
+    expect(buyFirstHome(w)).toMatch(/Keep saving/);
+    kael.money = 1300;
+    expect(buyFirstHome(w)).toBeNull();
+    expect(buyFirstHome(w)).toMatch(/already own/);
+    travelTo(w, 'LOC_HOME');
     expect(treasuryTransfer(w, 200, 'deposit')).toBeNull();
-    const home = w.locations['LOC_KAELROOM'].household!;
+    const home = w.locations['LOC_HOME'].household!;
     expect(home.treasury).toBe(200);
     expect(kael.money).toBe(300);
     expect(treasuryTransfer(w, 9999, 'withdraw')).toMatch(/lighter/);
@@ -272,6 +278,7 @@ describe('home storage & treasury', () => {
     expect(depositItem(w, swordId)).toBeNull();
     expect(home.storage).toContain(swordId);
     expect(w.items[swordId].owner).toBe('HOME_STORAGE');
+    expect(home.tier).toBe('cheap-apartment'); // bought, not given
   });
 });
 

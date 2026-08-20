@@ -131,12 +131,11 @@ export function buildSeedWorld(): WorldState {
 
     // Dock Ward
     loc({ id: 'LOC_RATCATCHER', mapPos: { x: 22, y: 74 }, name: 'Ratcatcher Lane', type: 'street', district: 'Dock Ward', parent: 'LOC_DOCKWARD', description: 'A crooked lane of taverns and flophouses one block off the wharves.', atmosphere: 'Loud, lamp-lit, smelling of tar and fried fish.', dangerRating: 6, connections: ['LOC_DOCK_0042', 'LOC_WHARVES', 'LOC_SALTWAREHOUSE', 'LOC_IRONMARKET_SQ', 'LOC_THIEFGUILD', 'LOC_SEWERGATE'], factionInfluence: { FAC_REDKNIVES: 8 } }),
-    loc({ id: 'LOC_DOCK_0042', mapPos: { x: 33, y: 66 }, name: 'Broken Crown Tavern', type: 'tavern', district: 'Dock Ward', parent: 'LOC_RATCATCHER', description: 'A low-ceilinged dockside tavern under a cracked sign of a broken crown. Rooms upstairs, trouble downstairs.', atmosphere: 'Dangerous, crowded, smoky, inexpensive.', services: ['food', 'alcohol', 'rooms', 'rumors', 'gambling'], dangerRating: 5, connections: ['LOC_RATCATCHER', 'LOC_KAELROOM'], factionInfluence: { FAC_REDKNIVES: 7, FAC_WATCH: 1 }, innRooms: [
+    loc({ id: 'LOC_DOCK_0042', mapPos: { x: 33, y: 66 }, name: 'Broken Crown Tavern', type: 'tavern', district: 'Dock Ward', parent: 'LOC_RATCATCHER', description: 'A low-ceilinged dockside tavern under a cracked sign of a broken crown. Rooms upstairs, trouble downstairs.', atmosphere: 'Dangerous, crowded, smoky, inexpensive.', services: ['food', 'alcohol', 'rooms', 'rumors', 'gambling'], dangerRating: 5, connections: ['LOC_RATCATCHER'], factionInfluence: { FAC_REDKNIVES: 7, FAC_WATCH: 1 }, innRooms: [
       { name: 'Common Room floor', price: 3, quality: 1 },
       { name: 'Private Room', price: 8, quality: 2 },
       { name: 'Good Room', price: 20, quality: 3 },
     ] }),
-    loc({ id: 'LOC_KAELROOM', mapPos: { x: 41, y: 60 }, name: 'Kael’s Rented Room', type: 'residence', district: 'Dock Ward', parent: 'LOC_DOCK_0042', description: 'A narrow room above the Broken Crown: a cot, a chest, one shuttered window over the lane.', atmosphere: 'Cramped but defensible.', dangerRating: 3, connections: ['LOC_DOCK_0042'], household: { tier: 'rented-room', upgrades: [], residents: ['CHAR_KAEL'], storage: [], treasury: 0 } }),
     loc({ id: 'LOC_WHARVES', mapPos: { x: 10, y: 86 }, name: 'The Black Wharves', type: 'dock', district: 'Dock Ward', parent: 'LOC_DOCKWARD', description: 'Tar-black piers where the ships come in and the bodies go out.', atmosphere: 'Fog, gulls, muscle.', dangerRating: 7, connections: ['LOC_RATCATCHER', 'LOC_SALTWAREHOUSE', 'LOC_CELLARDOOR', 'LOC_SEWERGATE', 'LOC_SUNKENSTAIR'], services: ['passage', 'smuggling'], factionInfluence: { FAC_REDKNIVES: 6, FAC_COINGUILD: 7 } }),
     loc({ id: 'LOC_SALTWAREHOUSE', mapPos: { x: 24, y: 90 }, name: 'Saltmerchant’s Warehouse', type: 'warehouse', district: 'Dock Ward', parent: 'LOC_DOCKWARD', description: 'A Coin Guild warehouse; the Red Knives fence stolen goods out the back.', atmosphere: 'Quiet by day, busy by night.', dangerRating: 6, connections: ['LOC_WHARVES', 'LOC_RATCATCHER'], services: ['fencing'], factionInfluence: { FAC_REDKNIVES: 7, FAC_COINGUILD: 5 }, shop: { buys: true, buyRate: 0.35, restockDay: 1, stock: [
       { proto: 'dagger', qty: 1, price: 70 },
@@ -223,7 +222,7 @@ export function buildSeedWorld(): WorldState {
     id: 'CHAR_KAEL', name: 'Kael', occupation: 'sellsword (new in town)', location: 'LOC_DOCK_0042',
     age: 23, sex: 'male', isMC: true, inParty: true, charClass: 'fighter', abilities: ['shield-bash'],
     description: 'Lean, watchful, a scar through one eyebrow. New boots, old sword.',
-    background: 'Came to Blackwall with a dead man’s letter of introduction and eleven silver. Nine left.',
+    background: 'Came to Blackwall with a dead man’s letter of introduction and eleven silver. Nine left. He rents a cot at the Broken Crown by the night; nothing in this city is his yet.',
     personality: ['stubborn', 'dry-humored', 'careful with promises'],
     hp: { current: 16, max: 16 }, mana: { current: 6, max: 6 }, stamina: { current: 12, max: 12 },
     attributes: { strength: 13, dexterity: 12, constitution: 12, intelligence: 11, wisdom: 10, charisma: 11 },
@@ -232,7 +231,7 @@ export function buildSeedWorld(): WorldState {
     money: 90, inventory: ['ITEM_SWORD_0001', 'ITEM_ARMOR_0001', 'ITEM_POTION_0001'],
     equipment: { 'main-hand': 'ITEM_SWORD_0001', armor: 'ITEM_ARMOR_0001' },
     values: ['courage', 'loyalty', 'honesty'],
-    objectives: ['Find paying work', 'Learn who runs Ratcatcher Lane', 'Look into the opened mausoleum'],
+    objectives: ['Find paying work', 'Save for a place of his own', 'Learn who runs Ratcatcher Lane', 'Look into the opened mausoleum'],
     activity: 'nursing an ale in the Broken Crown',
   });
 

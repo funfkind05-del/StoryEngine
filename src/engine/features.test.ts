@@ -147,21 +147,22 @@ describe('faction consequences', () => {
 });
 
 describe('functional household rooms', () => {
-  it('kitchen feeds, yard trains, alchemy brews, workshop repairs — each gated by its upgrade', () => {
+  it('kitchen feeds, yard trains, alchemy brews, workshop repairs — each gated by its upgrade', async () => {
     const w = freshWorld();
     const mc = w.characters[w.mcId];
-    travelTo(w, 'LOC_KAELROOM');
     mc.money = 20000;
+    expect(cookAtHome(w)).toMatch(/No home/);
+    const { buyFirstHome: buyHome } = await import('./household');
+    expect(buyHome(w)).toBeNull();
+    travelTo(w, 'LOC_HOME');
     expect(cookAtHome(w)).toMatch(/No kitchen/);
-    expect(buyUpgrade(w, 'kitchen')).toMatch(/needs at least/); // no kitchen in a rented room
-    w.locations['LOC_KAELROOM'].household!.tier = 'cheap-apartment';
-    expect(buyUpgrade(w, 'kitchen')).toBeNull();
+    expect(buyUpgrade(w, 'kitchen')).toBeNull(); // a bought flat can take a kitchen
     mc.needs.hunger = 80;
     expect(cookAtHome(w)).toBeNull();
     expect(mc.needs.hunger).toBeLessThan(30);
     expect(sparAtHome(w)).toMatch(/No training yard/);
     // brute-force tier up to unlock yard/alchemy/workshop
-    const home = w.locations['LOC_KAELROOM'].household!;
+    const home = w.locations['LOC_HOME'].household!;
     home.tier = 'fortified-residence';
     expect(buyUpgrade(w, 'training-yard')).toBeNull();
     expect(buyUpgrade(w, 'alchemy-room')).toBeNull();

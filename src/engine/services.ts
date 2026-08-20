@@ -95,7 +95,7 @@ export function restAtInn(world: WorldState, locId: LocationId, roomIdx: number)
   const mc = world.characters[world.mcId];
   if (mc.money < room.price) return `Not enough coin (${fmtMoney(room.price)}).`;
   mc.money -= room.price;
-  advanceUntilMorning(world);
+  advanceUntilMorning(world, 'bed');
   for (const c of partyMembers(world)) {
     if (room.quality >= 2) c.statuses = c.statuses.filter((s) => s.key !== 'bleeding');
     if (room.quality >= 3) c.statuses = c.statuses.filter((s) => s.key !== 'poisoned' && s.key !== 'diseased');
@@ -109,7 +109,7 @@ export function restAtHome(world: WorldState): string | null {
   const home = Object.values(world.locations).find((l) => l.household);
   if (!home) return 'No home yet.';
   if (world.partyLocation !== home.id) return 'The party is not at home.';
-  advanceUntilMorning(world);
+  advanceUntilMorning(world, 'bed');
   const infirmary = home.household?.upgrades.includes('infirmary');
   const mended: string[] = [];
   for (const c of partyMembers(world)) {

@@ -123,6 +123,18 @@ ways. Standing changes the world: friendly shops discount, hostile ones
 gouge or refuse outright, the temple already prices by reputation — and on
 Red Knives turf with blood between you, they come looking for you by name.
 
+## Nothing is his until he buys it
+
+The MC starts with no home at all — a cot at the Broken Crown rented **by
+the night**, or sleeping rough: half-rest, fatigue that never fully clears,
+and in dangerous districts a 1-in-4 chance the night collects its own rent
+(pockets gone through, or unfriendly silhouettes at dawn). Run out of coin
+before you've bought a place? That is life. The first home is a purchase —
+8 gold for a two-room flat over a chandler's on Ratcatcher Lane (Home
+panel) — and it's the milestone that opens the whole household ladder:
+storage, treasury, upgrades, and every wing up to the estate. The Muse
+tracks the gap between his purse and the price.
+
 ## The household works for its keep
 
 Functional rooms unlock real actions at home: a **kitchen** cooks for the

@@ -226,6 +226,20 @@ function pressureIdeas(world: WorldState): StoryIdea[] {
     });
   }
   const home = Object.values(world.locations).find((l) => l.household);
+  if (!home) {
+    const cost = 800;
+    const saved = Math.min(mc.money, cost);
+    ideas.push({
+      kind: 'home',
+      title: 'A door of his own',
+      pitch: `${mc.name} owns nothing he can't carry. The flat over the chandler's costs ${fmtMoney(cost)}; he holds ${fmtMoney(mc.money)}. Every night is rented or rough. The gap between those numbers is a whole act of story — and the night he finally turns his own key is a chapter.`,
+      grounding: [`No owned home`, `${mc.name}'s purse: ${fmtMoney(mc.money)} of ${fmtMoney(cost)} needed`],
+      urgency: saved >= cost ? 8 : 5,
+      outline: saved >= cost
+        ? `${mc.name} has the coin. He buys the flat — the walk to the chandler's, the counting-out, the first night behind his own lock.`
+        : `A night that makes the missing ${fmtMoney(cost - saved)} for the flat feel personal — rented cot, or a doorway, and the resolve that comes of it.`,
+    });
+  }
   if (home && !world.scenes.slice(-5).some((s) => s.location === home.id)) {
     ideas.push({
       kind: 'home',

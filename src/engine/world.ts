@@ -242,20 +242,57 @@ export function tick(world: WorldState, minutes: number): SimEvent[] {
   return produced;
 }
 
-export function advanceUntilMorning(world: WorldState): SimEvent[] {
+/**
+ * Sleep until 7:00. A paid bed (inn or owned home) restores fully;
+ * sleeping rough is half-rest — fatigue lingers, wounds knit slowly,
+ * and in a dangerous district the night has teeth.
+ */
+export function advanceUntilMorning(world: WorldState, quality: 'bed' | 'rough' = 'rough'): SimEvent[] {
   const nowMin = world.time.minute;
   const target = 7 * 60;
   const minutes = nowMin < target ? target - nowMin : 1440 - nowMin + target;
   const evts = tick(world, minutes);
-  // Sleeping restores fully — unless untreated sickness or starvation interferes
   for (const c of partyMembers(world)) {
-    sleepOff(c);
     const sick = c.statuses.some((s) => s.key === 'poisoned' || s.key === 'diseased');
-    if (!sick && !(world.needsEnabled && needsBlocksHpRegen(c))) c.hp.current = c.hp.max;
-    c.mana.current = c.mana.max;
-    c.stamina.current = c.stamina.max;
+    const starving = world.needsEnabled && needsBlocksHpRegen(c);
+    if (quality === 'bed') {
+      sleepOff(c);
+      if (!sick && !starving) c.hp.current = c.hp.max;
+      c.mana.current = c.mana.max;
+      c.stamina.current = c.stamina.max;
+    } else {
+      // rough: fatigue never fully clears, healing is grudging
+      c.needs.fatigue = Math.max(30, c.needs.fatigue - 50);
+      if (!sick && !starving) c.hp.current = Math.min(c.hp.max, c.hp.current + Math.ceil((c.hp.max - c.hp.current) / 2));
+      c.mana.current = c.mana.max;
+      c.stamina.current = Math.min(c.stamina.max, c.stamina.current + Math.ceil(c.stamina.max * 0.6));
+    }
   }
-  evts.push(logEvent(world, 'rest', { kind: 'sleep' }, 'The party slept until morning.'));
+  if (quality === 'bed') {
+    evts.push(logEvent(world, 'rest', { kind: 'sleep' }, 'The party slept until morning in real beds.'));
+  } else {
+    evts.push(logEvent(world, 'rest', { kind: 'rough' }, 'The party slept rough — doorways and watch-shifts — and rose aching and half-rested.'));
+    // the street collects its own rent
+    const loc = world.locations[world.partyLocation];
+    const rng = new Rng((world.masterSeed ^ (world.time.day * 6007)) >>> 0);
+    if (loc && loc.dangerRating >= 5 && rng.chance(0.25)) {
+      const mc = world.characters[world.mcId];
+      if (rng.chance(0.6) && mc.money > 0) {
+        const taken = Math.max(1, Math.floor(mc.money * rng.next() * 0.3));
+        mc.money -= taken;
+        evts.push(logEvent(world, 'rough.robbed', { taken }, `Someone went through ${mc.name}'s pockets in the night — ${taken} copper gone.`, { location: loc.id, witnesses: [mc.id] }));
+      } else {
+        world.pendingEncounter = {
+          seed: rng.fork(),
+          description: '2 Street Thugs',
+          monsters: [{ templateKey: 'street-thug', count: 2 }],
+          source: 'city',
+          locationId: loc.id,
+        };
+        evts.push(logEvent(world, 'rough.trouble', {}, 'The party woke to unfriendly silhouettes standing over their bedrolls.', { location: loc.id }));
+      }
+    }
+  }
   return evts;
 }
 

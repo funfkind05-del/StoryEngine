@@ -55,7 +55,7 @@ import { draftScene } from '../engine/proseLlm';
 import { reorderScene } from '../engine/world';
 import { createScenesFromBeats, markOutlined, type OutlineBeat } from '../engine/outline';
 import { maybeCompanionMoment } from '../engine/moments';
-import { brewAtHome, cookAtHome, fletchArrows, hostFeast, prayAtShrine, repairAtHome, sparAtHome } from '../engine/household';
+import { brewAtHome, buyFirstHome, cookAtHome, fletchArrows, hostFeast, prayAtShrine, repairAtHome, sparAtHome } from '../engine/household';
 
 export type PanelTab =
   | 'location'
@@ -150,6 +150,7 @@ interface AppState {
   homeSpar: () => void;
   homeBrew: () => void;
   homeRepair: (itemId: string) => void;
+  homeBuyFirst: () => void;
   homePray: () => void;
   homeFletch: () => void;
   homeFeast: (factionId: string) => void;
@@ -571,6 +572,14 @@ export const useStore = create<AppState>((set, get) => ({
     const err = repairAtHome(world, itemId);
     if (err) setToast(err);
     commit();
+  },
+
+  homeBuyFirst: () => {
+    const { world, commit, setToast } = get();
+    const err = buyFirstHome(world);
+    if (err) setToast(err);
+    else setToast('The flat is his. Sleeping at home is free now — and the household can grow.');
+    commit({ autosave: 'Bought first home' });
   },
 
   homePray: () => {
