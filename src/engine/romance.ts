@@ -6,6 +6,7 @@
 // answer it through their own values, not a script.
 
 import type { Character, Item, RelationshipValues, WorldState } from './types';
+import { festivalToday } from './festivals';
 import { Rng, randomSeed } from './rng';
 import { addMinutes, logEvent, relationshipBetween } from './world';
 import { fmtMoney } from './rules';
@@ -62,6 +63,9 @@ export function giveGift(world: WorldState, npcId: string, itemId: string): stri
   mc.lastGiftDay ??= {};
   if (mc.lastGiftDay[npcId] === world.time.day) return `${npc.name} already accepted a gift today. Pace yourself.`;
   mc.lastGiftDay[npcId] = world.time.day;
+  // festival air: hearts open a little easier
+  const fest = festivalToday(world);
+  const festivalWarmth = fest?.heartsOpen ? 1 : 0;
   // hand it over
   mc.inventory = mc.inventory.filter((i) => i !== itemId);
   item.owner = npc.id;
@@ -80,16 +84,18 @@ export function giveGift(world: WorldState, npcId: string, itemId: string): stri
       ? `${npc.name} turned the ${item.name} over, recognized exactly what it was, and grinned.`
       : `${npc.name} turned the ${item.name} over, recognized exactly what it was, and looked at ${mc.name} differently. Not better.`;
   } else if (resonance >= 1) {
-    nudge(rel, 'affection', 2 + resonance);
-    nudge(rel, 'attraction', 1);
+    nudge(rel, 'affection', 2 + resonance + festivalWarmth);
+    nudge(rel, 'attraction', 1 + festivalWarmth);
     nudge(rel, 'trust', 1);
     line = `${npc.name} took the ${item.name} and went quiet a moment — it was the RIGHT gift, and she knows what that means about how ${mc.name} sees her.`;
   } else if (worth >= 2) {
     nudge(rel, 'affection', 1);
     line = `${npc.name} accepted the ${item.name} politely. Expensive — and beside the point, and you both know it.`;
   } else {
-    nudge(rel, 'affection', 1);
-    line = `${npc.name} took the ${item.name} with a small, real smile.`;
+    nudge(rel, 'affection', 1 + festivalWarmth);
+    line = fest?.heartsOpen
+      ? `${npc.name} took the ${item.name} with a smile the ${fest.name} made easier than usual.`
+      : `${npc.name} took the ${item.name} with a small, real smile.`;
   }
   npc.memories.push({ subject: mc.id, event: `${mc.name} gave me ${item.name}${resonance >= 1 ? ' — and it was exactly right' : ''}.`, importance: 4 + resonance * 2, emotionalValue: item.stolen && !npc.values.includes('cunning') ? -2 : 3 + resonance, day: world.time.day });
   logEvent(world, 'gift', { npc: npc.id, item: item.id, resonance }, line, { location: world.partyLocation, witnesses: [mc.id, npc.id] });
@@ -153,9 +159,11 @@ export function spendTimeWith(world: WorldState, npcId: string, activityKey: str
   if (mc.money < act.cost) return `That costs ${fmtMoney(act.cost)}.`;
   mc.money -= act.cost;
   mc.lastDateDay[npcId] = world.time.day;
+  const dateFest = festivalToday(world);
+  const dateWarmth = dateFest?.heartsOpen ? 1 : 0;
   addMinutes(world, act.minutes);
   const rel = relationshipBetween(world, npc.id, world.mcId);
-  for (const [k, v] of Object.entries(act.dials)) nudge(rel, k as keyof RelationshipValues, v ?? 0);
+  for (const [k, v] of Object.entries(act.dials)) nudge(rel, k as keyof RelationshipValues, (v ?? 0) + (k === 'affection' ? dateWarmth : 0));
   const line = act.line(npc, mc);
   npc.memories.push({ subject: mc.id, event: line, importance: 4, emotionalValue: 4, day: world.time.day });
   logEvent(world, 'date', { npc: npc.id, activity: act.key }, line, { location: world.partyLocation, witnesses: [mc.id, npc.id] });

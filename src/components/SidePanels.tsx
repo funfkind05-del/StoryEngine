@@ -45,6 +45,9 @@ import { isDark } from '../engine/dungeon';
 import { composeTheme } from '../engine/musicLlm';
 import { deleteMusicFile, saveMusicFile } from '../engine/musicFiles';
 import { setCustomComposition, setThemeAudio, themeSource, type MusicTheme } from '../sound';
+import { festivalToday } from '../engine/festivals';
+import { AUCTION_LOCATION, getAuctionLots, isAuctionDay } from '../engine/auction';
+import { PIT_LOCATION, isPitTrialsDay } from '../engine/tournament';
 import { LOREBOOKS, loreById } from '../engine/codex';
 import { ACHIEVEMENTS } from '../engine/achievements';
 import {
@@ -115,6 +118,10 @@ function LocationPanel() {
   const homeRest = useStore((s) => s.homeRest);
   const openTalk = useStore((s) => s.openTalk);
   const eatMeal = useStore((s) => s.eatMeal);
+  const auctionBid = useStore((s) => s.auctionBid);
+  const pitEnter = useStore((s) => s.pitEnter);
+  const contestAct = useStore((s) => s.contestAct);
+  const [bids, setBids] = useState<Record<number, number>>({});
   const crimePickpocket = useStore((s) => s.crimePickpocket);
   const crimeBurgle = useStore((s) => s.crimeBurgle);
   const crimePayBounty = useStore((s) => s.crimePayBounty);
@@ -329,6 +336,57 @@ function LocationPanel() {
           <h4>Dungeon</h4>
           <p className="small">{world.dungeons[loc.dungeonId].name} (levels {world.dungeons[loc.dungeonId].recommendedLevel})</p>
           <button className="primary" onClick={() => openPrep(loc.dungeonId!)}>Enter Dungeon…</button>
+        </>
+      )}
+      {(() => {
+        const fest = festivalToday(world);
+        if (!fest) return null;
+        const partyList = Object.values(world.characters).filter((c) => c.inParty && c.alive);
+        return (
+          <>
+            <h4>🎪 {fest.name}</h4>
+            <p className="dim small">{fest.desc}</p>
+            <div className="row small">
+              {fest.marketDay && partyList.map((c) => (
+                <button key={`a${c.id}`} onClick={() => contestAct('archery', c.id)} title="Three flights against rising marks. A clean sweep takes the ribbon and 4 gold.">🏹 {c.name.split(' ')[0]} shoots the butts</button>
+              ))}
+              {fest.heartsOpen && partyList.map((c) => (
+                <button key={`s${c.id}`} onClick={() => contestAct('song', c.id)} title="One song against the whole room. Winning changes how the party looks at the singer.">🎶 {c.name.split(' ')[0]} takes the stage</button>
+              ))}
+            </div>
+          </>
+        );
+      })()}
+      {loc.id === PIT_LOCATION && isPitTrialsDay(world) && (
+        <>
+          <h4>🥊 The Pit Trials</h4>
+          {world.tournament ? (
+            <p className="small">On the card — bout {world.tournament.round} of 3. Purse so far: {fmtMoney(world.tournament.purse)}.</p>
+          ) : (
+            <button className="primary" onClick={pitEnter} title="Three bouts back to back. Purses rise each round; go out and you keep what you won.">
+              Enter the Trials ({fmtMoney(100)} at the rope)
+            </button>
+          )}
+        </>
+      )}
+      {loc.id === AUCTION_LOCATION && isAuctionDay(world) && (
+        <>
+          <h4>🔨 Tonight's Auction</h4>
+          {getAuctionLots(world).map((lot) => (
+            <div key={lot.idx} className="row small">
+              <span className="grow" style={{ color: tierColor(lot.item.tier) }}>
+                {lot.item.name}{lot.item.damage ? ` (${lot.item.damage})` : ''}{lot.item.defense ? ` (+${lot.item.defense})` : ''}
+              </span>
+              {lot.sold ? <Tag>sold</Tag> : (
+                <>
+                  <span className="dim mono">reserve {fmtMoney(lot.reserve)}</span>
+                  <input type="number" style={{ width: 90 }} min={lot.reserve} value={bids[lot.idx] ?? lot.reserve} onChange={(e) => setBids({ ...bids, [lot.idx]: parseInt(e.target.value || '0', 10) })} />
+                  <button onClick={() => auctionBid(lot.idx, bids[lot.idx] ?? lot.reserve)} title="The room bids back — coin over reserve, charisma, and streetwise decide it.">Bid</button>
+                </>
+              )}
+            </div>
+          ))}
+          <p className="dim small">The hammer answers to coin, presence, and the Tidecourt's mood. Lots change every auction night.</p>
         </>
       )}
       <h4>Travel</h4>

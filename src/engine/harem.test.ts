@@ -218,12 +218,12 @@ describe('harem-safe invariants', () => {
     for (const arc of COMPANION_ARCS) {
       expect(w.characters[arc.charId].sex).toBe('female');
     }
-    // recruit everyone: party of 5 fits under the cap of 6
+    // recruit everyone: the full cast fits under the cap of 8
     for (const arc of COMPANION_ARCS) {
       const c = w.characters[arc.charId];
       c.inParty = true;
       c.location = w.partyLocation;
     }
-    expect(partyMembers(w).length).toBeLessThanOrEqual(6);
+    expect(partyMembers(w).length).toBeLessThanOrEqual(8);
   });
 });

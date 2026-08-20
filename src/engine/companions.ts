@@ -153,6 +153,82 @@ export const COMPANION_ARCS: CompanionArc[] = [
       },
     ],
   },
+  {
+    charId: 'CHAR_ISHA',
+    stages: [
+      {
+        stage: 1,
+        title: 'Isha: The Pit Keeps Calling',
+        description: 'The Pit of Honest Work has been strong-arming Open Hand students into "exhibition bouts" that end in the physic’s tent. Isha will not go down there herself — the Pit remembers her old name too fondly. Break the recruiters and she’ll walk with you to keep it broken.',
+        giverLocation: 'LOC_OPENHAND',
+        objectives: K('pit-bruiser', 2),
+        reward: { money: 0, xp: 260 },
+        bond: { trust: 3, affection: 2, respect: 2 },
+        memory: 'They went down to the Pit so I wouldn’t have to. Nobody has ever done that.',
+      },
+      {
+        stage: 2,
+        title: 'Isha: The Tidecourt’s Offer',
+        description: 'The Tidecourt offered to "endow" the House of the Open Hand — with enforcers on the door and their sigil over the gate. The abbot is old and tired and tempted. Isha wants the enforcers met in the street first, so the offer arrives pre-declined.',
+        giverLocation: 'LOC_OPENHAND',
+        objectives: K('tidecourt-enforcer', 2),
+        reward: { money: 350, xp: 700 },
+        bond: { trust: 2, affection: 2, attraction: 2 },
+        memory: 'I hit no one that day. I watched them stand for my House instead, and my hands stayed folded, and it felt like winning twice.',
+        needsTrust: 3,
+      },
+      {
+        stage: 3,
+        title: 'Isha: The Last Bout',
+        description: 'The Pit’s book still carries one open line: her old name, one unfinished bout, and a champion who has held the title since she vanished. Isha means to close the book — walk in under her true name, finish it, and walk out done. She wants you in her corner.',
+        giverLocation: 'LOC_OPENHAND',
+        objectives: [{ kind: 'visit', locationId: 'LOC_FIGHTPIT', done: false }, ...K('pit-bruiser', 3)],
+        reward: { money: 0, xp: 1600 },
+        bond: { trust: 3, affection: 3, attraction: 2, commitment: 3 },
+        memory: 'The book closed. The crowd shouted the old name and I didn’t answer to it, because the person I am now was watching from my corner.',
+        needsTrust: 6,
+        needsLevel: 5,
+      },
+    ],
+  },
+  {
+    charId: 'CHAR_CORVA',
+    stages: [
+      {
+        stage: 1,
+        title: 'Corva: Who Snuffs the Lamps',
+        description: 'Lamps are dying along Ratcatcher Lane — not wind, not oil. Wisps rise where the light fails, and the Union blames bad wicks because the truth costs more. Corva has mapped the dead lamps into a spiral someone is drawing on the city. Walk her rounds with her and burn out what’s nesting in the dark.',
+        giverLocation: 'LOC_LAMPHALL',
+        objectives: K('lamp-wisp', 2),
+        reward: { money: 0, xp: 240 },
+        bond: { trust: 3, affection: 2, respect: 2 },
+        memory: 'They walked my whole round in the dark and never once told me the spiral was my imagination.',
+      },
+      {
+        stage: 2,
+        title: 'Corva: The Page From the Ledger',
+        description: 'A page of the Union ledger — in Corva’s own hand — has surfaced at the Night Market, priced for auction. On it: three names and where their lamps failed the night they drowned. She needs it back before the Tidecourt reads what the light saw.',
+        giverLocation: 'LOC_LAMPHALL',
+        objectives: [{ kind: 'visit', locationId: 'LOC_NIGHTMARKET', done: false }, ...K('drowned-smuggler', 2)],
+        reward: { money: 300, xp: 650 },
+        bond: { trust: 2, affection: 2, attraction: 2 },
+        memory: 'I told them what I wrote on that page and why, and they handed it back unread. Unread. I checked the fold.',
+        needsTrust: 3,
+      },
+      {
+        stage: 3,
+        title: 'Corva: The Buyer of Silence',
+        description: 'Something at the Night Market has been buying snuffed lamps, drowned names, and quiet — paying in wishes that curdle. Corva has written the song about it already; she just needs it to be TRUE, which means the thing has to be gone. Kill the djinn and she’ll sing the premiere at the Broken Crown.',
+        giverLocation: 'LOC_LAMPHALL',
+        objectives: [{ kind: 'visit', locationId: 'LOC_LAMPHALL', done: false }, ...K('night-market-djinn', 1)],
+        reward: { money: 0, xp: 1500, factionRep: { FAC_LAMPLIGHTERS: 3 } },
+        bond: { trust: 3, affection: 3, attraction: 2, commitment: 3 },
+        memory: 'The premiere ran long. I changed the last verse while looking straight at them, and the whole taproom knew who the song was for.',
+        needsTrust: 6,
+        needsLevel: 5,
+      },
+    ],
+  },
 ];
 
 function questId(world: WorldState): string {
@@ -218,7 +294,7 @@ export function advancePersonal(world: WorldState, q: Quest) {
     rel[k as keyof RelationshipValues] = Math.max(-10, Math.min(10, rel[k as keyof RelationshipValues] + (v ?? 0)));
   }
   c.memories.push({ subject: world.mcId, event: st.memory, importance: 9, emotionalValue: 6, day: world.time.day });
-  if (st.stage === 1 && !c.inParty && partyMembers(world).length < 6) {
+  if (st.stage === 1 && !c.inParty && partyMembers(world).length < 8) {
     c.inParty = true;
     c.persistent = true;
     c.location = world.partyLocation;

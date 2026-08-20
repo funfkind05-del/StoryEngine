@@ -601,6 +601,14 @@ export interface WorldState {
   resurrectionRule?: 'safe' | 'risky';
   /** minutes of torchlight left underground; 0 = dark */
   torchMinutes?: number;
+  /** live Pit Trials run: round advances on victories */
+  tournament?: { day: number; round: number; purse: number } | null;
+  /** days whose Trials purse was already taken */
+  tournamentDaysWon?: number[];
+  /** auction lots already hammered, as `${day}:${lot}` */
+  auctionsWon?: string[];
+  /** festival contests already won, as `${kind}:${day}` */
+  contestsWon?: string[];
   encumbrance: EncumbranceRule;
   /** survival needs (hunger/fatigue) tracked against story time */
   needsEnabled: boolean;

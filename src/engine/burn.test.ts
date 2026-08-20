@@ -12,6 +12,8 @@ import { buildSeedWorld } from '../data/seed';
 import { Rng } from './rng';
 import { advanceUntilMorning, partyMembers, tick, travelTo } from './world';
 import { campInDungeon, disarmTrap, enterDungeon, exitDungeon, lightTorch, moveInDungeon, pickLock, searchRoom, takeLorebook, useShrine } from './dungeon';
+import { getAuctionLots, isAuctionDay, placeBid } from './auction';
+import { contestArchery, contestSong, enterPitTrials, isPitTrialsDay } from './tournament';
 import { gatherResource, craft, RECIPES } from './crafting';
 import { engageWorldEvent } from './worldEvents';
 import { CARRIAGE_STOPS, adoptStray, goFishing, rideCarriage } from './services';
@@ -137,6 +139,7 @@ function checkInvariants(w: WorldState, step: number, action: string, deep: bool
   if (w.torchMinutes !== undefined && (!Number.isFinite(w.torchMinutes) || w.torchMinutes < 0 || w.torchMinutes > 240)) {
     fail(`torchMinutes out of range: ${w.torchMinutes}`);
   }
+  if (w.tournament && (w.tournament.round < 1 || w.tournament.round > 3)) fail(`tournament round ${w.tournament.round}`);
   for (const r of w.rivals ?? []) {
     if (!r.name || r.power < 0 || r.grudge < 0) fail(`malformed rival ${r.id}: power ${r.power}, grudge ${r.grudge}`);
   }
@@ -280,7 +283,21 @@ function step(w: WorldState, rng: Rng): string {
     }
     return 'travel';
   }
-  if (roll < 0.3) { tick(w, rng.int(10, 240)); restockShops(w); return 'tick'; }
+  if (roll < 0.29) { tick(w, rng.int(10, 240)); restockShops(w); return 'tick'; }
+  if (roll < 0.3) {
+    // calendar systems: bid, brawl, or perform when the day allows
+    if (w.partyLocation === 'LOC_NIGHTMARKET' && isAuctionDay(w)) {
+      const lots = getAuctionLots(w);
+      if (lots.length) placeBid(w, rng.int(0, 2), Math.max(1, Math.floor(mc.money * 0.5)));
+    } else if (w.partyLocation === 'LOC_FIGHTPIT' && isPitTrialsDay(w) && !w.tournament) {
+      enterPitTrials(w);
+    } else {
+      const member = rng.pick(partyMembers(w));
+      if (rng.chance(0.5)) contestArchery(w, member.id);
+      else contestSong(w, member.id);
+    }
+    return 'calendar';
+  }
   if (roll < 0.34) { advanceUntilMorning(w); restockShops(w); return 'sleep'; }
   if (roll < 0.4) {
     const loc = w.locations[w.partyLocation];

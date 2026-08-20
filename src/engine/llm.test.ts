@@ -123,7 +123,7 @@ describe('prose→sim proposals (author-approved execution)', () => {
 describe('dungeon roster', () => {
   it('spans the campaign with entrances and bosses', () => {
     const w = freshWorld();
-    expect(Object.keys(w.dungeons).length).toBe(8);
+    expect(Object.keys(w.dungeons).length).toBe(9);
     const d = w.dungeons['DUN_DOCKWARD_001'];
     expect(d.name).toBe('The Drowning Cellars');
     expect(w.locations['LOC_CELLARDOOR'].dungeonId).toBe('DUN_DOCKWARD_001');

@@ -153,6 +153,14 @@ const TABLES: Record<string, { moneyDice: string; entries: LootEntry[] }> = {
       { chance: 0.4, make: (w) => item(w, { name: 'Abyssal Pearl', kind: 'treasure', slot: 'none', tier: 'exceptional', value: 5200 }) },
     ],
   },
+  'boss-saltworks': {
+    moneyDice: '24d20',
+    entries: [
+      { chance: 1, make: (w) => item(w, { name: 'The Salt Queen\u2019s Scepter', kind: 'weapon', slot: 'main-hand', tier: 'exceptional', damage: '3d8+6', durability: { current: 130, max: 130 }, value: 8600 }) },
+      { chance: 0.5, make: (w) => item(w, { name: 'Brine-Cured Crown', kind: 'jewelry', slot: 'amulet', tier: 'exceptional', value: 6400 }) },
+      { chance: 0.6, make: (w) => item(w, { name: 'Deed to the Saltworks', kind: 'treasure', slot: 'none', tier: 'rare', value: 3000 }) },
+    ],
+  },
   'boss-wyrmspire': {
     moneyDice: '30d20',
     entries: [

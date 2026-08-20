@@ -175,6 +175,14 @@ Bard's Tale bones, Elder Scrolls texture:
 - **Encounter balance** — dungeon group sizes are capped by party strength; a level-1 duo meets three bodies, not eight.
 - **New game rules** — the Saves panel asks "How do you want to die?" (story/classic/permadeath) and how you want to come back (safe/risky resurrection) when you begin a new chronicle.
 
+## Expansion rounds 3 & 4: a bigger Blackwall
+
+- **Nine classes**: fighter, rogue, mage, priest, ranger — and now **bard** (Broken Crown songs), **monk** (House of the Open Hand), **spellblade** (the Edged Hall), **warlock** (the Nameless Chapel). Ten-ability lines, two ascension paths each, trainers on the map, all rollable at creation.
+- **Five recruitable women** with 3-stage personal arcs: Mara, Yvenne, Kess — and now **Isha** (monk with a Pit name she doesn't answer to) and **Corva** (lamplighter bard mapping who snuffs the lamps). Party cap raised to **8**.
+- **The Saltworks** — ninth dungeon (16–22): drowned salt-mine works under a deed the Tidecourt won't explain, four floors, the Salt Queen at the bottom, its own boss hoard and four lorebooks.
+- **8 factions** (+ Lamplighters' Union, the Tidecourt, the Bonewardens), **33 locations**, **69 monsters** across every level band to 44, **31 lorebooks**, **12 affixes**, **8 named uniques**, **24 achievements**, **6 world events**, **15 recipes**, **60+ item prototypes** including tomes that teach abilities and jewelry that ships enchanted.
+- **The calendar lives**: four **festivals** (Lamplight Vigil, Salt Blessing, Founding Revel, Night of Doors) with market discounts, warmer courting, and festival **contests** (archery butts, the song stage); the **Night Market auction** every 10th day (deterministic lots, the room bids back); the **Pit Trials** every 30th day — three bouts, rising purses, and the Champion of the Pit title.
+
 ## The campaign spine — What Lies Beneath Blackwall
 
 An eight-stage main questline threads the eight dungeons in level order:

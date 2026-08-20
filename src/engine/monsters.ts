@@ -34,6 +34,61 @@ export const MONSTERS: Record<string, MonsterTemplate> = {
     key: 'night-market-djinn', name: 'Night-Market Djinn', level: 9, hp: 60, attack: 10, defense: 17,
     damage: '2d6+4', initiative: 7, xp: 340, lootTable: 'sunken', ai: 'cowardly', art: { archetype: 'spirit' },
   },
+  'pit-champion': {
+    key: 'pit-champion', name: 'Pit Champion', level: 10, hp: 80, attack: 12, defense: 17,
+    damage: '2d6+4', initiative: 5, xp: 420, lootTable: 'human', ai: 'aggressive', art: { archetype: 'humanoid' },
+  },
+  'salt-wight': {
+    key: 'salt-wight', name: 'Salt Wight', level: 12, hp: 88, attack: 13, defense: 17,
+    damage: '2d6+5', initiative: 4, xp: 520, lootTable: 'greater-undead', ai: 'aggressive', art: { archetype: 'undead' },
+  },
+  'brine-horror': {
+    key: 'brine-horror', name: 'Brine Horror', level: 14, hp: 110, attack: 14, defense: 16,
+    damage: '2d8+5', initiative: 3, xp: 640, lootTable: 'sunken', ai: 'aggressive', art: { archetype: 'horror' }, inflicts: { status: 'diseased', chance: 0.2 },
+  },
+  'reef-witch': {
+    key: 'reef-witch', name: 'Reef Witch', level: 15, hp: 92, attack: 15, defense: 18,
+    damage: '2d8+6', initiative: 6, xp: 700, lootTable: 'cult', ai: 'cowardly', art: { archetype: 'humanoid' }, inflicts: { status: 'poisoned', chance: 0.3 },
+  },
+  'saltbound-golem': {
+    key: 'saltbound-golem', name: 'Saltbound Golem', level: 16, hp: 150, attack: 15, defense: 20,
+    damage: '2d10+5', initiative: 2, xp: 820, lootTable: 'construct', ai: 'aggressive', art: { archetype: 'construct' },
+  },
+  'harbor-revenant': {
+    key: 'harbor-revenant', name: 'Harbor Revenant', level: 18, hp: 130, attack: 17, defense: 19,
+    damage: '2d10+6', initiative: 5, xp: 980, lootTable: 'greater-undead', ai: 'aggressive', art: { archetype: 'undead' },
+  },
+  'salt-queen': {
+    key: 'salt-queen', name: 'The Salt Queen', level: 20, hp: 260, attack: 19, defense: 21,
+    damage: '3d8+7', initiative: 6, xp: 2600, lootTable: 'boss-saltworks', ai: 'aggressive', art: { archetype: 'horror' }, inflicts: { status: 'bleeding', chance: 0.3 },
+  },
+  'depth-lurker': {
+    key: 'depth-lurker', name: 'Depth Lurker', level: 22, hp: 170, attack: 20, defense: 21,
+    damage: '3d8+6', initiative: 7, xp: 1300, lootTable: 'sunken', ai: 'pack', art: { archetype: 'serpent' } },
+  'mirror-shade': {
+    key: 'mirror-shade', name: 'Mirror-Shade', level: 24, hp: 150, attack: 22, defense: 24,
+    damage: '3d8+8', initiative: 9, xp: 1600, lootTable: 'sunken', ai: 'cowardly', art: { archetype: 'spirit' },
+  },
+  'void-choir': {
+    key: 'void-choir', name: 'Void Choir', level: 28, hp: 210, attack: 24, defense: 24,
+    damage: '4d8+8', initiative: 8, xp: 2200, lootTable: 'demonkin', ai: 'aggressive', art: { archetype: 'spirit' },
+  },
+  'ossuary-colossus': {
+    key: 'ossuary-colossus', name: 'Ossuary Colossus', level: 32, hp: 340, attack: 26, defense: 26,
+    damage: '4d10+10', initiative: 3, xp: 3200, lootTable: 'giantkin', ai: 'aggressive', art: { archetype: 'giant' },
+  },
+  'ash-seraph': {
+    key: 'ash-seraph', name: 'Ash Seraph', level: 36, hp: 300, attack: 30, defense: 28,
+    damage: '5d8+12', initiative: 10, xp: 4400, lootTable: 'demonkin', ai: 'aggressive', art: { archetype: 'spirit' }, inflicts: { status: 'burning', chance: 0.35 },
+  },
+  'gilded-lich': {
+    key: 'gilded-lich', name: 'Gilded Lich', level: 40, hp: 360, attack: 32, defense: 30,
+    damage: '5d10+12', initiative: 8, xp: 6000, lootTable: 'greater-undead', ai: 'cowardly', art: { archetype: 'undead' },
+  },
+  'hollow-herald': {
+    key: 'hollow-herald', name: 'Herald of the Hollow King', level: 44, hp: 420, attack: 35, defense: 31,
+    damage: '6d10+14', initiative: 9, xp: 8200, lootTable: 'demonkin', ai: 'aggressive', art: { archetype: 'demon' },
+  },
   'giant-rat': {
     key: 'giant-rat', name: 'Giant Rat', level: 1, hp: 6, attack: 2, defense: 8,
     damage: '1d4', initiative: 3, xp: 12, lootTable: 'vermin', ai: 'pack', inflicts: { status: 'poisoned', chance: 0.12 },

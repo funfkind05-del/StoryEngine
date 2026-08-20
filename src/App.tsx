@@ -14,6 +14,7 @@ import { OutlineModal } from './components/OutlineModal';
 import type { EncounterFrequency } from './engine/types';
 import { BEHIND, LEFT_OF, RIGHT_OF, type Cardinal } from './components/FirstPersonView';
 import { loadCustomCompositions, setThemeAudio } from './sound';
+import { festivalToday } from './engine/festivals';
 import { loadMusicFiles } from './engine/musicFiles';
 
 function ArrestBanner() {
@@ -198,6 +199,9 @@ export default function App() {
         <span className="dim small" title={`Weather: ${world.weather?.kind ?? 'clear'}`}>
           {WEATHER_GLYPH[world.weather?.kind ?? 'clear']} {calendarLabel(world.time.day)}
         </span>
+        {festivalToday(world) && (
+          <span className="small" style={{ color: 'var(--accent)' }} title={festivalToday(world)!.desc}>🎪 {festivalToday(world)!.name}</span>
+        )}
         <span className="crumb">
           {path.map((p) => p.name).join(' → ')}
           {room && <b> → {room.name} (floor {room.floor})</b>}

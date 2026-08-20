@@ -18,6 +18,7 @@ import type {
 } from './types';
 import { OWNER_HOME, OWNER_PARTY } from './types';
 import { Rng } from './rng';
+import { festivalPriceMult } from './festivals';
 
 // ---------- Currency (1 gold = 10 silver = 100 copper) ----------
 export function fmtMoney(copper: number): string {
@@ -631,14 +632,15 @@ export function dominantFaction(world: WorldState, locId: string): string | null
 
 /** Price multiplier at a shop, from the buyer's standing with whoever runs the street. */
 export function shopPriceMult(world: WorldState, locId: string, buyer: Character): number {
+  const fest = festivalPriceMult(world);
   const fac = dominantFaction(world, locId);
-  if (!fac) return 1;
+  if (!fac) return fest;
   const rep = buyer.factionReputation[fac] ?? 0;
   if (rep <= -6) return Infinity; // refused service
-  if (rep <= -3) return 1.25;
-  if (rep >= 6) return 0.8;
-  if (rep >= 3) return 0.9;
-  return 1;
+  if (rep <= -3) return 1.25 * fest;
+  if (rep >= 6) return 0.8 * fest;
+  if (rep >= 3) return 0.9 * fest;
+  return fest;
 }
 
 // ---------- Temple services ----------

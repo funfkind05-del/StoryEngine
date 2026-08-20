@@ -25,6 +25,11 @@ import { SKILLS, SPELLS } from './combat';
 import { CLASSES, ITEM_PROTOS } from './rules';
 import { RECIPES } from './crafting';
 import { useConsumable } from './services';
+import { FESTIVALS, festivalPriceMult, festivalToday } from './festivals';
+import { COMPANION_ARCS } from './companions';
+import { MONSTERS } from './monsters';
+import { getAuctionLots, isAuctionDay, placeBid } from './auction';
+import { enterPitTrials, settleTournament } from './tournament';
 import { remakeMc } from './world';
 import { addMinutes } from './world';
 import { birthDayFor, relationshipBetween, runBirthdays, travelTo } from './world';
@@ -643,5 +648,109 @@ describe('the expansion: classes, tomes, jewelry, streets (round 3)', () => {
     expect(mc.charClass).toBe('bard');
     expect(mc.abilities).toContain('sharp-word');
     expect(mc.mana.max).toBeGreaterThanOrEqual(7);
+  });
+});
+
+
+describe('round 4: companions, the Saltworks, and the calendar', () => {
+  it('Isha and Corva exist, are women, and their arcs open at their halls', () => {
+    const w = freshWorld();
+    for (const id of ['CHAR_ISHA', 'CHAR_CORVA'] as const) {
+      const c = w.characters[id];
+      expect(c, id).toBeTruthy();
+      expect(c.sex).toBe('female');
+      const arc = COMPANION_ARCS.find((a) => a.charId === id);
+      expect(arc, id).toBeTruthy();
+      expect(arc!.stages).toHaveLength(3);
+      const q1 = Object.values(w.quests).find((q) => q.personal === id && q.personalStage === 1);
+      expect(q1?.status, id).toBe('offered');
+    }
+    expect(w.characters['CHAR_ISHA'].charClass).toBe('monk');
+    expect(w.characters['CHAR_CORVA'].charClass).toBe('bard');
+  });
+
+  it('the Saltworks exists, is entered from its gate, and its boss drops from its own table', () => {
+    const w = freshWorld();
+    const d = w.dungeons['DUN_TIDE_001'];
+    expect(d).toBeTruthy();
+    expect(w.locations[d.entranceLocation]?.dungeonId).toBe('DUN_TIDE_001');
+    expect(MONSTERS[d.bossKey]?.lootTable).toBe('boss-saltworks');
+    for (const key of d.primaryEnemies) expect(MONSTERS[key], key).toBeTruthy();
+    enterDungeon(w, 'DUN_TIDE_001');
+    expect(Object.keys(d.rooms).length).toBeGreaterThan(6);
+  });
+
+  it('festivals land on their calendar days and soften market prices', () => {
+    const w = freshWorld();
+    expect(FESTIVALS.length).toBeGreaterThanOrEqual(4);
+    w.time.day = 360 + 90; // the Salt Blessing, next year
+    expect(festivalToday(w)?.name).toBe('The Salt Blessing');
+    expect(festivalPriceMult(w)).toBeLessThan(1);
+    w.time.day = 360 + 91;
+    expect(festivalToday(w)).toBeNull();
+    expect(festivalPriceMult(w)).toBe(1);
+  });
+
+  it('auction lots are deterministic per day, refuse lowballs, and can be won with enough coin', () => {
+    const w = freshWorld();
+    w.time.day = 10;
+    expect(isAuctionDay(w)).toBe(true);
+    const a = getAuctionLots(w);
+    const b = getAuctionLots(w);
+    expect(a.map((l) => l.item.name)).toEqual(b.map((l) => l.item.name));
+    expect(a).toHaveLength(3);
+    const mc = w.characters[w.mcId];
+    w.partyLocation = 'LOC_NIGHTMARKET';
+    mc.money = 5;
+    expect(placeBid(w, 0, 4)).toMatch(/purse|Reserve|look up/i);
+    // deep pockets and big offers land it eventually (the room can outbid once, not forever)
+    mc.money = 1000000;
+    mc.attributes.charisma = 18;
+    let won = false;
+    for (let offer = a[0].reserve; offer < a[0].reserve * 4 && !won; offer = Math.ceil(offer * 1.3)) {
+      won = placeBid(w, 0, offer) === null;
+    }
+    expect(won).toBe(true);
+    expect(getAuctionLots(w)[0].sold).toBe(true);
+    expect(placeBid(w, 0, 999999)).toMatch(/hammer already fell/);
+    expect(mc.inventory.map((i) => w.items[i]?.name)).toContain(a[0].item.name);
+  });
+
+  it('the Pit Trials run a three-bout card and crown a champion', () => {
+    const w = freshWorld();
+    w.time.day = 30;
+    const mc = w.characters[w.mcId];
+    mc.money = 500;
+    expect(enterPitTrials(w)).toMatch(/Pit of Honest Work/); // wrong place
+    w.partyLocation = 'LOC_FIGHTPIT';
+    expect(enterPitTrials(w)).toBeNull();
+    expect(w.pendingEncounter?.description).toContain('bout 1');
+    // walk the card by decree: three victories
+    for (let round = 1; round <= 3; round++) {
+      w.pendingEncounter = null;
+      settleTournament(w, 'victory');
+    }
+    expect(w.tournament).toBeNull();
+    expect(mc.title).toBe('Champion of the Pit');
+    expect(mc.money).toBeGreaterThan(3000); // purses paid
+    expect(w.tournamentDaysWon).toContain(30);
+    expect(enterPitTrials(w)).toMatch(/already took/);
+    // losing scratches the card
+    const w2 = freshWorld();
+    w2.time.day = 30;
+    w2.partyLocation = 'LOC_FIGHTPIT';
+    w2.characters[w2.mcId].money = 500;
+    expect(enterPitTrials(w2)).toBeNull();
+    settleTournament(w2, 'defeat');
+    expect(w2.tournament).toBeNull();
+    expect(w2.events.some((e) => e.kind === 'tournament.out')).toBe(true);
+  });
+
+  it('the party cap holds the whole cast of eight', () => {
+    const w = freshWorld();
+    expect(COMPANION_ARCS).toHaveLength(5);
+    for (const arc of COMPANION_ARCS) {
+      expect(w.characters[arc.charId].sex, arc.charId).toBe('female');
+    }
   });
 });

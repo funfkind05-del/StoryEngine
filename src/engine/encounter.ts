@@ -67,6 +67,10 @@ const CITY_HOSTILES: Record<string, { key: string; countMax: number; minDanger: 
   default: [
     { key: 'street-thug', countMax: 3, minDanger: 4 },
     { key: 'red-knife-cutter', countMax: 2, minDanger: 6 },
+    { key: 'lamp-wisp', countMax: 2, minDanger: 5 },
+    { key: 'pit-bruiser', countMax: 2, minDanger: 6 },
+    { key: 'tidecourt-enforcer', countMax: 2, minDanger: 5 },
+    { key: 'drowned-smuggler', countMax: 3, minDanger: 7 },
   ],
 };
 

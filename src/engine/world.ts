@@ -18,6 +18,7 @@ import { Rng } from './rng';
 import { CLASSES, advanceNeeds, calendarLabel, needsBlocksHpRegen, needsBlocksStaminaRegen, sleepOff, tickStatusesOverTime, weatherFor, xpForLevel as xpForLevelRule } from './rules';
 import { expireWorldEvents, maybeSpawnWorldEvent } from './worldEvents';
 import { CITY_LORE_AT, loreById } from './codex';
+import { festivalToday } from './festivals';
 import { doomTick } from './campaign';
 
 // ---------- IDs ----------
@@ -219,6 +220,10 @@ export function tick(world: WorldState, minutes: number): SimEvent[] {
     }
     // daily weather + world events + the Circle's clock
     if (!world.weather || world.weather.day !== world.time.day) {
+      const fest = festivalToday(world);
+      if (fest) {
+        produced.push(logEvent(world, 'festival', { name: fest.name }, `${fest.name} — ${fest.desc}`));
+      }
       runBirthdays(world);
       maybeSpawnWorldEvent(world);
       expireWorldEvents(world);

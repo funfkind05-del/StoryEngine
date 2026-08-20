@@ -42,6 +42,7 @@ import { affixMod, trainSkill } from './progression';
 import { resolveWorldEventVictory } from './worldEvents';
 import { makeEliteCombatant, settleElites } from './rivals';
 import { driftCompanionBonds } from './banter';
+import { settleTournament } from './tournament';
 
 export interface SkillDef {
   name: string;
@@ -731,6 +732,7 @@ function finishCombat(world: WorldState, combat: CombatState) {
   }
   settleElites(world, combat.monsters, combat.outcome, new Rng((combat.seed ^ 0x51ed) >>> 0));
   if (combat.outcome === 'victory') driftCompanionBonds(world, combat.partyIds, new Rng((combat.seed ^ 0xb0bd) >>> 0));
+  settleTournament(world, combat.outcome);
   checkQuests(world);
   resolveWorldEventVictory(world, combat.outcome);
   logEvent(

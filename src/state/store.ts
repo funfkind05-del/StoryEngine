@@ -67,6 +67,8 @@ import { draftScene } from '../engine/proseLlm';
 import { reorderScene } from '../engine/world';
 import { createScenesFromBeats, markOutlined, type OutlineBeat } from '../engine/outline';
 import { maybeCompanionMoment } from '../engine/moments';
+import { placeBid } from '../engine/auction';
+import { contestArchery, contestSong, enterPitTrials } from '../engine/tournament';
 import { brewAtHome, buyFirstHome, cookAtHome, fletchArrows, hostFeast, prayAtShrine, repairAtHome, sparAtHome } from '../engine/household';
 import { setMusicEnabled, setSfxEnabled, sfx, startMusic, stopMusic, type MusicTheme } from '../sound';
 
@@ -208,6 +210,9 @@ interface AppState {
   setRow: (charId: string, row: 'front' | 'back') => void;
   torchAct: () => void;
   campAct: () => void;
+  auctionBid: (lotIdx: number, offer: number) => void;
+  pitEnter: () => void;
+  contestAct: (kind: 'archery' | 'song', charId: string) => void;
   identifyItem: (itemId: string) => void;
   ascend: (charId: string, pathKey: string) => void;
   compactLog: () => void;
@@ -816,6 +821,30 @@ export const useStore = create<AppState>((set, get) => ({
     commit({ autosave: err ? undefined : 'Camped underground' });
   },
 
+  auctionBid: (lotIdx, offer) => {
+    const { world, commit, setToast } = get();
+    const err = placeBid(world, lotIdx, offer);
+    if (err) setToast(err);
+    else sfx('coin');
+    commit({ autosave: err ? undefined : 'Auction won' });
+  },
+
+  pitEnter: () => {
+    const { world, commit, setToast } = get();
+    const err = enterPitTrials(world);
+    if (err) setToast(err);
+    else sfx('fight');
+    commit();
+  },
+
+  contestAct: (kind, charId) => {
+    const { world, commit, setToast } = get();
+    const err = kind === 'archery' ? contestArchery(world, charId) : contestSong(world, charId);
+    if (err) setToast(err);
+    else sfx('victory');
+    commit();
+  },
+
   identifyItem: (itemId) => {
     const { world, commit, setToast } = get();
     const err = identifyItemEngine(world, itemId);
@@ -1207,8 +1236,8 @@ export const useStore = create<AppState>((set, get) => ({
     const { world, commit, setToast } = get();
     const c = world.characters[id];
     if (!c || c.isMC) return;
-    if (!c.inParty && partyMembers(world).length >= 6) {
-      setToast('The party is full (6).');
+    if (!c.inParty && partyMembers(world).length >= 8) {
+      setToast('The party is full (8).');
       return;
     }
     c.inParty = !c.inParty;

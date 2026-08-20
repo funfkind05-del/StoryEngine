@@ -139,7 +139,7 @@ export function buildSeedWorld(): WorldState {
       { name: 'Private Room', price: 8, quality: 2 },
       { name: 'Good Room', price: 20, quality: 3 },
     ] }),
-    loc({ id: 'LOC_WHARVES', mapPos: { x: 10, y: 86 }, name: 'The Black Wharves', type: 'dock', district: 'Dock Ward', parent: 'LOC_DOCKWARD', description: 'Tar-black piers where the ships come in and the bodies go out.', atmosphere: 'Fog, gulls, muscle.', dangerRating: 7, connections: ['LOC_RATCATCHER', 'LOC_SALTWAREHOUSE', 'LOC_CELLARDOOR', 'LOC_SEWERGATE', 'LOC_SUNKENSTAIR', 'LOC_NIGHTMARKET', 'LOC_FIGHTPIT'], services: ['passage', 'smuggling'], factionInfluence: { FAC_REDKNIVES: 6, FAC_COINGUILD: 7 } }),
+    loc({ id: 'LOC_WHARVES', mapPos: { x: 10, y: 86 }, name: 'The Black Wharves', type: 'dock', district: 'Dock Ward', parent: 'LOC_DOCKWARD', description: 'Tar-black piers where the ships come in and the bodies go out.', atmosphere: 'Fog, gulls, muscle.', dangerRating: 7, connections: ['LOC_RATCATCHER', 'LOC_SALTWAREHOUSE', 'LOC_CELLARDOOR', 'LOC_SEWERGATE', 'LOC_SUNKENSTAIR', 'LOC_NIGHTMARKET', 'LOC_FIGHTPIT', 'LOC_SALTGATE'], services: ['passage', 'smuggling'], factionInfluence: { FAC_REDKNIVES: 6, FAC_COINGUILD: 7 } }),
     loc({ id: 'LOC_SALTWAREHOUSE', mapPos: { x: 24, y: 90 }, name: 'Saltmerchant’s Warehouse', type: 'warehouse', district: 'Dock Ward', parent: 'LOC_DOCKWARD', description: 'A Coin Guild warehouse; the Red Knives fence stolen goods out the back.', atmosphere: 'Quiet by day, busy by night.', dangerRating: 6, connections: ['LOC_WHARVES', 'LOC_RATCATCHER'], services: ['fencing'], factionInfluence: { FAC_REDKNIVES: 7, FAC_COINGUILD: 5 }, shop: { buys: true, buyRate: 0.35, fence: true, restockDay: 1, stock: [
       { proto: 'dagger', qty: 1, price: 70 },
       { proto: 'lockpick', qty: 8, price: 4 },
@@ -170,6 +170,7 @@ export function buildSeedWorld(): WorldState {
       { proto: 'silver-ash', qty: 6, price: 32 },
       { proto: 'bogroot', qty: 10, price: 8 },
     ] } }),
+    loc({ id: 'LOC_SALTGATE', mapPos: { x: 12, y: 96 }, name: 'The Saltworks Gate', type: 'dungeon-entrance', district: 'Dock Ward', parent: 'LOC_WHARVES', description: 'The old evaporation works, shuttered since the year the brine came back wrong. The Tidecourt bought the deed and posts no guards, which everyone agrees is strange.', atmosphere: 'Salt crust, wind through slats.', dangerRating: 8, connections: ['LOC_WHARVES'], dungeonId: 'DUN_TIDE_001' }),
     loc({ id: 'LOC_CELLARDOOR', mapPos: { x: 5, y: 95 }, name: 'Drowned Cellar Door', type: 'dungeon-entrance', district: 'Dock Ward', parent: 'LOC_WHARVES', description: 'A barnacled hatch under the third pier, chained once, the chain long since cut. The tide breathes through it.', atmosphere: 'Salt rot and something moving below.', dangerRating: 7, connections: ['LOC_WHARVES'], dungeonId: 'DUN_DOCKWARD_001' }),
 
     // Ironmarket services
@@ -474,9 +475,52 @@ export function buildSeedWorld(): WorldState {
   D('DUN_HIGHCOURT_001', 'Wyrmspire Undercroft', 'LOC_WYRMSPIRE', '20–27', 'dragon-haunted undercroft', 5,
     ['vampire-thrall', 'stone-golem', 'chimera', 'harbor-drake'], 'young-dragon',
     ['scorched galleries', 'a hoard-smell on the air', 'melted stone']);
+  D('DUN_TIDE_001', 'The Saltworks', 'LOC_SALTGATE', '16–22', 'drowned salt-mine works', 4,
+    ['salt-wight', 'brine-horror', 'saltbound-golem', 'reef-witch', 'depth-lurker'], 'salt-queen',
+    ['pans of brine that hold reflections too long', 'salt-cured things that should have rotted', 'the Tidecourt’s unexplained deed']);
   D('DUN_DEEP_001', 'The Hollow Crown', 'LOC_HOLLOWGATE', '30–45', 'the palace under everything', 6,
     ['lich-acolyte', 'shadow-reaper', 'iron-colossus', 'elder-vampire', 'pit-fiend', 'void-spawn'], 'the-hollow-king',
     ['a throne older than the city', 'silence with weight', 'doors that remember names']);
+
+  const isha = chr({
+    id: 'CHAR_ISHA', name: 'Isha of the Open Hand', occupation: 'monk of the Open Hand', location: 'LOC_OPENHAND',
+    age: 27, sex: 'female', charClass: 'monk', abilities: ['palm-strike', 'flowing-fists'],
+    description: 'Shaved temples, ink precepts down one forearm, knuckles like river stones. Stands very still, which everyone who has seen her move finds much scarier.',
+    background: 'Third rank of the Open Hand. Fought in the Pit under another name before the House took her in, and the bookmakers still whisper the old name when she walks the Dock Ward.',
+    personality: ['serene', 'blunt', 'secretly sentimental'],
+    hp: { current: 16, max: 16 }, mana: { current: 0, max: 0 },
+    attributes: { strength: 13, dexterity: 14, constitution: 13, intelligence: 10, wisdom: 13, charisma: 11 },
+    skills: { swordsmanship: 2, archery: 0, magic: 0, stealth: 3, lockpicking: 0, tracking: 2, healing: 2, streetwise: 4 },
+    attack: 4, defense: 12, initiative: 4, critChance: 8, combatAI: 'aggressive',
+    money: 10, values: ['order', 'courage', 'loyalty'],
+    objectives: ['Keep the House out of the Tidecourt’s pocket', 'Never answer to the Pit name again'],
+    schedule: [
+      { from: 5 * 60, to: 20 * 60, location: 'LOC_OPENHAND', activity: 'drilling forms in the courtyard' },
+      { from: 20 * 60, to: 5 * 60, location: 'LOC_OPENHAND', activity: 'sleeping on a board she insists is comfortable' },
+    ],
+    activity: 'drilling forms in the courtyard',
+  });
+
+  const corva = chr({
+    id: 'CHAR_CORVA', name: 'Corva Marsh', occupation: 'lamplighter and tavern singer', location: 'LOC_LAMPHALL',
+    age: 25, sex: 'female', charClass: 'bard', abilities: ['sharp-word', 'rallying-chorus'],
+    description: 'Lamp-oil freckles, a climbing rig worn like jewelry, and a voice that can quiet a taproom or empty it, her choice. Knows every roof line in three districts.',
+    background: 'Born to the Union — third generation on the ladders. Sings at the Broken Crown on fifth-nights and trades verses for rumors; the Union ledger has a page in her hand it pretends it doesn’t.',
+    personality: ['wry', 'observant', 'braver than she admits'],
+    hp: { current: 12, max: 12 }, mana: { current: 10, max: 10 },
+    attributes: { strength: 9, dexterity: 13, constitution: 10, intelligence: 13, wisdom: 11, charisma: 15 },
+    skills: { swordsmanship: 1, archery: 1, magic: 2, stealth: 4, lockpicking: 2, tracking: 1, healing: 1, streetwise: 6 },
+    attack: 2, defense: 10, initiative: 5, critChance: 5, combatAI: 'support',
+    money: 45, values: ['cunning', 'freedom', 'loyalty'],
+    objectives: ['Find who is buying snuffed lamps and silence', 'Sing one song that outlives her'],
+    schedule: [
+      { from: 16 * 60, to: 2 * 60, location: 'LOC_LAMPHALL', activity: 'walking the lamp rounds' },
+      { from: 2 * 60, to: 10 * 60, location: 'LOC_LAMPHALL', activity: 'sleeping over the oil store' },
+      { from: 10 * 60, to: 16 * 60, location: 'LOC_DOCK_0042', activity: 'rehearsing in the Crown’s back room' },
+    ],
+    activity: 'walking the lamp rounds',
+  });
+  for (const c of [isha, corva]) world.characters[c.id] = c;
 
   // counters: reserve prefixes BEFORE any seeding that logs events or
   // makes items — resetting after would recycle ids (EVT_0001 twice)

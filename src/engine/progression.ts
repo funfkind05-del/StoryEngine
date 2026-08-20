@@ -56,6 +56,11 @@ export const AFFIXES: { name: string; stat: NonNullable<Item['affix']>['stat']; 
   { name: 'of the Wind', stat: 'initiative', amount: 2 },
   { name: 'of the Warlord', stat: 'attack', amount: 2 },
   { name: 'of the Mountain', stat: 'defense', amount: 3 },
+  { name: 'of the Tide', stat: 'initiative', amount: 3 },
+  { name: 'of the Lamplight', stat: 'evasion', amount: 3 },
+  { name: 'of the Open Hand', stat: 'critChance', amount: 7 },
+  { name: 'of the Pact', stat: 'attack', amount: 3 },
+  { name: 'of the Bonewarden', stat: 'defense', amount: 4 },
 ];
 
 function bumpDamage(dice: string, bonus: number): string {
@@ -171,6 +176,30 @@ export const UNIQUES: UniqueDef[] = [
     name: 'Gravewarden’s Coat',
     affixes: [{ name: 'of the Mountain', stat: 'defense', amount: 3 }, { name: 'of the Fox', stat: 'evasion', amount: 2 }],
     lore: 'Stitched for the last warden of Graverow, who walked the tomb-streets forty years and died in bed. The lining is sewn with prayer-strips in a script the Temple no longer teaches.',
+  },
+  {
+    match: (i) => i.kind === 'weapon' && !i.ranged,
+    name: 'Lamplighter’s Answer',
+    affixes: [{ name: 'of the Lamplight', stat: 'evasion', amount: 3 }, { name: 'of the Wind', stat: 'initiative', amount: 2 }],
+    lore: 'A hooked snuffing-pole reforged into a fighting staff after the Winter of Bad Lamps. The Union does not confirm the winter happened; the staff is inconveniently covered in notches.',
+  },
+  {
+    match: (i) => i.kind === 'weapon' && !i.ranged,
+    name: 'The Salt Queen’s Regret',
+    affixes: [{ name: 'of the Tide', stat: 'initiative', amount: 3 }, { name: 'of the Adder', stat: 'critChance', amount: 6 }],
+    lore: 'Cut from a single crystal of the deep pans. It weeps in fresh air — thin, briny lines down the blade — and dries the moment it draws blood, which the surviving works-clerks agreed was worse.',
+  },
+  {
+    match: (i) => i.kind === 'armor',
+    name: 'Vestment of the Chiseled Name',
+    affixes: [{ name: 'of the Pact', stat: 'attack', amount: 3 }, { name: 'of the Fox', stat: 'evasion', amount: 2 }],
+    lore: 'Robes from the Nameless Chapel’s last consecrated year. The embroidered name on the hem has been unpicked so carefully that reading the empty stitching almost — almost — pronounces something.',
+  },
+  {
+    match: (i) => i.kind === 'weapon' && i.ranged === true,
+    name: 'The Fifth-Night Encore',
+    affixes: [{ name: 'of the Open Hand', stat: 'critChance', amount: 7 }],
+    lore: 'A performer’s bow — the stringed kind, rebuilt into the shooting kind — that once belonged to a Crown singer who took requests until the wrong table made one. The last song is carved along the belly. Nobody plays it.',
   },
   {
     match: (i) => i.kind === 'shield',

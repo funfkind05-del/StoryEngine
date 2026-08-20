@@ -69,6 +69,10 @@ export function migrateWorld(world: WorldState): WorldState {
   world.rivals ??= [];
   world.resurrectionRule ??= 'safe';
   world.torchMinutes ??= 0;
+  world.tournament ??= null;
+  world.tournamentDaysWon ??= [];
+  world.auctionsWon ??= [];
+  world.contestsWon ??= [];
   world.writingStats ??= {};
   if (!world.quests) {
     world.quests = {};
@@ -76,11 +80,18 @@ export function migrateWorld(world: WorldState): WorldState {
   }
   ensureCampaign(world);
   // pre-companion saves gain the recruitable women + their arcs
-  if (!world.characters['CHAR_YVENNE'] || !world.characters['CHAR_KESS']) {
+  if (!world.characters['CHAR_YVENNE'] || !world.characters['CHAR_KESS'] || !world.characters['CHAR_ISHA'] || !world.characters['CHAR_CORVA']) {
     const fresh = buildSeedWorld();
-    for (const id of ['CHAR_YVENNE', 'CHAR_KESS']) {
+    for (const id of ['CHAR_YVENNE', 'CHAR_KESS', 'CHAR_ISHA', 'CHAR_CORVA']) {
       if (!world.characters[id] && fresh.characters[id]) world.characters[id] = fresh.characters[id];
     }
+    for (const id of ['LOC_OPENHAND', 'LOC_LAMPHALL', 'LOC_NIGHTMARKET', 'LOC_EDGEDHALL', 'LOC_NAMELESS', 'LOC_FIGHTPIT', 'LOC_SALTGATE']) {
+      if (!world.locations[id] && fresh.locations[id]) world.locations[id] = fresh.locations[id];
+    }
+    for (const id of ['FAC_LAMPLIGHTERS', 'FAC_TIDECOURT', 'FAC_BONEWARDENS']) {
+      if (!world.factions[id] && fresh.factions[id]) world.factions[id] = fresh.factions[id];
+    }
+    if (!world.dungeons['DUN_TIDE_001'] && fresh.dungeons['DUN_TIDE_001']) world.dungeons['DUN_TIDE_001'] = fresh.dungeons['DUN_TIDE_001'];
   }
   ensurePersonalArcs(world);
   for (const c of Object.values(world.characters)) {

@@ -23,6 +23,27 @@ const EVENT_KINDS = [
     minDay: 5,
   },
   {
+    kind: 'lamp-blight',
+    describe: (loc: string) => `The lamps around ${loc} are dying faster than the Union can relight them, and things made of the dark between them have started collecting what the light dropped.`,
+    monsters: [{ templateKey: 'lamp-wisp', count: 3 }],
+    reward: 800,
+    minDay: 10,
+  },
+  {
+    kind: 'tide-press',
+    describe: (loc: string) => `Tidecourt enforcers are "renegotiating" every stall near ${loc} at once. The Coin Guild is quietly paying for someone to renegotiate back.`,
+    monsters: [{ templateKey: 'tidecourt-enforcer', count: 2 }],
+    reward: 900,
+    minDay: 12,
+  },
+  {
+    kind: 'grave-bloom',
+    describe: (loc: string) => `Grave-mold bloomed overnight near ${loc} — pale shelves of it up the walls, and shapes underneath that used to be porters. The Bonewardens are offering coin and rites.`,
+    monsters: [{ templateKey: 'grave-mold-shambler', count: 2 }],
+    reward: 850,
+    minDay: 9,
+  },
+  {
     kind: 'wolf-pack',
     describe: (loc: string) => `A dire wolf pack slipped the walls in the night and dens near ${loc}. Two porters are already dead.`,
     monsters: [{ templateKey: 'dire-wolf', count: 2 }],

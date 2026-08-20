@@ -19,6 +19,14 @@ const totalKills = (w: WorldState) => Object.values(w.killCounts ?? {}).reduce((
 
 export const ACHIEVEMENTS: AchievementDef[] = [
   { key: 'first-blood', label: 'First Blood', desc: 'Kill anything at all.', earned: (w) => totalKills(w) >= 1 },
+  { key: 'grudge-settled', label: 'Grudge Settled', desc: 'Put down a named rival for good.', title: 'Grudge-Keeper', earned: (w) => (w.rivals ?? []).some((r) => r.defeated) },
+  { key: 'torch-thrift', label: 'Dark-Walker', desc: 'Pick a lock in total darkness.', earned: (w) => w.events.some((e) => e.kind === 'dungeon.lockpicked' && (w.torchMinutes ?? 0) === 0) },
+  { key: 'ascended', label: 'Ascended', desc: 'Take an ascension rite.', earned: (w) => Object.values(w.characters).some((c) => c.ascension) },
+  { key: 'salt-crowned', label: 'Salt-Crowned', desc: 'Defeat the Salt Queen.', title: 'Queensbane', earned: (w) => kills(w, 'salt-queen') >= 1 },
+  { key: 'pit-night', label: 'A Night at the Pit', desc: 'Beat five Pit Bruisers.', earned: (w) => kills(w, 'pit-bruiser') >= 5 },
+  { key: 'street-scholar', label: 'Street Scholar', desc: 'Collect all six city Codex entries.', title: 'Street Scholar', earned: (w) => (w.codex ?? []).filter((c) => c.startsWith('CITY:')).length >= 6 },
+  { key: 'well-read', label: 'Well-Read', desc: 'Study any tome or songbook.', earned: (w) => w.events.some((e) => e.kind === 'item.consumed' && /studied/.test(e.summary)) },
+  { key: 'full-table', label: 'A Full Table', desc: 'Six in the party at once.', earned: (w) => Object.values(w.characters).filter((c) => c.inParty && c.alive).length >= 6 },
   { key: 'rat-catcher', label: 'Rat-Catcher', desc: '25 giant rats put down.', title: 'Rat-Catcher', earned: (w) => kills(w, 'giant-rat') >= 25 },
   { key: 'centurion', label: 'Centurion', desc: 'One hundred kills.', earned: (w) => totalKills(w) >= 100 },
   { key: 'key-of-his-own', label: 'A Key of His Own', desc: 'Buy the first home.', title: 'Householder', earned: (w) => !!findHome(w) },
