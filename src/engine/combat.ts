@@ -38,6 +38,7 @@ import {
 } from './rules';
 import { generateLoot } from './loot';
 import { checkQuests } from './quests';
+import { affixMod, trainSkill } from './progression';
 
 export interface SkillDef {
   name: string;
@@ -146,7 +147,8 @@ function charDamage(world: WorldState, c: Character, rng: Rng, bonus: number): n
 
 function charDefense(world: WorldState, c: Character): number {
   let def = c.defense + c.evasion + Math.floor((c.attributes.dexterity - 10) / 2) + statusDefenseMod(c)
-    + (world.needsEnabled ? needsDefenseMod(c) : 0) + injuryDefenseMod(c);
+    + (world.needsEnabled ? needsDefenseMod(c) : 0) + injuryDefenseMod(c)
+    + affixMod(world, c, 'defense') + affixMod(world, c, 'evasion');
   for (const slot of ['armor', 'off-hand'] as const) {
     const id = c.equipment[slot];
     const it = id ? world.items[id] : null;
@@ -257,7 +259,7 @@ export function resolveRound(world: WorldState, planned: PlannedAction[]): Comba
   for (const pa of planned) {
     const c = world.characters[pa.actor];
     if (!c || c.hp.current <= 0) continue;
-    turns.push({ actorId: pa.actor, isMonster: false, initiative: c.initiative + Math.floor(c.attributes.dexterity / 4) + rng.die(6), action: pa });
+    turns.push({ actorId: pa.actor, isMonster: false, initiative: c.initiative + affixMod(world, c, 'initiative') + Math.floor(c.attributes.dexterity / 4) + rng.die(6), action: pa });
   }
   for (const m of combat.monsters) {
     if (!m.alive || m.fled) continue;
@@ -348,6 +350,7 @@ function resolveCharacterAction(
         return;
       }
       c.mana.current -= spell.mana;
+      trainSkill(world, c, spell.heal || spell.cures ? 'healing' : 'magic');
       if (spell.heal && spell.healAll) {
         const healedNames: string[] = [];
         for (const pid of combat.partyIds) {
@@ -442,16 +445,17 @@ function swingAt(
     }
     removeUnits(world, ammo, 1);
   }
+  trainSkill(world, c, w0?.ranged ? 'archery' : 'swordsmanship');
   const weaponSkill = w0?.ranged ? Math.floor(c.skills.archery / 2) : Math.floor(c.skills.swordsmanship / 2);
   const roll = rng.die(20);
   const toHit = roll + c.attack + c.accuracy + weaponSkill + (skill?.toHitMod ?? 0) + statusAttackMod(c)
-    + (world.needsEnabled ? needsAttackMod(c) : 0) + injuryAttackMod(c);
+    + (world.needsEnabled ? needsAttackMod(c) : 0) + injuryAttackMod(c) + affixMod(world, c, 'attack');
   const detail = skill ? skill.name : w0?.name ?? 'bare hands';
   if (roll !== 20 && (roll === 1 || toHit < t.defense)) {
     record({ round: combat.round, actor: c.id, actorName: c.name, action: skill ? 'skill' : 'attack', targetName: m.name, detail, roll, result: 'miss', text: `${c.name} ${skill ? `used ${skill.name} against` : 'attacked'} ${m.name} and missed. (roll ${roll})` });
     return;
   }
-  const isCrit = roll === 20 || rng.chance((c.critChance + (skill?.critBonus ?? 0)) / 100);
+  const isCrit = roll === 20 || rng.chance((c.critChance + (skill?.critBonus ?? 0) + affixMod(world, c, 'critChance')) / 100);
   let dmg = charDamage(world, c, rng, skill?.dmgBonus ?? 0);
   if (isCrit) dmg *= 2;
   // weapon wear
@@ -626,7 +630,7 @@ function finishCombat(world: WorldState, combat: CombatState) {
     }
   }
   // political weight: killing a faction's people is noticed
-  const MONSTER_FACTION: Record<string, string> = { 'red-knife-cutter': 'FAC_REDKNIVES' };
+  const MONSTER_FACTION: Record<string, string> = { 'red-knife-cutter': 'FAC_REDKNIVES', 'city-watchman': 'FAC_WATCH' };
   const facKills: Record<string, number> = {};
   for (const m of combat.monsters) {
     if (!m.alive && MONSTER_FACTION[m.templateKey]) {

@@ -50,6 +50,9 @@ import { addMinutes } from '../engine/world';
 import { applyProposal, type SyncProposal } from '../engine/proseLlm';
 import { scheduleBackup } from '../engine/diskSave';
 import { acceptQuest, checkQuests, declineQuest, refreshJobs, turnInQuest } from '../engine/quests';
+import { arrestFlee, arrestPay, arrestResist, arrestSurrender, burgleShop, maybePatrolStop, payBountyAt, pickpocket } from '../engine/crime';
+import { joinGuild } from '../engine/guilds';
+import { spendAttributePoint } from '../engine/progression';
 import { activeSlot, deleteBook, newBookSlot, renameBook, setActiveSlot, touchBook } from '../engine/books';
 import { draftScene } from '../engine/proseLlm';
 import { reorderScene } from '../engine/world';
@@ -136,10 +139,18 @@ interface AppState {
   removeBook: (slot: string) => void;
   renameActiveBook: (name: string) => void;
 
+  // crime & justice
+  crimePickpocket: (targetId: string) => void;
+  crimeBurgle: () => void;
+  crimePayBounty: () => void;
+  arrestAct: (what: 'pay' | 'resist' | 'flee' | 'surrender') => void;
+  spendPoint: (charId: string, attr: string) => void;
+
   // quests
   questAccept: (id: string) => void;
   questDecline: (id: string) => void;
-  questTurnIn: (id: string) => void;
+  questTurnIn: (id: string, choiceKey?: string) => void;
+  guildJoin: (key: string) => void;
 
   // companion moments
   hearMoment: () => Promise<void>;
@@ -260,6 +271,7 @@ export const useStore = create<AppState>((set, get) => ({
     rollCityEncounter(world);
     checkQuests(world);
     maybeCompanionMoment(world);
+    maybePatrolStop(world);
     // auto-insert the movement into the manuscript as editable prose,
     // destination embedded as an @[Name](ID) token
     const scene = world.scenes.find((s) => s.id === selectedSceneId);
@@ -490,6 +502,44 @@ export const useStore = create<AppState>((set, get) => ({
     get().commit();
   },
 
+  // ---------- crime & justice ----------
+  crimePickpocket: (targetId) => {
+    const { world, commit, setToast } = get();
+    const err = pickpocket(world, targetId);
+    if (err) setToast(err);
+    commit({ autosave: 'Pickpocket' });
+  },
+
+  crimeBurgle: () => {
+    const { world, commit, setToast } = get();
+    const err = burgleShop(world, world.partyLocation);
+    if (err) setToast(err);
+    commit({ autosave: 'Burglary' });
+  },
+
+  crimePayBounty: () => {
+    const { world, commit, setToast } = get();
+    const err = payBountyAt(world, world.partyLocation);
+    if (err) setToast(err);
+    commit();
+  },
+
+  arrestAct: (what) => {
+    const { world, commit, setToast } = get();
+    const err = what === 'pay' ? arrestPay(world) : what === 'resist' ? arrestResist(world) : what === 'flee' ? arrestFlee(world) : arrestSurrender(world);
+    if (err) setToast(err);
+    commit({ autosave: 'Watch patrol' });
+  },
+
+  spendPoint: (charId, attr) => {
+    const { world, commit, setToast } = get();
+    const c = world.characters[charId];
+    if (!c) return;
+    const err = spendAttributePoint(world, c, attr as never);
+    if (err) setToast(err);
+    commit();
+  },
+
   // ---------- quests ----------
   questAccept: (id) => {
     const { world, commit, setToast } = get();
@@ -499,16 +549,24 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   questDecline: (id) => {
-    const { world, commit } = get();
-    declineQuest(world, id);
+    const { world, commit, setToast } = get();
+    const err = declineQuest(world, id);
+    if (err) setToast(err);
     commit();
   },
 
-  questTurnIn: (id) => {
+  questTurnIn: (id, choiceKey) => {
     const { world, commit, setToast } = get();
-    const err = turnInQuest(world, id);
+    const err = turnInQuest(world, id, choiceKey);
     if (err) setToast(err);
     commit({ autosave: 'Quest turned in' });
+  },
+
+  guildJoin: (key) => {
+    const { world, commit, setToast } = get();
+    const err = joinGuild(world, key);
+    if (err) setToast(err);
+    commit({ autosave: 'Joined guild' });
   },
 
   // ---------- companion moments ----------

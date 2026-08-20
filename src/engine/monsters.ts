@@ -41,6 +41,10 @@ export const MONSTERS: Record<string, MonsterTemplate> = {
     key: 'rat-king', name: 'The Rat King', level: 4, hp: 34, attack: 6, defense: 13,
     damage: '1d8+2', initiative: 5, xp: 190, lootTable: 'boss-sewer', ai: 'aggressive', inflicts: { status: 'diseased', chance: 0.25 },
   },
+  'city-watchman': {
+    key: 'city-watchman', name: 'City Watchman', level: 3, hp: 26, attack: 6, defense: 14,
+    damage: '1d8+2', initiative: 3, xp: 90, lootTable: 'human', ai: 'aggressive', art: { archetype: 'humanoid', accent: '#8b93a1' },
+  },
   'smuggler': {
     key: 'smuggler', name: 'Smuggler', level: 2, hp: 13, attack: 4, defense: 11,
     damage: '1d6+1', initiative: 3, xp: 38, lootTable: 'human', ai: 'cowardly',

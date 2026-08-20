@@ -3,6 +3,7 @@
 
 import type { Snapshot, WorldState } from './types';
 import { seedQuests } from './quests';
+import { ensureCampaign } from './campaign';
 import { activeSlot, slotKeys, touchBook } from './books';
 
 const MAX_AUTO = 20;
@@ -56,10 +57,15 @@ export function migrateWorld(world: WorldState): WorldState {
   world.monsterArt ??= {};
   world.characterArt ??= {};
   world.outlinedUpTo ??= 0;
+  world.bounty ??= 0;
+  world.guildRanks ??= {};
+  world.codex ??= [];
+  world.activeEvents ??= [];
   if (!world.quests) {
     world.quests = {};
     seedQuests(world);
   }
+  ensureCampaign(world);
   for (const c of Object.values(world.characters)) {
     c.needs ??= { hunger: 25, fatigue: 30 };
     c.injuries ??= [];
@@ -70,6 +76,8 @@ export function migrateWorld(world: WorldState): WorldState {
     c.resistances ??= {};
     c.charClass ??= 'commoner';
     c.evasion ??= 0;
+    c.attributePoints ??= 0;
+    c.skillXp ??= {};
   }
   for (const l of Object.values(world.locations)) {
     if (l.household) {

@@ -9,6 +9,8 @@ import { MONSTERS } from './monsters';
 import { Rng } from './rng';
 import { grantXp, logEvent, partyMembers } from './world';
 import { addToContainer, fmtMoney, makeItem } from './rules';
+import { advanceCampaign, ensureCampaign } from './campaign';
+import { advanceGuild } from './guilds';
 
 function questId(world: WorldState): string {
   const n = (world.counters['QST'] ?? 0) + 1;
@@ -109,9 +111,11 @@ export function acceptQuest(world: WorldState, id: string): string | null {
   return null;
 }
 
-export function declineQuest(world: WorldState, id: string): void {
+export function declineQuest(world: WorldState, id: string): string | null {
   const q = world.quests[id];
+  if (q?.isMain) return 'The spine of the story does not go away because you look elsewhere. It waits.';
   if (q && q.status === 'offered') q.status = 'declined';
+  return null;
 }
 
 export function describeReward(_world: WorldState, q: Quest): string {
@@ -121,19 +125,36 @@ export function describeReward(_world: WorldState, q: Quest): string {
   return parts.join(' + ');
 }
 
-export function turnInQuest(world: WorldState, id: string): string | null {
+export function turnInQuest(world: WorldState, id: string, choiceKey?: string): string | null {
   const q = world.quests[id];
   if (!q) return 'No such job.';
   if (q.status !== 'ready' && !(q.status === 'active' && questProgress(world, q).done === q.objectives.length)) {
     return 'The work is not finished.';
   }
   if (world.partyLocation !== q.giverLocation) return `Collect from ${world.locations[q.giverLocation]?.name}.`;
+  if (q.choice && !q.choice.chosen) {
+    const opt = q.choice.options.find((o) => o.key === choiceKey);
+    if (!opt) return `This one ends with a decision: ${q.choice.prompt}`;
+    q.choice.chosen = opt.key;
+    if (opt.money) q.reward.money += opt.money;
+    if (opt.factionRep) {
+      q.reward.factionRep = { ...(q.reward.factionRep ?? {}) };
+      for (const [fac, d] of Object.entries(opt.factionRep)) {
+        q.reward.factionRep[fac] = (q.reward.factionRep[fac] ?? 0) + d;
+      }
+    }
+    if (opt.knowledge) {
+      for (const c of partyMembers(world)) c.knowledge.push({ fact: opt.knowledge, day: world.time.day, accurate: true });
+    }
+    logEvent(world, 'quest.choice', { quest: q.id, chosen: opt.key }, `Decision on "${q.title}": ${opt.label}. ${opt.description}`, { location: q.giverLocation, witnesses: partyMembers(world).map((c) => c.id) });
+  }
   if (q.deadlineDay !== undefined && world.time.day > q.deadlineDay) {
     q.status = 'completed';
     q.completedDay = world.time.day;
     const half = Math.floor(q.reward.money / 2);
     world.characters[world.mcId].money += half;
     logEvent(world, 'quest.late', { quest: q.id }, `"${q.title}" delivered late — half pay (${fmtMoney(half)}), and a note taken of it.`, { location: q.giverLocation });
+    advanceCampaign(world, q);
     return null;
   }
   q.status = 'completed';
@@ -157,6 +178,8 @@ export function turnInQuest(world: WorldState, id: string): string | null {
     }
   }
   logEvent(world, 'quest.completed', { quest: q.id, reward: q.reward }, `"${q.title}" completed — paid ${describeReward(world, q)}.`, { location: q.giverLocation, witnesses: partyMembers(world).map((c) => c.id) });
+  advanceCampaign(world, q);
+  advanceGuild(world, q);
   return null;
 }
 
@@ -213,20 +236,9 @@ export function refreshJobs(world: WorldState) {
   logEvent(world, 'quest.offered', { quest: q.id }, `Work on offer at ${world.locations[q.giverLocation]?.name}: "${q.title}" (${describeReward(world, q)}).`);
 }
 
-/** Hand-authored hooks present from Day 1. */
+/** Hand-authored hooks present from Day 1 (plus the campaign spine). */
 export function seedQuests(world: WorldState) {
   const seed: Quest[] = [
-    {
-      id: questId(world),
-      title: 'What Sleeps Below',
-      giver: 'CHAR_SELLA',
-      giverLocation: 'LOC_TEMPLE',
-      description: 'Sister Sella has heard what the grave-robbers woke under Saint Varro’s crypts. The temple will pay to have it put back to sleep — permanently.',
-      objectives: [{ kind: 'clear-boss', dungeonId: 'DUN_OLDQUARTER_001', done: false }],
-      reward: { money: 800, itemProtos: ['healing-potion'], factionRep: { FAC_VEILEDFLAME: 2 }, xp: 150 },
-      status: 'offered',
-      offeredDay: 1,
-    },
     {
       id: questId(world),
       title: 'The Broken Crown’s Cellar Problem',
@@ -240,4 +252,5 @@ export function seedQuests(world: WorldState) {
     },
   ];
   for (const q of seed) world.quests[q.id] = q;
+  ensureCampaign(world);
 }

@@ -5,6 +5,7 @@
 import type { Item, LootResult, WorldState } from './types';
 import { Rng } from './rng';
 import { nextId } from './world';
+import { rollGearMods } from './progression';
 
 interface LootEntry {
   chance: number;
@@ -187,6 +188,7 @@ export function generateLoot(world: WorldState, monsterKeys: string[], seed: num
     for (const entry of table.entries) {
       if (rng.chance(entry.chance)) {
         const it = entry.make(world, rng);
+        rollGearMods(rng, it, tableKey.startsWith('boss') ? 2.2 : 1);
         // avoid duplicate uniques from the same kill batch
         if (it.value > 300 && seen[it.name]) continue;
         seen[it.name] = true;
@@ -244,7 +246,11 @@ export function openChest(world: WorldState): LootResult | { error: string } {
   const money = rng.roll(table.moneyDice);
   const items: Item[] = [];
   for (const entry of table.entries) {
-    if (rng.chance(entry.chance)) items.push(entry.make(world, rng));
+    if (rng.chance(entry.chance)) {
+      const it = entry.make(world, rng);
+      rollGearMods(rng, it, 1.5);
+      items.push(it);
+    }
   }
   return { xp: 0, money, items, seed: room.chest.lootSeed, taken: false };
 }

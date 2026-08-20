@@ -106,6 +106,19 @@ default. **Disk backup** (Saves panel, Chromium browsers) links a .json file
 on disk that the app rewrites automatically while you work — localStorage can
 be evicted by the browser; your novel shouldn't live there alone.
 
+## The campaign spine — What Lies Beneath Blackwall
+
+An eight-stage main questline threads the eight dungeons in level order:
+Sister Sella's crypt job is stage one of a saga about what the city was
+built to seal. Each stage is offered by a citizen with their own reasons
+(Sella, Dorn, Varga, Mara, Harrow), each boss guards a piece of the truth,
+and each turn-in pays a **revelation** — an accurate world-truth knowledge
+entry the whole party learns, verbatim, so knowledge separation does the
+mystery work. The spine can't be declined away; the Quests panel tracks
+the stage and the latest revelation; the Muse surfaces both the current
+stage and any revelation the manuscript hasn't reckoned with yet. Old
+saves adopt the campaign automatically.
+
 ## Quests & jobs
 
 Patrons and notice boards offer work — hand-authored hooks from Day 1 (Sister

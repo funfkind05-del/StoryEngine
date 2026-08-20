@@ -418,3 +418,65 @@ describe('silent-fallback audit', () => {
     expect(validateLootTables()).toEqual([]);
   });
 });
+
+describe('the campaign spine: What Lies Beneath Blackwall', () => {
+  it('walks all eight stages: offer → clear boss → turn in → revelation → next stage', async () => {
+    const { CAMPAIGN, mainQuests, campaignStageNumber, latestRevelation } = await import('./campaign');
+    const { acceptQuest: accept, checkQuests: check, turnInQuest: turnIn, declineQuest: decline } = await import('./quests');
+    const w = freshWorld();
+    const mc = w.characters[w.mcId];
+    expect(CAMPAIGN).toHaveLength(8);
+    // stage 1 is on offer from day one, and the spine cannot be declined
+    const s1 = mainQuests(w).find((q) => q.status === 'offered')!;
+    expect(s1.stage).toBe(1);
+    expect(s1.title).toBe('What Sleeps Below');
+    expect(decline(w, s1.id)).toMatch(/waits/);
+    expect(s1.status).toBe('offered');
+
+    for (let stage = 1; stage <= 8; stage++) {
+      const q = mainQuests(w).find((x) => x.stage === stage)!;
+      expect(q, `stage ${stage} offered`).toBeTruthy();
+      travelTo(w, q.giverLocation);
+      expect(accept(w, q.id), `accept stage ${stage}`).toBeNull();
+      const dungeonId = (q.objectives[0] as { dungeonId: string }).dungeonId;
+      w.dungeons[dungeonId].bossDefeated = true;
+      check(w);
+      expect(q.status).toBe('ready');
+      // stages with a decision take the first option; the rest turn in plain
+      const choiceKey = q.choice?.options[0]?.key;
+      expect(turnIn(w, q.id, choiceKey), `turn in stage ${stage}`).toBeNull();
+      // the revelation became party knowledge, verbatim and accurate
+      // (witnessed quest events also become knowledge, so check containment)
+      expect(mc.knowledge.some((k) => k.fact === q.revelation && k.accurate)).toBe(true);
+      expect(campaignStageNumber(w)).toBe(stage + 1);
+      if (stage < 8) {
+        const next = mainQuests(w).find((x) => x.stage === stage + 1);
+        expect(next?.status, `stage ${stage + 1} opens`).toBe('offered');
+        expect(w.events.some((e) => e.kind === 'campaign.offered' && e.data.stage === stage + 1)).toBe(true);
+      }
+    }
+    expect(w.events.some((e) => e.kind === 'campaign.complete')).toBe(true);
+    expect(latestRevelation(w)).toContain('yours to write');
+    // the Muse surfaces the unwritten revelation
+    const { generateStoryIdeas } = await import('./muse');
+    expect(generateStoryIdeas(w).some((i) => i.kind === 'campaign' && i.title.includes('revelation'))).toBe(true);
+  });
+
+  it('adopts pre-campaign saves without duplicating stage one', async () => {
+    const { ensureCampaign, mainQuests } = await import('./campaign');
+    const w = freshWorld();
+    // simulate an old save: strip campaign markers from stage 1, delete later machinery
+    for (const q of Object.values(w.quests)) {
+      if (q.isMain) {
+        delete q.isMain;
+        delete q.stage;
+        delete q.revelation;
+      }
+    }
+    ensureCampaign(w);
+    const main = mainQuests(w);
+    expect(main).toHaveLength(1); // adopted, not duplicated
+    expect(main[0].title).toBe('What Sleeps Below');
+    expect(main[0].revelation).toBeTruthy();
+  });
+});

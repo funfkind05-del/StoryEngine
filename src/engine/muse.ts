@@ -10,6 +10,7 @@
 import type { Character, Quest, WorldState } from './types';
 import { CLASSES, calendarLabel, fmtMoney, levelUpAvailable, seasonOf } from './rules';
 import { questProgress } from './quests';
+import { latestRevelation, mainQuests } from './campaign';
 import { chatWithNpc, type ChatMessage, type LlmConfig } from './npcChat';
 
 export interface StoryIdea {
@@ -317,6 +318,35 @@ function worldIdeas(world: WorldState): StoryIdea[] {
   return ideas;
 }
 
+function campaignIdeas(world: WorldState): StoryIdea[] {
+  const ideas: StoryIdea[] = [];
+  const open = mainQuests(world).find((q) => q.status === 'offered' || q.status === 'active' || q.status === 'ready');
+  if (open) {
+    ideas.push({
+      kind: 'campaign',
+      title: `⚜ The spine: ${open.title}`,
+      pitch: `Stage ${open.stage} of what lies beneath Blackwall. ${open.description}`,
+      grounding: [`Main quest "${open.title}" is ${open.status}`, `Giver: ${open.giver === 'board' ? 'the board' : world.characters[open.giver]?.name} at ${world.locations[open.giverLocation]?.name}`],
+      urgency: 7,
+      outline: open.status === 'offered'
+        ? `${world.characters[open.giver as string]?.name ?? 'The giver'} makes the offer: ${open.title}. What they say — and what they hold back.`
+        : `The party moves on "${open.title}" — and finds the first sign it is bigger than the job.`,
+    });
+  }
+  const rev = latestRevelation(world);
+  if (rev && !allSceneText(world).slice(0, 500000).includes(rev.slice(0, 60))) {
+    ideas.push({
+      kind: 'campaign',
+      title: 'The revelation nobody has reckoned with',
+      pitch: `The party learned something that changes what the city is — "${rev.slice(0, 140)}…" — and the manuscript hasn't sat with it yet. Revelations land twice: once as information, once as a scene where someone realizes what it means for THEM.`,
+      grounding: [`Party knowledge: ${rev.slice(0, 120)}…`, 'No scene text contains it yet'],
+      urgency: 8,
+      outline: `The weight of what they learned settles: each companion reacts through their own values; someone says the thing out loud that everyone was avoiding.`,
+    });
+  }
+  return ideas;
+}
+
 function giverName(world: WorldState, q: Quest): string {
   return q.giver === 'board' ? 'the notice board' : world.characters[q.giver]?.name ?? q.giver;
 }
@@ -324,6 +354,7 @@ function giverName(world: WorldState, q: Quest): string {
 /** Everything the Muse can see right now, most pressing first. */
 export function generateStoryIdeas(world: WorldState): StoryIdea[] {
   const all = [
+    ...campaignIdeas(world),
     ...deadlineIdeas(world),
     ...factionIdeas(world),
     ...relationshipIdeas(world),

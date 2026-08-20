@@ -26,6 +26,7 @@ import {
 } from './rules';
 import { Rng, randomSeed } from './rng';
 import { addMinutes, advanceUntilMorning, logEvent, partyMembers } from './world';
+import { guildTrainingDiscount } from './guilds';
 
 // ---------- Shops ----------
 export function buyFromShop(world: WorldState, locId: LocationId, entryIdx: number, buyer: Character): string | null {
@@ -57,6 +58,7 @@ export function sellToShop(world: WorldState, locId: LocationId, itemId: string,
   if (!loc.shop?.buys) return 'This shop does not buy.';
   if (!item || item.owner !== seller.id) return 'Not yours to sell.';
   if (item.equippedBy) return 'Unequip it first.';
+  if (item.stolen && !loc.shop.fence) return 'The shopkeep turns it over once, looks at you, and slides it back. "Not from me, it wasn\u2019t. Try the docks."';
   const price = Math.max(1, Math.floor(item.value * loc.shop.buyRate * (item.broken ? 0.2 : 1)));
   seller.money += price;
   addMinutes(world, 5);
@@ -153,7 +155,8 @@ export function trainAt(world: WorldState, locId: LocationId, charId: string): s
   if (!loc.trainerFor && !(loc.temple && c.charClass === 'priest')) return 'No trainer here.';
   if (loc.trainerFor && loc.trainerFor !== c.charClass) return `${loc.name} trains ${CLASSES[loc.trainerFor!].label.toLowerCase()}s, not ${def.label.toLowerCase()}s.`;
   if (!levelUpAvailable(c)) return `${c.name} has not earned enough experience yet.`;
-  const cost = trainingCost(c.level);
+  const discount = guildTrainingDiscount(world, locId);
+  const cost = Math.round(trainingCost(c.level) * (1 - discount));
   const payer = world.characters[world.mcId];
   if (payer.money < cost) return `Training costs ${fmtMoney(cost)}.`;
   payer.money -= cost;

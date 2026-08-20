@@ -137,7 +137,7 @@ export function buildSeedWorld(): WorldState {
       { name: 'Good Room', price: 20, quality: 3 },
     ] }),
     loc({ id: 'LOC_WHARVES', mapPos: { x: 10, y: 86 }, name: 'The Black Wharves', type: 'dock', district: 'Dock Ward', parent: 'LOC_DOCKWARD', description: 'Tar-black piers where the ships come in and the bodies go out.', atmosphere: 'Fog, gulls, muscle.', dangerRating: 7, connections: ['LOC_RATCATCHER', 'LOC_SALTWAREHOUSE', 'LOC_CELLARDOOR', 'LOC_SEWERGATE', 'LOC_SUNKENSTAIR'], services: ['passage', 'smuggling'], factionInfluence: { FAC_REDKNIVES: 6, FAC_COINGUILD: 7 } }),
-    loc({ id: 'LOC_SALTWAREHOUSE', mapPos: { x: 24, y: 90 }, name: 'Saltmerchant’s Warehouse', type: 'warehouse', district: 'Dock Ward', parent: 'LOC_DOCKWARD', description: 'A Coin Guild warehouse; the Red Knives fence stolen goods out the back.', atmosphere: 'Quiet by day, busy by night.', dangerRating: 6, connections: ['LOC_WHARVES', 'LOC_RATCATCHER'], services: ['fencing'], factionInfluence: { FAC_REDKNIVES: 7, FAC_COINGUILD: 5 }, shop: { buys: true, buyRate: 0.35, restockDay: 1, stock: [
+    loc({ id: 'LOC_SALTWAREHOUSE', mapPos: { x: 24, y: 90 }, name: 'Saltmerchant’s Warehouse', type: 'warehouse', district: 'Dock Ward', parent: 'LOC_DOCKWARD', description: 'A Coin Guild warehouse; the Red Knives fence stolen goods out the back.', atmosphere: 'Quiet by day, busy by night.', dangerRating: 6, connections: ['LOC_WHARVES', 'LOC_RATCATCHER'], services: ['fencing'], factionInfluence: { FAC_REDKNIVES: 7, FAC_COINGUILD: 5 }, shop: { buys: true, buyRate: 0.35, fence: true, restockDay: 1, stock: [
       { proto: 'dagger', qty: 1, price: 70 },
       { proto: 'lockpick', qty: 8, price: 4 },
     ] } }),
@@ -181,7 +181,10 @@ export function buildSeedWorld(): WorldState {
     ] } }),
 
     // Dock Ward services
-    loc({ id: 'LOC_THIEFGUILD', mapPos: { x: 10, y: 66 }, name: 'The Counting House', type: 'guildhall', district: 'Dock Ward', parent: 'LOC_DOCKWARD', description: 'Officially a shipping clerk’s office. Unofficially, where the Thieves Guild teaches quiet trades.', atmosphere: 'Ledgers in front, lockpicks in back.', services: ['rogue training', 'fencing'], dangerRating: 5, connections: ['LOC_RATCATCHER'], trainerFor: 'rogue', factionInfluence: { FAC_REDKNIVES: 5 } }),
+    loc({ id: 'LOC_THIEFGUILD', mapPos: { x: 10, y: 66 }, name: 'The Counting House', type: 'guildhall', district: 'Dock Ward', parent: 'LOC_DOCKWARD', description: 'Officially a shipping clerk’s office. Unofficially, where the Thieves Guild teaches quiet trades.', atmosphere: 'Ledgers in front, lockpicks in back.', services: ['rogue training', 'fencing'], dangerRating: 5, connections: ['LOC_RATCATCHER'], trainerFor: 'rogue', factionInfluence: { FAC_REDKNIVES: 5 }, shop: { buys: true, buyRate: 0.45, fence: true, restockDay: 1, stock: [
+      { proto: 'lockpick', qty: 10, price: 4 },
+      { proto: 'dagger', qty: 2, price: 80 },
+    ] } }),
 
     // Highcourt / Old Quarter services
     loc({ id: 'LOC_COLLEGE', mapPos: { x: 64, y: 8 }, name: 'Arcane College', type: 'guildhall', district: 'Highcourt', parent: 'LOC_HIGHCOURT', description: 'A tower of blue slate where magic is taught to those who can pay, and watched in those who can’t.', atmosphere: 'Ozone and old paper.', services: ['mage training', 'identification'], dangerRating: 1, connections: ['LOC_TEMPLE', 'LOC_WYRMSPIRE'], trainerFor: 'mage' }),

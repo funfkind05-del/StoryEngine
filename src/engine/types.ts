@@ -112,6 +112,8 @@ export interface Shop {
   buys: boolean; // will this shop buy items from the party?
   buyRate: number; // fraction of value paid when buying from the party
   restockDay: number; // last world day the stock refreshed
+  /** fences take stolen goods; honest shops refuse them */
+  fence?: boolean;
 }
 
 export interface InnRoom {
@@ -144,6 +146,12 @@ export interface Item {
   ranged?: boolean; // uses DEX and consumes ammo
   ammoProto?: string; // e.g. 'arrow'
   durability?: { current: number; max: number };
+  /** taken, not bought — legitimate shops refuse it; fences don't ask */
+  stolen?: boolean;
+  /** craftsmanship grade rolled at creation */
+  quality?: 'fine' | 'superior' | 'exquisite';
+  /** magical affix, e.g. "of the Fox" (+2 evasion) */
+  affix?: { name: string; stat: 'attack' | 'defense' | 'critChance' | 'evasion' | 'initiative'; amount: number };
   /** stackable items carry a quantity; unique items omit it */
   stackable?: boolean;
   qty?: number;
@@ -283,6 +291,12 @@ export interface Character {
   injuries: Injury[];
   statuses: ActiveStatus[];
   tempBonuses: TempBonus[];
+  /** unspent attribute points from leveling (author assigns) */
+  attributePoints?: number;
+  /** use-based skill progression counters */
+  skillXp?: Partial<Record<keyof Skills, number>>;
+  /** earned title, shown in stat blocks */
+  title?: string;
   permanentBonuses: string[]; // human-readable, e.g. 'Blessing of the Flame: +1 WIS'
   abilities: string[]; // known skill/spell keys from the rules engine
 
@@ -346,6 +360,8 @@ export interface CombatantMonster {
   name: string; // "Giant Rat #2"
   hp: { current: number; max: number };
   status: string[]; // 'stunned' etc.
+  /** telegraphing a heavy blow next turn (interrupt with a stun, or defend) */
+  charging?: boolean;
   alive: boolean;
   fled: boolean;
 }
@@ -364,6 +380,10 @@ export interface DungeonRoom {
   chest?: { opened: boolean; lootSeed: number };
   trap?: { kind: string; disarmed: boolean; triggered: boolean };
   secretDoor?: { discovered: boolean; to: RoomId };
+  lockedDoor?: { dir: 'north' | 'south' | 'east' | 'west'; to: RoomId; difficulty: number; opened: boolean };
+  shrine?: { used: boolean };
+  lorebook?: { id: string; taken: boolean };
+  resource?: { proto: string; gathered: boolean };
   itemsRemaining: ItemId[];
   isBossRoom?: boolean;
   isStairsDown?: boolean;
@@ -490,6 +510,21 @@ export interface Quest {
     xp?: number;
   };
   status: 'offered' | 'active' | 'ready' | 'completed' | 'declined';
+  /** part of the campaign spine (cannot be declined away permanently) */
+  isMain?: boolean;
+  /** campaign stage number, 1-based */
+  stage?: number;
+  /** world-truth learned at turn-in; becomes party knowledge */
+  revelation?: string;
+  /** a decision at turn-in: outcomes differ in coin, standing, and truth */
+  choice?: {
+    prompt: string;
+    options: { key: string; label: string; description: string; money?: number; factionRep?: Record<FactionId, number>; knowledge?: string }[];
+    chosen?: string;
+  };
+  /** guild-rank quest markers */
+  guild?: string;
+  guildRank?: number;
   offeredDay: number;
   deadlineDay?: number;
   acceptedDay?: number;
@@ -571,6 +606,18 @@ export interface WorldState {
   weather?: { kind: string; day: number };
   /** index into events[] up to which outline-from-play has run */
   outlinedUpTo?: number;
+  /** the Watch's price on the party's head, in copper */
+  bounty?: number;
+  /** a Watch patrol has cornered the party (banner: pay/resist/run/surrender) */
+  pendingArrest?: { seed: number; officers: number } | null;
+  /** guild membership ranks by guild key (absent = not a member) */
+  guildRanks?: Record<string, number>;
+  /** collected lorebook ids */
+  codex?: string[];
+  /** live timed world events (rituals, street bosses) */
+  activeEvents?: { id: string; kind: string; locationId: string; expiresDay: number; description: string; monsters: { templateKey: string; count: number }[]; reward: number }[];
+  /** the household's stray, if one was taken in */
+  pet?: { name: string; kind: string } | null;
   counters: Record<string, number>; // id counters
   masterSeed: number;
 }

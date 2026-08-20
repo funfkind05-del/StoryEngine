@@ -27,6 +27,8 @@ import {
 } from '../engine/rules';
 import { Bar, RelBar, Tag } from './common';
 import { activeQuests, describeReward, objectiveDone, objectiveLabel, offeredQuestsAt, questProgress } from '../engine/quests';
+import { CAMPAIGN, campaignStageNumber, latestRevelation, mainQuests } from '../engine/campaign';
+import { GUILDS, guildRank, guildTitle } from '../engine/guilds';
 import { MonsterPortrait } from './MonsterArt';
 import { CharacterPortrait } from './CharacterArt';
 import { activeSlot, listBooks } from '../engine/books';
@@ -101,6 +103,10 @@ function LocationPanel() {
   const homeRest = useStore((s) => s.homeRest);
   const openTalk = useStore((s) => s.openTalk);
   const eatMeal = useStore((s) => s.eatMeal);
+  const crimePickpocket = useStore((s) => s.crimePickpocket);
+  const crimeBurgle = useStore((s) => s.crimeBurgle);
+  const crimePayBounty = useStore((s) => s.crimePayBounty);
+  const guildJoin = useStore((s) => s.guildJoin);
   const loc = world.locations[world.partyLocation];
   const mc = world.characters[world.mcId];
   if (!loc) return <p>Nowhere?</p>;
@@ -144,6 +150,7 @@ function LocationPanel() {
           <div className="row">
             <span className="name grow">{c.name}</span>
             {!world.combat && <button onClick={() => openTalk(c.id)}>🗨 Talk</button>}
+            {!world.combat && <button title="Lift their purse — stealth against their wits. Getting caught has a price." onClick={() => crimePickpocket(c.id)}>🫳</button>}
           </div>
           <div className="small dim">{c.occupation} — {c.activity}</div>
         </div>
@@ -179,7 +186,10 @@ function LocationPanel() {
               </div>
             );
           })}
-          <p className="dim small">To sell, use the Inventory panel while you're here{loc.shop.buys ? '' : ' (this shop does not buy)'}.</p>
+          <p className="dim small">To sell, use the Inventory panel while you're here{loc.shop.buys ? '' : ' (this shop does not buy)'}{loc.shop.fence ? ' — this one doesn\u2019t ask where things came from' : ''}.</p>
+          {(world.time.minute < 6 * 60 || world.time.minute >= 21 * 60) && (
+            <button className="danger" onClick={crimeBurgle} title="Break in after dark. Lockpicking and stealth against the district's watchfulness.">🌙 Burgle the shop</button>
+          )}
         </>
       )}
       {loc.services.includes('food') && (
@@ -228,6 +238,29 @@ function LocationPanel() {
           ))}
         </>
       )}
+      {(world.bounty ?? 0) > 0 && (loc.factionInfluence['FAC_WATCH'] ?? 0) >= 4 && (
+        <div className="row" style={{ marginTop: 8 }}>
+          <button onClick={crimePayBounty}>⚖ Pay bounty at the watch-house desk ({fmtMoney(world.bounty ?? 0)})</button>
+        </div>
+      )}
+      {GUILDS.some((g) => g.location === loc.id) && (() => {
+        const g = GUILDS.find((x) => x.location === loc.id)!;
+        const rank = guildRank(world, g.key);
+        return (
+          <>
+            <h4>{g.name} membership</h4>
+            {rank === null ? (
+              <button className="primary" onClick={() => guildJoin(g.key)}>Sign the book — join for {fmtMoney(g.joinFee)}</button>
+            ) : (
+              <p className="small">
+                <Tag tone="gold">{guildTitle(world, g.key)}</Tag> rank {rank}/{g.ranks.length}
+                {rank < g.ranks.length ? ' — the next trial is on the board (Quests panel).' : ' — the guild has nothing left to teach.'}
+                {rank > 0 && ` Training here is ${rank * 10}% off.`}
+              </p>
+            )}
+          </>
+        );
+      })()}
       {(loc.trainerFor || loc.temple) && (
         <>
           <h4>Training{loc.trainerFor ? ` (${CLASSES[loc.trainerFor].label.toLowerCase()}s)` : ' (priests)'}</h4>
@@ -335,14 +368,34 @@ function QuestsPanel() {
   const active = activeQuests(world);
   const completed = Object.values(world.quests).filter((q) => q.status === 'completed');
   const giverName = (q: (typeof active)[number]) => (q.giver === 'board' ? 'the notice board' : world.characters[q.giver]?.name ?? q.giver);
+  const stage = campaignStageNumber(world);
+  const revelation = latestRevelation(world);
+  const spineOpen = mainQuests(world).find((q) => q.status !== 'completed' && q.status !== 'declined');
   return (
     <div>
       <h3>Quests</h3>
+      <div className="card" style={{ borderColor: 'var(--accent)' }}>
+        <div className="row">
+          <span className="name grow">⚜ What Lies Beneath Blackwall</span>
+          <Tag tone="gold">stage {Math.min(stage, CAMPAIGN.length)}/{CAMPAIGN.length}</Tag>
+        </div>
+        {spineOpen ? (
+          <p className="small">Current: <b>{spineOpen.title}</b> — {spineOpen.status === 'offered' ? `on offer from ${giverName(spineOpen)} at ${world.locations[spineOpen.giverLocation]?.name}` : spineOpen.status === 'ready' ? 'done — collect and learn what it means' : 'in progress'}.</p>
+        ) : (
+          <p className="small">The recorded spine is complete. What comes after is yours to write.</p>
+        )}
+        {revelation && (
+          <details>
+            <summary>latest revelation</summary>
+            <p className="small" style={{ color: 'var(--accent)' }}>{revelation}</p>
+          </details>
+        )}
+      </div>
       <h4>On offer here</h4>
       {offered.length === 0 && <p className="dim small">No work on offer where you stand. Patrons and boards post jobs around the city as days pass.</p>}
       {offered.map((q) => (
-        <div key={q.id} className="card">
-          <div className="name">{q.title}</div>
+        <div key={q.id} className="card" style={q.isMain ? { borderColor: 'var(--accent)' } : undefined}>
+          <div className="name">{q.isMain && '⚜ '}{q.title}</div>
           <p className="small">{q.description}</p>
           <p className="small dim">From {giverName(q)} · pays {describeReward(world, q)}{q.deadlineDay !== undefined ? ` · by Day ${q.deadlineDay}` : ''}</p>
           {q.objectives.map((o, i) => <p key={i} className="small">• {objectiveLabel(world, o)}</p>)}
@@ -359,9 +412,10 @@ function QuestsPanel() {
         const late = q.deadlineDay !== undefined && world.time.day > q.deadlineDay;
         const ready = q.status === 'ready' || prog.done === prog.total;
         return (
-          <div key={q.id} className="card">
+          <div key={q.id} className="card" style={q.isMain ? { borderColor: 'var(--accent)' } : undefined}>
             <div className="row">
-              <span className="name grow">{q.title}</span>
+              <span className="name grow">{q.isMain && '⚜ '}{q.title}</span>
+              {q.guild && <Tag>{GUILDS.find((g) => g.key === q.guild)?.name}</Tag>}
               {ready ? <Tag tone="green">READY</Tag> : <Tag>{prog.done}/{prog.total}</Tag>}
               {late && <Tag tone="red">LATE</Tag>}
             </div>
@@ -370,7 +424,19 @@ function QuestsPanel() {
             ))}
             <p className="small dim">Turn in with {giverName(q)} at {world.locations[q.giverLocation]?.name} · {describeReward(world, q)}{q.deadlineDay !== undefined ? ` · by Day ${q.deadlineDay}` : ''}</p>
             {ready && world.partyLocation === q.giverLocation && (
-              <button className="primary" onClick={() => questTurnIn(q.id)}>Turn in — collect {describeReward(world, q)}</button>
+              q.choice && !q.choice.chosen ? (
+                <div>
+                  <p className="small" style={{ color: 'var(--accent)' }}>{q.choice.prompt}</p>
+                  {q.choice.options.map((o) => (
+                    <div key={o.key} className="row small">
+                      <button className="primary" onClick={() => questTurnIn(q.id, o.key)}>{o.label}</button>
+                      <span className="dim grow">{o.description}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <button className="primary" onClick={() => questTurnIn(q.id)}>Turn in — collect {describeReward(world, q)}</button>
+              )
             )}
           </div>
         );
@@ -498,6 +564,7 @@ function CharactersPanel() {
 function PartyPanel() {
   const world = useStore((s) => s.world);
   const openTalk = useStore((s) => s.openTalk);
+  const spendPoint = useStore((s) => s.spendPoint);
   const party = Object.values(world.characters).filter((c) => c.inParty && c.alive);
   return (
     <div>
@@ -514,6 +581,14 @@ function PartyPanel() {
             <div>{c.injuries.filter((i) => !i.treated).map((i, idx) => <Tag key={idx} tone="red">{i.name} ({i.stat} {i.amount})</Tag>)}</div>
           )}
           {levelUpAvailable(c) && <Tag tone="gold">LEVEL AVAILABLE — trainer: {CLASSES[c.charClass].trainer}</Tag>}
+          {(c.attributePoints ?? 0) > 0 && (
+            <div className="row small">
+              <Tag tone="gold">{c.attributePoints} attribute point{c.attributePoints === 1 ? '' : 's'}</Tag>
+              {(['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'] as const).map((a) => (
+                <button key={a} onClick={() => spendPoint(c.id, a)} title={`+1 ${a}`}>{a.slice(0, 3).toUpperCase()}+</button>
+              ))}
+            </div>
+          )}
           {c.statuses.length > 0 && (
             <div>{c.statuses.map((s) => <Tag key={s.key} tone="red">{STATUS_RULES[s.key].label}{s.roundsLeft !== undefined ? ` (${s.roundsLeft}r)` : ''}</Tag>)}</div>
           )}

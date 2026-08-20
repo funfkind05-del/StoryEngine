@@ -13,6 +13,28 @@ import { CompileModal } from './components/CompileModal';
 import { OutlineModal } from './components/OutlineModal';
 import type { EncounterFrequency } from './engine/types';
 
+function ArrestBanner() {
+  const world = useStore((s) => s.world);
+  const arrestAct = useStore((s) => s.arrestAct);
+  const a = world.pendingArrest;
+  if (!a || world.combat) return null;
+  const due = Math.ceil((world.bounty ?? 0) * 1.2);
+  return (
+    <div className="encounter-banner">
+      <div className="row">
+        <b style={{ color: 'var(--danger)' }}>⚖ WATCH PATROL</b>
+        <span className="grow">{a.officers} watchmen, and they know the face. Bounty on the ledger: {fmtMoney(world.bounty ?? 0)}.</span>
+      </div>
+      <div className="row">
+        <button className="primary" onClick={() => arrestAct('pay')}>Pay {fmtMoney(due)}</button>
+        <button onClick={() => arrestAct('flee')}>Run for it</button>
+        <button className="danger" onClick={() => arrestAct('resist')}>Draw steel</button>
+        <button onClick={() => arrestAct('surrender')}>Take the cells (2 days)</button>
+      </div>
+    </div>
+  );
+}
+
 function MomentBanner() {
   const world = useStore((s) => s.world);
   const hearMoment = useStore((s) => s.hearMoment);
@@ -47,6 +69,7 @@ function MoneyTracker() {
       onClick={() => setPanel('inventory')}
     >
       <span className="coin">◉</span> {fmtMoney(mc.money)}
+      {(world.bounty ?? 0) > 0 && <span style={{ color: 'var(--danger)' }}> · ⚖ {fmtMoney(world.bounty ?? 0)}</span>}
       {party.length > 1 && <span className="dim"> · party {fmtMoney(partyTotal)}</span>}
       {treasury > 0 && <span className="dim"> · chest {fmtMoney(treasury)}</span>}
     </span>
@@ -140,6 +163,7 @@ export default function App() {
         </div>
         <div className="editor-wrap" style={{ minHeight: 0 }}>
           <EncounterBanner />
+          <ArrestBanner />
           <MomentBanner />
           <WritingStudio />
         </div>

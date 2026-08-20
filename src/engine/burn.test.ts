@@ -34,6 +34,9 @@ import { brewAtHome, buyFirstHome, buyUpgrade, cookAtHome, findHome, fletchArrow
 import { acceptQuest, checkQuests, offeredQuestsAt, refreshJobs, turnInQuest } from './quests';
 import { maybeCompanionMoment } from './moments';
 import { generateStoryIdeas } from './muse';
+import { arrestFlee, arrestPay, arrestResist, arrestSurrender, burgleShop, maybePatrolStop, payBountyAt, pickpocket } from './crime';
+import { GUILDS, joinGuild } from './guilds';
+import { spendAttributePoint } from './progression';
 import { buildOutline } from './outline';
 import { applyProposal } from './proseLlm';
 import { generateBackgroundNpc, promoteNpc } from './npc';
@@ -117,6 +120,13 @@ function checkInvariants(w: WorldState, step: number, action: string, deep: bool
     }
     if (!w.combat.active && w.combat.outcome === 'ongoing') fail('inactive combat still ongoing');
   }
+  if ((w.bounty ?? 0) < 0) fail('negative bounty');
+  for (const [gk, r] of Object.entries(w.guildRanks ?? {})) {
+    if (r < 0 || r > 3) fail(`guild ${gk} rank ${r} out of range`);
+  }
+  for (const c of Object.values(w.characters)) {
+    if ((c.attributePoints ?? 0) < 0) fail(`${c.name} negative attribute points`);
+  }
   // quests: no double-pay, objectives well-formed
   for (const q of Object.values(w.quests)) {
     for (const o of q.objectives) {
@@ -178,6 +188,14 @@ function step(w: WorldState, rng: Rng): string {
     }
     closeCombat(w);
     return 'close-combat';
+  }
+  if (w.pendingArrest) {
+    const which = rng.next();
+    if (which < 0.4) arrestPay(w);
+    else if (which < 0.6) arrestFlee(w);
+    else if (which < 0.8) arrestSurrender(w);
+    else arrestResist(w);
+    return 'arrest';
   }
   if (w.pendingEncounter) {
     if (rng.chance(0.8)) startCombat(w, w.pendingEncounter);
@@ -342,10 +360,32 @@ function step(w: WorldState, rng: Rng): string {
     });
     return 'prose-sync';
   }
-  if (roll < 0.92) {
+  if (roll < 0.9) {
     const npc = generateBackgroundNpc(w, w.partyLocation, rng.fork());
     if (rng.chance(0.3)) promoteNpc(w, npc.id);
     return 'spawn-npc';
+  }
+  if (roll < 0.92) {
+    // a life of crime and self-improvement
+    const which = rng.next();
+    if (which < 0.3) {
+      const marks = Object.values(w.characters).filter((c) => c.alive && !c.inParty && c.location === w.partyLocation);
+      if (marks.length) pickpocket(w, rng.pick(marks).id);
+    } else if (which < 0.5) {
+      burgleShop(w, w.partyLocation);
+    } else if (which < 0.6) {
+      payBountyAt(w, w.partyLocation);
+    } else if (which < 0.8) {
+      const g = rng.pick(GUILDS);
+      if (w.partyLocation === g.location) joinGuild(w, g.key);
+    } else {
+      const withPoints = partyMembers(w).filter((c) => (c.attributePoints ?? 0) > 0);
+      if (withPoints.length) {
+        spendAttributePoint(w, rng.pick(withPoints), rng.pick(['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'] as const));
+      }
+    }
+    maybePatrolStop(w);
+    return 'crime-and-growth';
   }
   if (roll < 0.96) {
     // party churn: recruit or dismiss a persistent local (never the MC)

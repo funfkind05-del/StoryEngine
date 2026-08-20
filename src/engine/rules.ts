@@ -120,12 +120,9 @@ export function applyTraining(c: Character): string[] {
     c.defense += 1;
     notes.push('Defense +1');
   }
-  // small stat bump every 3rd level, class-flavored
-  if (c.level % 3 === 0) {
-    const stat = c.charClass === 'mage' ? 'intelligence' : c.charClass === 'priest' ? 'wisdom' : c.charClass === 'rogue' || c.charClass === 'ranger' ? 'dexterity' : 'strength';
-    c.attributes[stat] += 1;
-    notes.push(`${stat.charAt(0).toUpperCase() + stat.slice(1)} +1`);
-  }
+  // growth is the author's to assign
+  c.attributePoints = (c.attributePoints ?? 0) + 1;
+  notes.push('+1 attribute point (assign in the Party panel)');
   const unlock = def.unlocks[c.level];
   if (unlock && !c.abilities.includes(unlock)) {
     c.abilities.push(unlock);

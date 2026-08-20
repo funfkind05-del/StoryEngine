@@ -6,6 +6,7 @@
 import type { Dungeon, DungeonRoom, RoomId, SimEvent, WorldState } from './types';
 import { Rng } from './rng';
 import { addMinutes, logEvent, nextId, partyMembers } from './world';
+import { trainSkill } from './progression';
 
 const ROOM_NAMES = [
   'Collapsed Gallery', 'Bone Niche', 'Flooded Chamber', 'Ossuary', 'Broken Shrine',
@@ -200,6 +201,7 @@ export function searchRoom(world: WorldState): SimEvent | { error: string } {
   const d = world.dungeons[world.currentDungeon];
   const room = d.rooms[world.currentRoom];
   addMinutes(world, 10);
+  trainSkill(world, world.characters[world.mcId], 'tracking');
   const finds: string[] = [];
   if (room.secretDoor && !room.secretDoor.discovered) {
     const mc = world.characters[world.mcId];
@@ -230,6 +232,7 @@ export function disarmTrap(world: WorldState): SimEvent | { error: string } {
   const mc = world.characters[world.mcId];
   const rng = new Rng((d.generationSeed ^ world.time.day * 7919 + world.time.minute) >>> 0);
   addMinutes(world, 5);
+  trainSkill(world, mc, 'lockpicking');
   const roll = rng.die(20) + mc.skills.lockpicking + Math.floor(mc.attributes.dexterity / 3);
   if (roll >= 13) {
     room.trap.disarmed = true;
