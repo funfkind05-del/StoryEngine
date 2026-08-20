@@ -55,6 +55,32 @@ function MomentBanner() {
   );
 }
 
+function PartyStrip() {
+  const world = useStore((s) => s.world);
+  const setPanel = useStore((s) => s.setPanel);
+  const party = partyMembers(world);
+  if (!party.length) return null;
+  return (
+    <div className="party-strip" onClick={() => setPanel('party')} title="The roster — click for the full party panel">
+      {party.map((c) => {
+        const hurt = c.hp.current / c.hp.max;
+        return (
+          <span key={c.id} className="ps-member">
+            <span className="ps-name">{c.name}{c.title ? ` ·${''} ${c.title}` : ''}</span>
+            <span className="ps-bars">
+              <span className="ps-bar hp"><span style={{ width: `${Math.round(hurt * 100)}%`, background: hurt < 0.3 ? 'var(--danger)' : hurt < 0.6 ? '#c88a2e' : 'var(--accent2)' }} /></span>
+              {c.mana.max > 0 && <span className="ps-bar mp"><span style={{ width: `${Math.round((c.mana.current / c.mana.max) * 100)}%` }} /></span>}
+            </span>
+            <span className="mono dim ps-num">{c.hp.current}/{c.hp.max}</span>
+            {c.statuses.filter((st) => st.key !== 'unconscious').map((st) => <span key={st.key} className="ps-dot" title={st.key} />)}
+            {c.hp.current === 0 && <span className="ps-down">DOWN</span>}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
 function MoneyTracker() {
   const world = useStore((s) => s.world);
   const setPanel = useStore((s) => s.setPanel);
@@ -90,6 +116,44 @@ export default function App() {
   const selectedSceneId = useStore((s) => s.selectedSceneId);
   const toast = useStore((s) => s.toast);
   const setToast = useStore((s) => s.setToast);
+  const playMode = useStore((s) => s.playMode);
+  const setPlayMode = useStore((s) => s.setPlayMode);
+  const soundOn = useStore((s) => s.soundOn);
+  const setSoundOn = useStore((s) => s.setSoundOn);
+
+  // old-school keys: arrows walk the dungeon, S searches, C opens the
+  // chest, F takes the fight. Inputs and modals keep their own keys.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+      const st = useStore.getState();
+      const w = st.world;
+      if (w.combat || st.talk || st.prepDungeon || st.chestLoot) return;
+      if (w.pendingEncounter && (e.key === 'f' || e.key === 'F')) {
+        st.beginCombat();
+        return;
+      }
+      if (!w.currentDungeon || !w.currentRoom) return;
+      const dirByKey: Record<string, 'north' | 'south' | 'east' | 'west'> = {
+        ArrowUp: 'north', ArrowDown: 'south', ArrowLeft: 'west', ArrowRight: 'east',
+      };
+      const dir = dirByKey[e.key];
+      if (dir) {
+        e.preventDefault();
+        st.move(dir);
+        return;
+      }
+      const room = w.dungeons[w.currentDungeon].rooms[w.currentRoom];
+      if (e.key === 's' || e.key === 'S') st.search();
+      else if ((e.key === 'c' || e.key === 'C') && room.chest && !room.chest.opened) st.lootChest();
+      else if ((e.key === 'f' || e.key === 'F') && room.enemies === 'alive') st.fight();
+      else if (e.key === '>' && room.connections.down) st.move('down');
+      else if (e.key === '<' && room.connections.up) st.move('up');
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   useEffect(() => {
     if (!toast) return;
@@ -103,7 +167,7 @@ export default function App() {
   const chapters = Array.from(new Set(world.scenes.map((s) => s.chapter))).sort((a, b) => a - b);
 
   return (
-    <div className="app">
+    <div className={`app${playMode ? ' play' : ''}`}>
       <div className="topbar">
         <span className="title">Blackwall</span>
         <span className="clock">{fmtWhen(world.time)}</span>
@@ -126,6 +190,16 @@ export default function App() {
         >
           {world.locations[world.partyLocation]?.household ? 'until morning' : 'sleep rough'}
         </button>
+        <button
+          className={playMode ? 'primary' : undefined}
+          onClick={() => setPlayMode(!playMode)}
+          title={playMode ? 'Back to the manuscript — the sim keeps every consequence for you.' : 'Game-first layout: the manuscript steps aside, the dungeon and roster get the screen.'}
+        >
+          {playMode ? '✒ Write' : '⚔ Play'}
+        </button>
+        <button onClick={() => setSoundOn(!soundOn)} title={soundOn ? 'Sound on — synthesized, period-correct beeps' : 'Sound off'}>
+          {soundOn ? '🔊' : '🔇'}
+        </button>
         <label>encounters</label>
         <select value={world.encounterFrequency} onChange={(e) => setFrequency(e.target.value as EncounterFrequency)}>
           <option value="low">low</option>
@@ -133,6 +207,12 @@ export default function App() {
           <option value="high">high</option>
           <option value="chaotic">chaotic</option>
         </select>
+      </div>
+      <PartyStrip />
+      <div className="banners">
+        <EncounterBanner />
+        <ArrestBanner />
+        <MomentBanner />
       </div>
       <div className="main">
         <div className="sidebar">
@@ -163,9 +243,6 @@ export default function App() {
           <MiniMap />
         </div>
         <div className="editor-wrap" style={{ minHeight: 0 }}>
-          <EncounterBanner />
-          <ArrestBanner />
-          <MomentBanner />
           <WritingStudio />
         </div>
         <SidePanels />

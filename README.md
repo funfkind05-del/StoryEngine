@@ -141,6 +141,30 @@ Bard's Tale bones, Elder Scrolls texture:
   fishing off the wharves (fish, boots, the occasional pearl), and a stray
   who will hold your doorway all night, seriously.
 
+
+## The classic-RPG layer (Wizardry / Bard's Tale / Diablo / BG)
+
+- **Named elites & rivals** — encounters sometimes field a named elite ("Vhessa the Venomous"). Kill it for double XP; let it escape and it *persists*: it heals, gains power, remembers its scars, and comes looking for you. The Muse surfaces open grudges as chapter ideas.
+- **Companion banter** — companions drift toward and against each other after shared fights. Sometimes two of them get into it within earshot: a two-voice LLM scene you can overhear, join, and keep — kept banter becomes shared memories on both.
+- **Companions judge your crimes** — pickpocketing and burglary move every party member's dials by their values: the cunning approve, the honest do not, and they remember.
+- **Unidentified items** — half of enchanted drops come up mute. The Arcane College reads them for a fee; Kess reads them free once her second arc chapter is closed. Unread magic can't be equipped.
+- **Class ascension at 25** — two paths per class at the class hall (Warlord/Worldbreaker, Shadowdancer/Kingslayer, …): a title, a stat package, and a capstone ability early.
+- **Dual-affix rares & named uniques** — hot rolls can land a second affix; boss hoards can carry one of four named pieces (Oathbiter, The Long Quiet, Gravewarden's Coat, The Polite Refusal) with lore text, once per world.
+- **Resurrection risk** — opt into Wizardry rules: the rite is a CON gamble. Failure leaves ashes; the ashes rite costs more and failure there is forever.
+- **Rep-gated shop stock** — the good steel stays under the counter until the street knows you.
+- **Aging & birthdays** — everyone has a birthday on the 360-day calendar; party birthdays make the event log and the outline.
+
+## Play mode & the old-school shell
+
+- **⚔ Play mode** (topbar) collapses the manuscript and gives the sim the screen; **✒ Write** brings it back.
+- **First-person dungeon view** — a single-point-perspective wireframe of the room you're standing in: doorways, locked doors, stairs, chests, shrines, and red eyes in the dark when something lives there. It faces the way you last walked.
+- **Persistent party strip** — the roster with HP/MP bars never leaves the top of the screen.
+- **Keyboard**: arrows walk the dungeon, `S` search, `C` open chest, `F` pick/accept a fight, `<`/`>` stairs. In combat: `Enter` resolves the round, `A` auto-round, `L` let them fight, `T` take all loot, `1-9` point every blade at the Nth enemy.
+- **Veterancy** — kill five of a kind and their AC/ATK show in the target list and enemy cards.
+- **Sound** — synthesized, period-correct beeps (🔊 in the topbar): hit thunks, coin clinks, a level-up sting, stairs. No assets, just WebAudio.
+- **Encounter balance** — dungeon group sizes are capped by party strength; a level-1 duo meets three bodies, not eight.
+- **New game rules** — the Saves panel asks "How do you want to die?" (story/classic/permadeath) and how you want to come back (safe/risky resurrection) when you begin a new chronicle.
+
 ## The campaign spine — What Lies Beneath Blackwall
 
 An eight-stage main questline threads the eight dungeons in level order:

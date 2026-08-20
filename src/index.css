@@ -52,7 +52,7 @@ select, input[type='text'], input[type='number'] {
 
 .app {
   display: grid;
-  grid-template-rows: 46px 1fr;
+  grid-template-rows: 46px auto auto 1fr;
   height: 100%;
 }
 
@@ -295,8 +295,8 @@ select, input[type='text'], input[type='number'] {
 .dcell.hostile { border-color: var(--danger); }
 .dcell .dot { position: absolute; top: 2px; right: 3px; font-size: 8px; }
 
-.compass { display: grid; grid-template-columns: repeat(3, 44px); gap: 4px; justify-content: center; margin: 8px 0; }
-.compass button { padding: 8px 0; }
+.compass { display: grid; grid-template-columns: repeat(3, 64px); gap: 6px; justify-content: center; margin: 8px 0; }
+.compass button { padding: 14px 0; font-size: 15px; font-weight: 600; }
 
 .monster-portrait {
   border-radius: 6px;
@@ -445,3 +445,42 @@ details pre {
 table.stats { border-collapse: collapse; width: 100%; font-size: 12px; }
 table.stats td { padding: 2px 6px 2px 0; }
 table.stats td:first-child { color: var(--text-dim); }
+
+
+/* ---------- Play mode: the game gets the screen ---------- */
+.app.play .sidebar { display: none; }
+.app.play .editor-wrap { display: none; }
+.app.play .main { grid-template-columns: 1fr; }
+.app.play .panels { border-left: none; max-width: 900px; width: 100%; margin: 0 auto; }
+.app.play .dcell { min-height: 56px; font-size: 12px; }
+.app.play .fpv svg { max-height: 420px; }
+.banners { flex-shrink: 0; }
+.banners .encounter-banner { margin: 6px 10px 0; }
+
+/* ---------- Party strip: the roster never leaves the screen ---------- */
+.party-strip {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 4px 12px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+.ps-member { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.ps-name { font-size: 12px; color: var(--text); }
+.ps-bars { display: flex; flex-direction: column; gap: 2px; width: 72px; }
+.ps-bar { height: 5px; background: #241f16; border-radius: 2px; overflow: hidden; }
+.ps-bar > span { display: block; height: 100%; }
+.ps-bar.mp > span { background: var(--info); }
+.ps-num { font-size: 10px; }
+.ps-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--danger); display: inline-block; }
+.ps-down { color: var(--danger); font-size: 10px; font-weight: 700; letter-spacing: 1px; }
+
+/* ---------- First-person dungeon view ---------- */
+.fpv { margin-bottom: 8px; }
+.fpv svg { width: 100%; height: auto; display: block; border: 1px solid var(--border); border-radius: 4px; background: #050403; }
+.fpv-caption { margin-top: 4px; font-style: italic; }
+.keys-hint { text-align: center; letter-spacing: 0.5px; }

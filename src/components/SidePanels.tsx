@@ -39,6 +39,8 @@ import { MONSTERS } from '../engine/monsters';
 import { CARRIAGE_STOPS } from '../engine/services';
 import { RECIPES, canCraft } from '../engine/crafting';
 import { ascensionOptions } from '../engine/progression';
+import { COMPANION_ARCS } from '../engine/companions';
+import { FirstPersonView } from './FirstPersonView';
 import { LOREBOOKS, loreById } from '../engine/codex';
 import { ACHIEVEMENTS } from '../engine/achievements';
 import {
@@ -157,7 +159,12 @@ function LocationPanel() {
       {here.map((c) => (
         <div key={c.id} className="card">
           <div className="row">
-            <span className="name grow">{c.name}</span>
+            <span className="name grow">
+              {c.name}
+              {COMPANION_ARCS.some((a) => a.charId === c.id) && !c.inParty && (
+                <Tag tone="gold">✦ recruitable — has a story</Tag>
+              )}
+            </span>
             {!world.combat && <button onClick={() => openTalk(c.id)}>🗨 Talk</button>}
             {!world.combat && <button title="Lift their purse — stealth against their wits. Getting caught has a price." onClick={() => crimePickpocket(c.id)}>🫳</button>}
           </div>
@@ -830,6 +837,8 @@ function DungeonPanel() {
     <div>
       <h3>{d.name}</h3>
       <p className="dim small">Floor {room.floor} of {d.floors} · {d.dungeonType} {d.bossDefeated && <Tag tone="green">boss defeated</Tag>}</p>
+      <FirstPersonView />
+      <p className="dim small keys-hint">⌨ arrows walk · S search · C chest · F fight · &lt; &gt; stairs</p>
       <div className="card">
         <div className="name">{room.name} <span className="mono dim">{room.id}</span></div>
         <p className="small">{room.description}</p>
@@ -1374,6 +1383,8 @@ function SavesPanel() {
   const doExport = useStore((s) => s.doExport);
   const doImport = useStore((s) => s.doImport);
   const resetWorld = useStore((s) => s.resetWorld);
+  const [newDeathRule, setNewDeathRule] = useState<'story' | 'classic' | 'permadeath'>('story');
+  const [newResRule, setNewResRule] = useState<'safe' | 'risky'>('safe');
   const [label, setLabel] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
   const setDeathRule = useStore((s) => s.setDeathRule);
@@ -1448,11 +1459,29 @@ function SavesPanel() {
         <button onClick={doExport}>Export project (.json)</button>
         <button onClick={() => fileRef.current?.click()}>Import…</button>
         <input ref={fileRef} type="file" accept=".json" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) void doImport(f); e.target.value = ''; }} />
+      </div>
+      <h4>New game</h4>
+      <div className="row small">
+        <label className="grow">How do you want to die?</label>
+        <select value={newDeathRule} onChange={(e) => setNewDeathRule(e.target.value as typeof newDeathRule)}>
+          <option value="story">Story — the fallen wake at 1 HP, scarred</option>
+          <option value="classic">Classic — dead until a temple rite</option>
+          <option value="permadeath">Permadeath — the old way. No take-backs.</option>
+        </select>
+      </div>
+      <div className="row small">
+        <label className="grow">And how do you want to come back?</label>
+        <select value={newResRule} onChange={(e) => setNewResRule(e.target.value as typeof newResRule)}>
+          <option value="safe">Safe — coin always brings them back</option>
+          <option value="risky">Risky — a CON gamble; ashes, then nothing</option>
+        </select>
+      </div>
+      <div className="row">
         <button
           className="danger"
-          onClick={() => { if (confirm('Reset the entire world and manuscript? Export first if you care about this one.')) resetWorld(); }}
+          onClick={() => { if (confirm(`Reset the entire world and manuscript (${newDeathRule} death, ${newResRule} resurrection)? Export first if you care about this one.`)) resetWorld({ deathRule: newDeathRule, resurrectionRule: newResRule }); }}
         >
-          Reset world
+          Begin a new chronicle (reset world)
         </button>
       </div>
       <p className="dim small">Sim clock now: {fmtWhen(world.time)} · autosaves keep the last 20; restore, change your preparation, and simulate again.</p>

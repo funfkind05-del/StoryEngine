@@ -2,7 +2,7 @@
 // The combat log is the canonical record; COPY TO PROSE runs it
 // through the narrative bridge, which never invents a result.
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../state/store';
 import type { CombatActionType, PlannedAction } from '../engine/types';
 import { SKILLS, SPELLS } from '../engine/combat';
@@ -74,7 +74,7 @@ export function EncounterBanner() {
         </div>
       ) : (
         <div className="row">
-          <button className="primary" onClick={beginCombat}>⚔ Fight</button>
+          <button className="primary" onClick={beginCombat}>⚔️ Fight</button>
           {enc.source === 'dungeon' && <button onClick={() => fight(randomSeed())}>Resimulate (new seed)</button>}
           <button onClick={startEdit}>Override…</button>
           <button onClick={dismissEncounter} title="Set the encounter aside; in a dungeon the enemies remain in the room.">
@@ -107,6 +107,18 @@ export function CombatModal() {
   const [plans, setPlans] = useState<Record<string, Plan>>({});
   const [proseSeed, setProseSeed] = useState(() => randomSeed());
   const [picked, setPicked] = useState<number[]>([]);
+  // old-school combat keys: Enter resolves, A auto-round, L lets them
+  // fight, T takes all loot, 1-9 point every blade at the Nth enemy
+  const keyHandler = useRef<(e: KeyboardEvent) => void>(() => {});
+  useEffect(() => {
+    const fn = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+      keyHandler.current(e);
+    };
+    window.addEventListener('keydown', fn);
+    return () => window.removeEventListener('keydown', fn);
+  }, []);
 
   if (!combat) return null;
   const livingMonsters = combat.monsters.filter((m) => m.alive && !m.fled);
@@ -144,6 +156,31 @@ export function CombatModal() {
 
   const over = combat.outcome !== 'ongoing';
   const loot = combat.pendingLoot;
+
+  keyHandler.current = (e) => {
+    if (!over) {
+      if (e.key === 'Enter') { e.preventDefault(); resolve(); return; }
+      if (e.key === 'a' || e.key === 'A') { combatAutoRound(); return; }
+      if (e.key === 'l' || e.key === 'L') { combatAutoResolve(); return; }
+      const n = parseInt(e.key, 10);
+      if (n >= 1 && n <= livingMonsters.length) {
+        const target = livingMonsters[n - 1].id;
+        const next: Record<string, Plan> = { ...plans };
+        for (const c of party) {
+          const p = plans[c.id] ?? { type: 'attack', target, key: '' };
+          if (p.type === 'attack' || p.type === 'skill' || (p.type === 'spell' && SPELLS[p.key]?.damage)) {
+            next[c.id] = { ...p, target };
+          }
+        }
+        setPlans(next);
+        setToast(`All blades point at ${livingMonsters[n - 1].name}.`);
+      }
+      return;
+    }
+    if (loot && (e.key === 't' || e.key === 'T')) finishLoot('all');
+  };
+
+  const vet = (templateKey: string) => (world.killCounts?.[templateKey] ?? 0) >= 5;
 
   return (
     <div className="modal-backdrop">
@@ -208,8 +245,10 @@ export function CombatModal() {
                       )}
                       {(planFor(c.id).type === 'attack' || planFor(c.id).type === 'skill' || (planFor(c.id).type === 'spell' && SPELLS[planFor(c.id).key]?.damage)) && (
                         <select value={planFor(c.id).target || defaultTarget} onChange={(e) => setPlan(c.id, { target: e.target.value })}>
-                          {livingMonsters.map((m) => (
-                            <option key={m.id} value={m.id}>{m.name} ({m.hp.current}/{m.hp.max})</option>
+                          {livingMonsters.map((m, i) => (
+                            <option key={m.id} value={m.id}>
+                              {i + 1}. {m.name} ({m.hp.current}/{m.hp.max}{vet(m.templateKey) ? ` · AC ${MONSTERS[m.templateKey].defense + (m.elite?.defenseBonus ?? 0)}` : ''})
+                            </option>
                           ))}
                         </select>
                       )}
@@ -230,6 +269,11 @@ export function CombatModal() {
                         <span className="mono dim">{m.alive ? `${m.hp.current}/${m.hp.max}` : '—'}</span>
                       </span>
                       {m.alive && <Bar value={m.hp.current} max={m.hp.max} color="var(--danger)" />}
+                      {m.alive && vet(m.templateKey) && (
+                        <span className="dim small mono" title="You've killed enough of these to know their measure.">
+                          AC {MONSTERS[m.templateKey].defense + (m.elite?.defenseBonus ?? 0)} · ATK +{MONSTERS[m.templateKey].attack + (m.elite?.attackBonus ?? 0)}{m.elite ? ' · ELITE' : ''}
+                        </span>
+                      )}
                     </span>
                   </div>
                 </div>
@@ -240,8 +284,8 @@ export function CombatModal() {
                     Resolve Round {combat.round}
                   </button>
                   <div className="row" style={{ marginTop: 4 }}>
-                    <button className="grow" onClick={combatAutoRound} title="One round on sensible autopilot: heals the hurt, braces or interrupts telegraphs, spends abilities when rich.">▶ Auto round</button>
-                    <button className="grow" onClick={combatAutoResolve} title="Let them fight — autopilot until it ends. For the fights that aren't the chapter.">⏩ Let them fight</button>
+                    <button className="grow" onClick={combatAutoRound} title="One round on sensible autopilot: heals the hurt, braces or interrupts telegraphs, spends abilities when rich. (key: A)">▶ Auto round</button>
+                    <button className="grow" onClick={combatAutoResolve} title="Let them fight — autopilot until it ends. For the fights that aren't the chapter. (key: L)">⏩ Let them fight</button>
                   </div>
                 </>
               )}

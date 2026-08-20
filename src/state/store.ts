@@ -68,6 +68,9 @@ import { reorderScene } from '../engine/world';
 import { createScenesFromBeats, markOutlined, type OutlineBeat } from '../engine/outline';
 import { maybeCompanionMoment } from '../engine/moments';
 import { brewAtHome, buyFirstHome, cookAtHome, fletchArrows, hostFeast, prayAtShrine, repairAtHome, sparAtHome } from '../engine/household';
+import { setSfxEnabled, sfx } from '../sound';
+
+setSfxEnabled(localStorage.getItem('storyengine.sound') !== '0');
 
 export type PanelTab =
   | 'location'
@@ -95,6 +98,12 @@ interface AppState {
   prepDungeon: string | null;
   /** outline handed from the Muse panel to the Draft Scene tool */
   museOutline: string | null;
+  /** game-first layout: manuscript collapses, the sim gets the screen */
+  playMode: boolean;
+  /** synthesized sound effects on/off */
+  soundOn: boolean;
+  /** direction the party last walked — the first-person view faces this way */
+  facing: 'north' | 'south' | 'east' | 'west';
   /** live NPC conversation (LLM-driven) */
   talk: {
     npcId: string;
@@ -186,6 +195,8 @@ interface AppState {
   // world rules & maintenance
   setDoomEnabled: (on: boolean) => void;
   setResurrectionRule: (rule: 'safe' | 'risky') => void;
+  setPlayMode: (on: boolean) => void;
+  setSoundOn: (on: boolean) => void;
   identifyItem: (itemId: string) => void;
   ascend: (charId: string, pathKey: string) => void;
   compactLog: () => void;
@@ -256,7 +267,7 @@ interface AppState {
   deleteSnapshot: (snapId: string) => void;
   doExport: () => void;
   doImport: (file: File) => Promise<void>;
-  resetWorld: () => void;
+  resetWorld: (opts?: { deathRule?: WorldState['deathRule']; resurrectionRule?: 'safe' | 'risky' }) => void;
 }
 
 function initial(): { world: WorldState; snapshots: Snapshot[] } {
@@ -281,6 +292,9 @@ export const useStore = create<AppState>((set, get) => ({
   chestLoot: null,
   prepDungeon: null,
   museOutline: null,
+  playMode: localStorage.getItem('storyengine.playmode') === '1',
+  soundOn: localStorage.getItem('storyengine.sound') !== '0',
+  facing: 'north',
   talk: null,
 
   commit: (opts) => {
@@ -344,6 +358,7 @@ export const useStore = create<AppState>((set, get) => ({
     const { world, commit, setToast } = get();
     const err = buyFromShop(world, world.partyLocation, entryIdx, world.characters[world.mcId]);
     if (err) setToast(err);
+    else sfx('coin');
     commit();
   },
 
@@ -353,6 +368,7 @@ export const useStore = create<AppState>((set, get) => ({
     const seller = typeof owner === 'string' ? world.characters[owner] : undefined;
     const err = sellToShop(world, world.partyLocation, itemId, seller ?? world.characters[world.mcId]);
     if (err) setToast(err);
+    else sfx('coin');
     commit();
   },
 
@@ -383,7 +399,10 @@ export const useStore = create<AppState>((set, get) => ({
     const { world, commit, setToast } = get();
     const err = trainAt(world, world.partyLocation, charId);
     if (err) setToast(err);
-    else setToast(`${world.characters[charId].name} trained to level ${world.characters[charId].level}.`);
+    else {
+      sfx('levelup');
+      setToast(`${world.characters[charId].name} trained to level ${world.characters[charId].level}.`);
+    }
     commit({ autosave: 'Training' });
   },
 
@@ -695,13 +714,20 @@ export const useStore = create<AppState>((set, get) => ({
 
   combatAutoRound: () => {
     const { world, commit } = get();
+    const after = () => {
+      const oc = get().world.combat?.outcome;
+      sfx(oc === 'victory' ? 'victory' : oc === 'defeat' ? 'defeat' : 'hit');
+    };
     autoRound(world);
+    after();
     commit();
   },
 
   combatAutoResolve: () => {
     const { world, commit } = get();
     autoResolve(world);
+    const oc = get().world.combat?.outcome;
+    sfx(oc === 'victory' ? 'victory' : oc === 'defeat' ? 'defeat' : 'miss');
     commit({ autosave: 'Auto-resolved fight' });
   },
 
@@ -717,6 +743,18 @@ export const useStore = create<AppState>((set, get) => ({
     commit();
   },
 
+  setPlayMode: (on) => {
+    localStorage.setItem('storyengine.playmode', on ? '1' : '0');
+    set({ playMode: on });
+  },
+
+  setSoundOn: (on) => {
+    localStorage.setItem('storyengine.sound', on ? '1' : '0');
+    setSfxEnabled(on);
+    if (on) sfx('coin');
+    set({ soundOn: on });
+  },
+
   identifyItem: (itemId) => {
     const { world, commit, setToast } = get();
     const err = identifyItemEngine(world, itemId);
@@ -729,6 +767,7 @@ export const useStore = create<AppState>((set, get) => ({
     const { world, commit, setToast } = get();
     const err = chooseAscension(world, charId, pathKey);
     if (err) setToast(err);
+    else sfx('levelup');
     commit({ autosave: err ? undefined : 'Ascension' });
   },
 
@@ -978,6 +1017,11 @@ export const useStore = create<AppState>((set, get) => ({
       setToast(res.error);
       return;
     }
+    if (dir === 'up' || dir === 'down') sfx('stairs');
+    else {
+      sfx('step');
+      set({ facing: dir });
+    }
     commit();
   },
 
@@ -1009,6 +1053,7 @@ export const useStore = create<AppState>((set, get) => ({
       return;
     }
     logEvent(world, 'loot.chest', { seed: res.seed, money: res.money, items: res.items.map((i) => i.name) }, `The party opened a chest: ${res.money} copper${res.items.length ? `, ${res.items.map((i) => i.name).join(', ')}` : ''}. (seed ${res.seed})`, { seed: res.seed, witnesses: partyMembers(world).map((c) => c.id) });
+    sfx('chest');
     set({ chestLoot: res });
     commit({ autosave: 'Opened chest' });
   },
@@ -1060,6 +1105,7 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   beginCombat: () => {
+    sfx('fight');
     const { world, commit } = get();
     if (!world.pendingEncounter) return;
     startCombat(world, world.pendingEncounter);
@@ -1068,13 +1114,19 @@ export const useStore = create<AppState>((set, get) => ({
 
   doRound: (planned) => {
     const { world, commit } = get();
+    const roundSound = () => {
+      const oc = get().world.combat?.outcome;
+      sfx(oc === 'victory' ? 'victory' : oc === 'defeat' ? 'defeat' : 'hit');
+    };
     resolveRound(world, planned);
+    roundSound();
     commit();
   },
 
   finishLoot: (which) => {
     const { world, commit } = get();
     takeLoot(world, which);
+    if (which !== 'none') sfx('coin');
     commit({ autosave: 'After combat' });
   },
 
@@ -1237,11 +1289,13 @@ export const useStore = create<AppState>((set, get) => ({
     set({ world: data.world, snapshots: data.snapshots, selectedSceneId: data.world.scenes[0]?.id ?? null, toast: 'Project imported.' });
   },
 
-  resetWorld: () => {
+  resetWorld: (opts) => {
     clearProject();
     const world = buildSeedWorld();
     world.masterSeed = randomSeed();
-    logEvent(world, 'world.created', {}, 'The chronicle of Blackwall City begins.');
+    if (opts?.deathRule) world.deathRule = opts.deathRule;
+    if (opts?.resurrectionRule) world.resurrectionRule = opts.resurrectionRule;
+    logEvent(world, 'world.created', {}, `The chronicle of Blackwall City begins. (${world.deathRule} death, ${world.resurrectionRule ?? 'safe'} resurrection)`);
     const snapshots = [makeSnapshot(world, 'manual', 'World created')];
     persistProject(world, snapshots);
     set({ world, snapshots, selectedSceneId: world.scenes[0]?.id ?? null, chestLoot: null });

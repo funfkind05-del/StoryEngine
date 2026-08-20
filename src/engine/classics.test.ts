@@ -22,6 +22,8 @@ import { birthDayFor, relationshipBetween, runBirthdays, travelTo } from './worl
 import { makeItem } from './rules';
 import { Rng } from './rng';
 import { generateStoryIdeas } from './muse';
+import { generateDungeonEncounter } from './encounter';
+import { enterDungeon } from './dungeon';
 import type { PendingEncounter, WorldState } from './types';
 
 function freshWorld(): WorldState {
@@ -337,6 +339,25 @@ describe('rep-gated shop stock', () => {
     expect(buyFromShop(w, 'LOC_FORGE', idx, mc)).toMatch(/spoken for/);
     mc.factionReputation['FAC_COINGUILD'] = 3;
     expect(buyFromShop(w, 'LOC_FORGE', idx, mc)).toBeNull();
+  });
+});
+
+describe('encounter balance', () => {
+  it('a fresh duo on floor 1 never meets more bodies than it can survive', () => {
+    const w = freshWorld();
+    enterDungeon(w, 'DUN_OLDQUARTER_001'); // rooms generate on entry
+    const d = w.dungeons['DUN_OLDQUARTER_001'];
+    const room = Object.values(d.rooms).find((r) => r.floor === 1 && r.encounterKey && !r.isBossRoom)!;
+    w.currentRoom = room.id;
+    room.enemies = 'alive';
+    for (let seed = 1; seed <= 60; seed++) {
+      const enc = generateDungeonEncounter(w, seed);
+      if ('error' in enc) throw new Error(enc.error);
+      const bodies = enc.monsters.reduce((n, m) => n + m.count, 0);
+      // level-1 duo → budget cap 3: at most 3 level-1 bodies
+      expect(bodies, `seed ${seed}: ${enc.description}`).toBeLessThanOrEqual(4);
+      w.pendingEncounter = null;
+    }
   });
 });
 

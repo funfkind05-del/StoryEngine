@@ -29,7 +29,9 @@ export function generateDungeonEncounter(world: WorldState, seed?: number): Pend
     monsters.push({ templateKey: minion, count: rng.int(1, Math.max(1, party.length - 1) + 1) });
   } else {
     const primary = room.encounterKey;
-    const budget = Math.max(2, partyLevel + party.length + Math.floor(room.floor / 2) + rng.int(-1, 1));
+    // hard cap by party strength: a level-1 duo meets 3 bodies, not 8
+    const cap = Math.max(2, Math.round(partyLevel * party.length * 1.25));
+    const budget = Math.max(2, Math.min(cap, partyLevel + party.length + Math.floor(room.floor / 2) + rng.int(-1, 1)));
     let spent = 0;
     let guard = 0;
     while (spent < budget && guard++ < 12) {

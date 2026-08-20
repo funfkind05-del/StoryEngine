@@ -69,7 +69,7 @@ console.log('encounter generated');
 await shot(page, 'e2e-encounter');
 
 // --- start combat from the banner
-await page.locator('.encounter-banner').getByRole('button', { name: '⚔ Fight' }).click();
+await page.locator('.encounter-banner').getByRole('button', { name: /Fight/ }).click();
 await page.locator('.modal-head').waitFor();
 
 // --- resolve rounds until a terminal outcome

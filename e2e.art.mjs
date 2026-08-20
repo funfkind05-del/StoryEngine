@@ -40,7 +40,7 @@ await page.getByRole('button', { name: 'Apply override (logged)' }).click();
 const plates = await page.locator('.encounter-banner .monster-portrait').count();
 if (plates < 4) throw new Error(`expected 4 banner plates, got ${plates}`);
 await page.screenshot({ path: `${SCRATCH}/art-banner.png` });
-await page.locator('.encounter-banner').getByRole('button', { name: '⚔ Fight' }).click();
+await page.locator('.encounter-banner').getByRole('button', { name: /Fight/ }).click();
 await page.locator('.modal-head').waitFor();
 const cardPlates = await page.locator('.modal .monster-portrait').count();
 if (cardPlates < 4) throw new Error(`expected 4 combat plates, got ${cardPlates}`);

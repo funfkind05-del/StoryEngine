@@ -28,7 +28,7 @@ for (let i = 0; i < 80 && !fought; i++) {
   await page.waitForTimeout(50);
 }
 if (!fought) throw new Error('no encounter');
-await page.locator('.encounter-banner').getByRole('button', { name: '⚔ Fight' }).click();
+await page.locator('.encounter-banner').getByRole('button', { name: /Fight/ }).click();
 for (let r = 0; r < 40; r++) {
   const btn = page.getByRole('button', { name: /Resolve Round/ });
   if (!(await btn.isVisible().catch(() => false))) break;
