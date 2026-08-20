@@ -1,0 +1,465 @@
+// ============================================================
+// The RPG Rules Engine. Single authority for: XP and levels,
+// classes and training, the item catalog, stacking and
+// encumbrance, consumable effects, status-effect rules, temple
+// services, and currency. The dungeon doesn't decide what a
+// goblin is worth, the combat UI doesn't decide what a potion
+// heals, and the prose engine decides neither.
+// ============================================================
+
+import type {
+  ActiveStatus,
+  CharClass,
+  Character,
+  Item,
+  ItemTier,
+  StatusKey,
+  WorldState,
+} from './types';
+import { OWNER_HOME, OWNER_PARTY } from './types';
+import { Rng } from './rng';
+
+// ---------- Currency (1 gold = 10 silver = 100 copper) ----------
+export function fmtMoney(copper: number): string {
+  const g = Math.floor(copper / 100);
+  const s = Math.floor((copper % 100) / 10);
+  const c = copper % 10;
+  const parts: string[] = [];
+  if (g) parts.push(`${g}g`);
+  if (s) parts.push(`${s}s`);
+  if (c || parts.length === 0) parts.push(`${c}c`);
+  return parts.join(' ');
+}
+
+// ---------- XP & levels ----------
+export function xpForLevel(level: number): number {
+  return level * level * 100;
+}
+
+export function levelUpAvailable(c: Character): boolean {
+  return c.alive && c.xp >= xpForLevel(c.level);
+}
+
+export function trainingCost(currentLevel: number): number {
+  return (currentLevel + 1) * 250; // copper
+}
+
+// ---------- Classes ----------
+export interface ClassDef {
+  key: CharClass;
+  label: string;
+  trainer: string; // where you level up
+  hpPerLevel: number;
+  manaPerLevel: number;
+  staminaPerLevel: number;
+  attackEvery: number; // +1 attack every N levels
+  defenseEvery: number;
+  /** ability unlocked at a given level (skill/spell keys from combat) */
+  unlocks: Record<number, string>;
+}
+
+export const CLASSES: Record<CharClass, ClassDef> = {
+  fighter: {
+    key: 'fighter', label: 'Fighter', trainer: 'Fighters Guild',
+    hpPerLevel: 6, manaPerLevel: 0, staminaPerLevel: 3, attackEvery: 1, defenseEvery: 2,
+    unlocks: { 2: 'shield-bash', 3: 'power-strike', 5: 'cleave' },
+  },
+  rogue: {
+    key: 'rogue', label: 'Rogue', trainer: 'Thieves Guild',
+    hpPerLevel: 4, manaPerLevel: 0, staminaPerLevel: 3, attackEvery: 1, defenseEvery: 2,
+    unlocks: { 2: 'backstab', 4: 'dirty-fighting' },
+  },
+  mage: {
+    key: 'mage', label: 'Mage', trainer: 'Arcane College',
+    hpPerLevel: 3, manaPerLevel: 5, staminaPerLevel: 1, attackEvery: 3, defenseEvery: 3,
+    unlocks: { 1: 'firebolt', 3: 'frost-grasp', 5: 'fireball' },
+  },
+  priest: {
+    key: 'priest', label: 'Priest', trainer: 'Temple',
+    hpPerLevel: 4, manaPerLevel: 4, staminaPerLevel: 2, attackEvery: 2, defenseEvery: 2,
+    unlocks: { 1: 'mend-wounds', 3: 'purify', 5: 'sanctuary' },
+  },
+  ranger: {
+    key: 'ranger', label: 'Ranger', trainer: "Hunter's Lodge",
+    hpPerLevel: 5, manaPerLevel: 1, staminaPerLevel: 3, attackEvery: 1, defenseEvery: 2,
+    unlocks: { 2: 'aimed-shot', 4: 'twin-strike' },
+  },
+  commoner: {
+    key: 'commoner', label: 'Commoner', trainer: 'nowhere',
+    hpPerLevel: 3, manaPerLevel: 0, staminaPerLevel: 2, attackEvery: 2, defenseEvery: 3,
+    unlocks: {},
+  },
+};
+
+/**
+ * Apply one trained level. Returns human-readable gain lines.
+ * (Money handling and the training-location check live in the caller.)
+ */
+export function applyTraining(c: Character): string[] {
+  const def = CLASSES[c.charClass];
+  const notes: string[] = [];
+  c.level += 1;
+  const hpGain = def.hpPerLevel + Math.floor((c.attributes.constitution - 10) / 3);
+  c.hp.max += Math.max(1, hpGain);
+  c.hp.current = c.hp.max;
+  notes.push(`Maximum HP +${Math.max(1, hpGain)}`);
+  if (def.manaPerLevel) {
+    c.mana.max += def.manaPerLevel;
+    c.mana.current = c.mana.max;
+    notes.push(`Maximum Mana +${def.manaPerLevel}`);
+  }
+  c.stamina.max += def.staminaPerLevel;
+  c.stamina.current = c.stamina.max;
+  if (c.level % def.attackEvery === 0) {
+    c.attack += 1;
+    notes.push('Attack +1');
+  }
+  if (c.level % def.defenseEvery === 0) {
+    c.defense += 1;
+    notes.push('Defense +1');
+  }
+  // small stat bump every 3rd level, class-flavored
+  if (c.level % 3 === 0) {
+    const stat = c.charClass === 'mage' ? 'intelligence' : c.charClass === 'priest' ? 'wisdom' : c.charClass === 'rogue' || c.charClass === 'ranger' ? 'dexterity' : 'strength';
+    c.attributes[stat] += 1;
+    notes.push(`${stat.charAt(0).toUpperCase() + stat.slice(1)} +1`);
+  }
+  const unlock = def.unlocks[c.level];
+  if (unlock && !c.abilities.includes(unlock)) {
+    c.abilities.push(unlock);
+    notes.push(`New ability: ${unlock.replace(/-/g, ' ')}`);
+  }
+  return notes;
+}
+
+// ---------- Item catalog ----------
+export interface ItemProto {
+  key: string;
+  name: string;
+  kind: Item['kind'];
+  slot: Item['slot'];
+  tier: ItemTier;
+  damage?: string;
+  defense?: number;
+  healing?: string;
+  effectKey?: string;
+  durability?: number;
+  stackable?: boolean;
+  value: number;
+}
+
+export const ITEM_PROTOS: Record<string, ItemProto> = {
+  // consumables
+  'minor-healing-potion': { key: 'minor-healing-potion', name: 'Minor Healing Potion', kind: 'potion', slot: 'none', tier: 'common', healing: '1d11+9', stackable: true, value: 30 },
+  'healing-potion': { key: 'healing-potion', name: 'Healing Potion', kind: 'potion', slot: 'none', tier: 'common', healing: '1d16+24', stackable: true, value: 80 },
+  'greater-healing-potion': { key: 'greater-healing-potion', name: 'Greater Healing Potion', kind: 'potion', slot: 'none', tier: 'uncommon', healing: '1d31+59', stackable: true, value: 220 },
+  'mana-draught': { key: 'mana-draught', name: 'Mana Draught', kind: 'potion', slot: 'none', tier: 'common', effectKey: 'mana-30', stackable: true, value: 90 },
+  antidote: { key: 'antidote', name: 'Antidote', kind: 'potion', slot: 'none', tier: 'common', effectKey: 'cure-poisoned', stackable: true, value: 60 },
+  'purification-elixir': { key: 'purification-elixir', name: 'Purification Elixir', kind: 'potion', slot: 'none', tier: 'uncommon', effectKey: 'cure-diseased', stackable: true, value: 150 },
+  'stoneblood-tonic': { key: 'stoneblood-tonic', name: 'Stoneblood Tonic', kind: 'potion', slot: 'none', tier: 'uncommon', effectKey: 'defense-3-10', stackable: true, value: 120 },
+  // supplies
+  torch: { key: 'torch', name: 'Torch', kind: 'supply', slot: 'none', tier: 'mundane', stackable: true, value: 2 },
+  rope: { key: 'rope', name: 'Rope (50 ft)', kind: 'supply', slot: 'none', tier: 'mundane', stackable: true, value: 10 },
+  lockpick: { key: 'lockpick', name: 'Lockpick', kind: 'tool', slot: 'none', tier: 'mundane', stackable: true, value: 5 },
+  bread: { key: 'bread', name: 'Bread', kind: 'supply', slot: 'none', tier: 'mundane', stackable: true, value: 1 },
+  ration: { key: 'ration', name: 'Trail Ration', kind: 'supply', slot: 'none', tier: 'mundane', stackable: true, value: 4 },
+  // weapons & armor (shop stock)
+  dagger: { key: 'dagger', name: 'Dagger', kind: 'weapon', slot: 'main-hand', tier: 'mundane', damage: '1d4+1', durability: 50, value: 90 },
+  'iron-shortsword': { key: 'iron-shortsword', name: 'Iron Shortsword', kind: 'weapon', slot: 'main-hand', tier: 'common', damage: '1d6+1', durability: 80, value: 220 },
+  'iron-longsword': { key: 'iron-longsword', name: 'Iron Longsword', kind: 'weapon', slot: 'main-hand', tier: 'common', damage: '1d8+1', durability: 100, value: 380 },
+  'steel-longsword': { key: 'steel-longsword', name: 'Steel Longsword', kind: 'weapon', slot: 'main-hand', tier: 'uncommon', damage: '1d8+3', durability: 120, value: 840 },
+  'hunting-bow': { key: 'hunting-bow', name: 'Hunting Bow', kind: 'weapon', slot: 'main-hand', tier: 'common', damage: '1d6+2', durability: 70, value: 300 },
+  'wooden-buckler': { key: 'wooden-buckler', name: 'Wooden Buckler', kind: 'shield', slot: 'off-hand', tier: 'mundane', defense: 1, durability: 40, value: 60 },
+  'leather-armor': { key: 'leather-armor', name: 'Leather Armor', kind: 'armor', slot: 'armor', tier: 'common', defense: 1, durability: 60, value: 180 },
+  'studded-leather': { key: 'studded-leather', name: 'Studded Leather Armor', kind: 'armor', slot: 'armor', tier: 'common', defense: 2, durability: 80, value: 420 },
+  'chain-shirt': { key: 'chain-shirt', name: 'Chain Shirt', kind: 'armor', slot: 'armor', tier: 'uncommon', defense: 3, durability: 110, value: 950 },
+};
+
+function freshItemId(world: WorldState): string {
+  const n = (world.counters['ITEM'] ?? 0) + 1;
+  world.counters['ITEM'] = n;
+  return `ITEM_${String(n).padStart(4, '0')}`;
+}
+
+export function makeItem(world: WorldState, protoKey: string, qty = 1): Item {
+  const p = ITEM_PROTOS[protoKey];
+  if (!p) throw new Error(`unknown item proto: ${protoKey}`);
+  const item: Item = {
+    id: freshItemId(world),
+    proto: p.key,
+    name: p.name,
+    kind: p.kind,
+    slot: p.slot,
+    tier: p.tier,
+    damage: p.damage,
+    defense: p.defense,
+    healing: p.healing,
+    effectKey: p.effectKey,
+    durability: p.durability ? { current: p.durability, max: p.durability } : undefined,
+    stackable: p.stackable,
+    qty: p.stackable ? qty : undefined,
+    value: p.value,
+    owner: null,
+    history: [],
+  };
+  world.items[item.id] = item;
+  return item;
+}
+
+/**
+ * Put an item into a container (character inventory, party supplies,
+ * or home storage), merging stackables into an existing stack.
+ */
+export function addToContainer(world: WorldState, item: Item, holder: Character | 'party' | 'home') {
+  const list = holder === 'party' ? world.partyInventory : holder === 'home' ? homeStorage(world) : holder.inventory;
+  const ownerTag = holder === 'party' ? OWNER_PARTY : holder === 'home' ? OWNER_HOME : holder.id;
+  if (item.stackable && item.proto) {
+    const existing = list.map((id) => world.items[id]).find((i) => i && i.proto === item.proto && !i.broken);
+    if (existing) {
+      existing.qty = (existing.qty ?? 1) + (item.qty ?? 1);
+      delete world.items[item.id];
+      return;
+    }
+  }
+  item.owner = ownerTag;
+  list.push(item.id);
+}
+
+/** Remove n units from a stack (or the whole item). */
+export function removeUnits(world: WorldState, item: Item, n = 1): void {
+  if (item.stackable && (item.qty ?? 1) > n) {
+    item.qty = (item.qty ?? 1) - n;
+    return;
+  }
+  // remove entirely from whatever container holds it
+  const removeFrom = (list: string[]) => {
+    const idx = list.indexOf(item.id);
+    if (idx >= 0) list.splice(idx, 1);
+  };
+  removeFrom(world.partyInventory);
+  const home = Object.values(world.locations).find((l) => l.household);
+  if (home?.household) removeFrom(home.household.storage);
+  for (const c of Object.values(world.characters)) removeFrom(c.inventory);
+  item.owner = null;
+}
+
+function homeStorage(world: WorldState): string[] {
+  const home = Object.values(world.locations).find((l) => l.household);
+  if (!home?.household) throw new Error('no home');
+  return home.household.storage;
+}
+
+// ---------- Encumbrance ----------
+export const LIGHT_SLOTS_BASE = 18;
+
+export function slotsUsed(world: WorldState, c: Character): number {
+  // one slot per item or stack; equipped gear rides free
+  return c.inventory.map((id) => world.items[id]).filter((i) => i && i.equippedBy !== c.id).length;
+}
+
+export function slotCapacity(c: Character): number {
+  return LIGHT_SLOTS_BASE + Math.floor((c.attributes.strength - 10) / 2) * 2;
+}
+
+export function hasRoomFor(world: WorldState, c: Character, item: Item): boolean {
+  if (world.encumbrance === 'off') return true;
+  if (item.stackable && item.proto && c.inventory.some((id) => world.items[id]?.proto === item.proto)) return true;
+  return slotsUsed(world, c) < slotCapacity(c);
+}
+
+// ---------- Consumable effects ----------
+export interface ConsumeResult {
+  lines: string[];
+}
+
+export function consumeItem(world: WorldState, item: Item, target: Character, rng: Rng): ConsumeResult {
+  const lines: string[] = [];
+  if (item.healing) {
+    const healed = rng.roll(item.healing);
+    target.hp.current = Math.min(target.hp.max, target.hp.current + healed);
+    lines.push(`${item.name} consumed. ${target.name} restored ${healed} HP.`);
+  }
+  switch (item.effectKey) {
+    case 'mana-30': {
+      target.mana.current = Math.min(target.mana.max, target.mana.current + 30);
+      lines.push(`${target.name} restored 30 mana.`);
+      break;
+    }
+    case 'cure-poisoned':
+      lines.push(cureStatus(target, 'poisoned') ? `The poison in ${target.name}'s blood went quiet.` : `${target.name} was not poisoned; the antidote is spent anyway.`);
+      break;
+    case 'cure-diseased':
+      lines.push(cureStatus(target, 'diseased') ? `${target.name}'s fever broke.` : `${target.name} had no disease to purge.`);
+      break;
+    case 'defense-3-10':
+      target.tempBonuses.push({ stat: 'defense', amount: 3, roundsLeft: 10, source: item.name });
+      lines.push(`${target.name}'s skin greyed like granite: +3 Defense for 10 rounds.`);
+      break;
+  }
+  removeUnits(world, item, 1);
+  return { lines };
+}
+
+// ---------- Status effects ----------
+export interface StatusRule {
+  key: StatusKey;
+  label: string;
+  perRoundDamage?: number;
+  per10MinDamage?: number;
+  defaultRounds?: number;
+  attackMod?: number;
+  defenseMod?: number;
+}
+
+export const STATUS_RULES: Record<StatusKey, StatusRule> = {
+  poisoned: { key: 'poisoned', label: 'Poisoned', perRoundDamage: 3, per10MinDamage: 3 },
+  diseased: { key: 'diseased', label: 'Diseased', attackMod: -2, defenseMod: -1 },
+  bleeding: { key: 'bleeding', label: 'Bleeding', perRoundDamage: 2, defaultRounds: 5 },
+  burning: { key: 'burning', label: 'Burning', perRoundDamage: 4, defaultRounds: 3 },
+  stunned: { key: 'stunned', label: 'Stunned', defaultRounds: 1 },
+  blinded: { key: 'blinded', label: 'Blinded', attackMod: -4, defaultRounds: 3 },
+  silenced: { key: 'silenced', label: 'Silenced', defaultRounds: 3 },
+  cursed: { key: 'cursed', label: 'Cursed', attackMod: -1, defenseMod: -1 },
+  paralyzed: { key: 'paralyzed', label: 'Paralyzed', defaultRounds: 2 },
+  unconscious: { key: 'unconscious', label: 'Unconscious' },
+};
+
+export function hasStatus(c: Character, key: StatusKey): boolean {
+  return c.statuses.some((s) => s.key === key);
+}
+
+export function applyStatus(c: Character, key: StatusKey, rounds?: number, source?: string) {
+  if (hasStatus(c, key)) return;
+  const rule = STATUS_RULES[key];
+  const resist = c.resistances[key === 'poisoned' ? 'poison' : key] ?? 0;
+  if (resist >= 3) return; // strong resistance shrugs it off
+  const s: ActiveStatus = { key, source };
+  const r = rounds ?? rule.defaultRounds;
+  if (r !== undefined) s.roundsLeft = r;
+  c.statuses.push(s);
+}
+
+export function cureStatus(c: Character, key: StatusKey): boolean {
+  const before = c.statuses.length;
+  c.statuses = c.statuses.filter((s) => s.key !== key);
+  return c.statuses.length < before;
+}
+
+/** Status upkeep at the start of a combat round. Returns log lines. */
+export function tickStatusesRound(c: Character): string[] {
+  const lines: string[] = [];
+  for (const s of [...c.statuses]) {
+    const rule = STATUS_RULES[s.key];
+    if (rule.perRoundDamage && c.hp.current > 0) {
+      c.hp.current = Math.max(0, c.hp.current - rule.perRoundDamage);
+      lines.push(`${c.name} suffers ${rule.perRoundDamage} damage from ${rule.label.toLowerCase()}.`);
+      if (c.hp.current === 0) lines.push(`${c.name} collapsed from it.`);
+    }
+    if (s.roundsLeft !== undefined) {
+      s.roundsLeft -= 1;
+      if (s.roundsLeft <= 0) {
+        c.statuses = c.statuses.filter((x) => x !== s);
+        if (s.key !== 'stunned') lines.push(`${c.name} is no longer ${rule.label.toLowerCase()}.`);
+      }
+    }
+  }
+  for (const b of [...c.tempBonuses]) {
+    b.roundsLeft -= 1;
+    if (b.roundsLeft <= 0) c.tempBonuses = c.tempBonuses.filter((x) => x !== b);
+  }
+  return lines;
+}
+
+/** Status damage outside combat (called from the world tick). */
+export function tickStatusesOverTime(c: Character, minutes: number): string[] {
+  const lines: string[] = [];
+  for (const s of c.statuses) {
+    const rule = STATUS_RULES[s.key];
+    if (rule.per10MinDamage && s.roundsLeft === undefined) {
+      const ticks = Math.floor(minutes / 10);
+      if (ticks > 0 && c.hp.current > 1) {
+        const dmg = Math.min(c.hp.current - 1, rule.per10MinDamage * ticks);
+        c.hp.current -= dmg;
+        if (dmg > 0) lines.push(`${c.name} lost ${dmg} HP to ${rule.label.toLowerCase()} (untreated).`);
+      }
+    }
+  }
+  return lines;
+}
+
+export function statusAttackMod(c: Character): number {
+  return c.statuses.reduce((m, s) => m + (STATUS_RULES[s.key].attackMod ?? 0), 0)
+    + c.tempBonuses.filter((b) => b.stat === 'attack').reduce((m, b) => m + b.amount, 0);
+}
+
+export function statusDefenseMod(c: Character): number {
+  return c.statuses.reduce((m, s) => m + (STATUS_RULES[s.key].defenseMod ?? 0), 0)
+    + c.tempBonuses.filter((b) => b.stat === 'defense').reduce((m, b) => m + b.amount, 0);
+}
+
+// ---------- Temple services ----------
+export interface TempleService {
+  key: string;
+  label: string;
+  basePrice: number; // copper
+  needsDead?: boolean;
+}
+
+export const TEMPLE_SERVICES: TempleService[] = [
+  { key: 'minor-healing', label: 'Minor Healing (half HP)', basePrice: 40 },
+  { key: 'full-healing', label: 'Full Healing', basePrice: 170 },
+  { key: 'cure-poison', label: 'Cure Poison', basePrice: 120 },
+  { key: 'cure-disease', label: 'Cure Disease', basePrice: 300 },
+  { key: 'remove-curse', label: 'Remove Curse', basePrice: 750 },
+  { key: 'resurrection', label: 'Resurrection', basePrice: 3000, needsDead: true },
+];
+
+/** Reputation with the temple's faction discounts or inflates prices. */
+export function templePrice(world: WorldState, svc: TempleService, payer: Character, templeFaction: string | null): number {
+  void world;
+  const rep = templeFaction ? payer.factionReputation[templeFaction] ?? 0 : 0;
+  const mult = rep >= 5 ? 0.5 : rep >= 2 ? 0.75 : rep <= -5 ? Infinity : rep <= -2 ? 1.5 : 1;
+  return mult === Infinity ? Infinity : Math.round(svc.basePrice * mult);
+}
+
+export function performTempleService(svcKey: string, target: Character): string {
+  switch (svcKey) {
+    case 'minor-healing':
+      target.hp.current = Math.min(target.hp.max, target.hp.current + Math.ceil(target.hp.max / 2));
+      return `${target.name} was healed to ${target.hp.current}/${target.hp.max} HP.`;
+    case 'full-healing':
+      target.hp.current = target.hp.max;
+      return `${target.name} was fully healed.`;
+    case 'cure-poison':
+      cureStatus(target, 'poisoned');
+      return `The poison was drawn out of ${target.name}.`;
+    case 'cure-disease':
+      cureStatus(target, 'diseased');
+      return `${target.name}'s disease was cured.`;
+    case 'remove-curse':
+      cureStatus(target, 'cursed');
+      return `The curse on ${target.name} was lifted.`;
+    case 'resurrection':
+      target.alive = true;
+      target.diedOnDay = undefined;
+      target.statuses = [];
+      target.hp.current = 1;
+      return `${target.name} drew breath again, pale and shaking.`;
+    default:
+      return 'Nothing happened.';
+  }
+}
+
+// ---------- Loot tiers ----------
+export const TIER_ORDER_LOOT: ItemTier[] = ['mundane', 'common', 'uncommon', 'rare', 'exceptional', 'legendary', 'artifact'];
+
+export function tierColor(tier: ItemTier | undefined): string {
+  switch (tier) {
+    case 'uncommon': return 'var(--accent2)';
+    case 'rare': return 'var(--info)';
+    case 'exceptional': return '#b07fd6';
+    case 'legendary': return 'var(--accent)';
+    case 'artifact': return 'var(--danger)';
+    default: return 'var(--text-dim)';
+  }
+}

@@ -1,0 +1,119 @@
+// Encounter generation for dungeons and city streets. Encounters are
+// generated with a stored seed, so the author can REPLAY the exact
+// encounter or RESIMULATE with a fresh seed.
+
+import type { PendingEncounter, SimEvent, WorldState } from './types';
+import { MONSTERS } from './monsters';
+import { Rng, randomSeed } from './rng';
+import { generateBackgroundNpc } from './npc';
+import { logEvent, partyMembers } from './world';
+
+/** Build a dungeon encounter for the current room. */
+export function generateDungeonEncounter(world: WorldState, seed?: number): PendingEncounter | { error: string } {
+  if (!world.currentDungeon || !world.currentRoom) return { error: 'Not inside a dungeon.' };
+  const d = world.dungeons[world.currentDungeon];
+  const room = d.rooms[world.currentRoom];
+  if (room.enemies !== 'alive' || !room.encounterKey) return { error: 'Nothing here wants a fight.' };
+
+  const s = seed ?? randomSeed();
+  const rng = new Rng(s);
+  const party = partyMembers(world);
+  const partyLevel = Math.max(1, Math.round(party.reduce((sum, c) => sum + c.level, 0) / Math.max(1, party.length)));
+
+  const monsters: { templateKey: string; count: number }[] = [];
+  if (room.isBossRoom && !d.bossDefeated) {
+    monsters.push({ templateKey: d.bossKey, count: 1 });
+    // boss brings minions scaled to party size
+    const minion = rng.pick(d.primaryEnemies);
+    monsters.push({ templateKey: minion, count: rng.int(1, Math.max(1, party.length - 1) + 1) });
+  } else {
+    const primary = room.encounterKey;
+    const budget = Math.max(2, partyLevel + party.length + Math.floor(room.floor / 2) + rng.int(-1, 1));
+    let spent = 0;
+    let guard = 0;
+    while (spent < budget && guard++ < 12) {
+      const key = rng.chance(0.65) ? primary : rng.pick(d.primaryEnemies);
+      const t = MONSTERS[key];
+      if (!t) break;
+      const existing = monsters.find((m) => m.templateKey === key);
+      if (existing) existing.count += 1;
+      else monsters.push({ templateKey: key, count: 1 });
+      spent += t.level;
+    }
+  }
+
+  const desc = monsters
+    .map((m) => `${m.count} ${MONSTERS[m.templateKey].name}${m.count > 1 ? 's' : ''}`)
+    .join(', ');
+
+  const enc: PendingEncounter = {
+    seed: s,
+    description: desc,
+    monsters,
+    source: 'dungeon',
+    locationId: d.entranceLocation,
+    roomId: room.id,
+  };
+  world.pendingEncounter = enc;
+  logEvent(world, 'encounter.generated', { seed: s, monsters, room: room.id }, `Encounter in ${room.name}: ${desc}. (seed ${s})`, { seed: s });
+  return enc;
+}
+
+const CITY_HOSTILES: Record<string, { key: string; countMax: number; minDanger: number }[]> = {
+  default: [
+    { key: 'street-thug', countMax: 3, minDanger: 4 },
+    { key: 'red-knife-cutter', countMax: 2, minDanger: 6 },
+  ],
+};
+
+const FREQ_CHANCE: Record<string, number> = { low: 0.1, normal: 0.25, high: 0.45, chaotic: 0.7 };
+
+/**
+ * Roll a city encounter after travel. May produce a hostile pending
+ * encounter, a social encounter (an NPC worth meeting), or nothing.
+ */
+export function rollCityEncounter(world: WorldState): SimEvent | null {
+  const loc = world.locations[world.partyLocation];
+  if (!loc || world.currentDungeon) return null;
+  const chance = FREQ_CHANCE[world.encounterFrequency] * (loc.dangerRating / 6);
+  const seed = randomSeed();
+  const rng = new Rng(seed);
+  if (!rng.chance(Math.min(0.85, chance))) return null;
+
+  const kind = rng.pick(['hostile', 'social', 'social', 'incident'] as const);
+  if (kind === 'hostile' && loc.dangerRating >= 4) {
+    const table = CITY_HOSTILES.default.filter((h) => loc.dangerRating >= h.minDanger);
+    if (table.length) {
+      const pickEntry = rng.pick(table);
+      const count = rng.int(1, pickEntry.countMax);
+      const desc = `${count} ${MONSTERS[pickEntry.key].name}${count > 1 ? 's' : ''}`;
+      world.pendingEncounter = {
+        seed,
+        description: desc,
+        monsters: [{ templateKey: pickEntry.key, count }],
+        source: 'city',
+        locationId: loc.id,
+      };
+      return logEvent(world, 'encounter.city', { seed, hostile: true, desc }, `Trouble near ${loc.name}: ${desc} moving in on the party. (seed ${seed})`, { seed, location: loc.id });
+    }
+  }
+  if (kind === 'social') {
+    const npc = generateBackgroundNpc(world, loc.id, rng.fork());
+    return logEvent(
+      world,
+      'encounter.social',
+      { seed, npc: npc.id },
+      `The party crossed paths with ${npc.name}, a ${npc.race} ${npc.occupation} (${npc.personality.join(', ')}) at ${loc.name}.`,
+      { seed, location: loc.id, witnesses: partyMembers(world).map((c) => c.id) },
+    );
+  }
+  const incident = rng.pick([
+    'a pickpocket brushing too close in the crowd',
+    'a City Watch patrol shaking down a vendor',
+    'two drunk adventurers arguing over a map',
+    'a crime in progress down a side alley',
+    'a beggar who knows more than he should',
+    'a street preacher naming names',
+  ]);
+  return logEvent(world, 'encounter.incident', { seed, incident }, `Near ${loc.name}, the party noticed ${incident}.`, { seed, location: loc.id, witnesses: partyMembers(world).map((c) => c.id) });
+}
