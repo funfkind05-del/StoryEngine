@@ -2,6 +2,7 @@
 // project persistence to localStorage and JSON file export/import.
 
 import type { Snapshot, WorldState } from './types';
+import { seedQuests } from './quests';
 
 const PROJECT_KEY = 'storyengine.project.v1';
 const SNAPSHOTS_KEY = 'storyengine.snapshots.v1';
@@ -50,6 +51,11 @@ export function migrateWorld(world: WorldState): WorldState {
   world.deathRule ??= 'story';
   world.encumbrance ??= 'light';
   world.partyInventory ??= [];
+  world.killCounts ??= {};
+  if (!world.quests) {
+    world.quests = {};
+    seedQuests(world);
+  }
   for (const c of Object.values(world.characters)) {
     c.needs ??= { hunger: 25, fatigue: 30 };
     c.statuses ??= [];

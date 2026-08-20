@@ -11,6 +11,7 @@ import type {
   WorldState,
 } from '../engine/types';
 import { randomSeed } from '../engine/rng';
+import { seedQuests } from '../engine/quests';
 
 // ---------- small builders ----------
 function loc(partial: Partial<GameLocation> & Pick<GameLocation, 'id' | 'name' | 'type' | 'district'>): GameLocation {
@@ -97,6 +98,8 @@ export function buildSeedWorld(): WorldState {
     combat: null,
     pendingEncounter: null,
     encounterFrequency: 'normal',
+    quests: {},
+    killCounts: {},
     deathRule: 'story',
     encumbrance: 'light',
     needsEnabled: true,
@@ -134,14 +137,14 @@ export function buildSeedWorld(): WorldState {
     ] }),
     loc({ id: 'LOC_KAELROOM', mapPos: { x: 41, y: 60 }, name: 'Kael’s Rented Room', type: 'residence', district: 'Dock Ward', parent: 'LOC_DOCK_0042', description: 'A narrow room above the Broken Crown: a cot, a chest, one shuttered window over the lane.', atmosphere: 'Cramped but defensible.', dangerRating: 3, connections: ['LOC_DOCK_0042'], household: { tier: 'rented-room', upgrades: [], residents: ['CHAR_KAEL'], storage: [], treasury: 0 } }),
     loc({ id: 'LOC_WHARVES', mapPos: { x: 10, y: 86 }, name: 'The Black Wharves', type: 'dock', district: 'Dock Ward', parent: 'LOC_DOCKWARD', description: 'Tar-black piers where the ships come in and the bodies go out.', atmosphere: 'Fog, gulls, muscle.', dangerRating: 7, connections: ['LOC_RATCATCHER', 'LOC_SALTWAREHOUSE', 'LOC_CELLARDOOR'], services: ['passage', 'smuggling'], factionInfluence: { FAC_REDKNIVES: 6, FAC_COINGUILD: 7 } }),
-    loc({ id: 'LOC_SALTWAREHOUSE', mapPos: { x: 24, y: 90 }, name: 'Saltmerchant’s Warehouse', type: 'warehouse', district: 'Dock Ward', parent: 'LOC_DOCKWARD', description: 'A Coin Guild warehouse; the Red Knives fence stolen goods out the back.', atmosphere: 'Quiet by day, busy by night.', dangerRating: 6, connections: ['LOC_WHARVES', 'LOC_RATCATCHER'], services: ['fencing'], factionInfluence: { FAC_COINGUILD: 6, FAC_REDKNIVES: 6 }, shop: { buys: true, buyRate: 0.35, restockDay: 1, stock: [
+    loc({ id: 'LOC_SALTWAREHOUSE', mapPos: { x: 24, y: 90 }, name: 'Saltmerchant’s Warehouse', type: 'warehouse', district: 'Dock Ward', parent: 'LOC_DOCKWARD', description: 'A Coin Guild warehouse; the Red Knives fence stolen goods out the back.', atmosphere: 'Quiet by day, busy by night.', dangerRating: 6, connections: ['LOC_WHARVES', 'LOC_RATCATCHER'], services: ['fencing'], factionInfluence: { FAC_REDKNIVES: 7, FAC_COINGUILD: 5 }, shop: { buys: true, buyRate: 0.35, restockDay: 1, stock: [
       { proto: 'dagger', qty: 1, price: 70 },
       { proto: 'lockpick', qty: 8, price: 4 },
     ] } }),
 
     // Ironmarket
     loc({ id: 'LOC_IRONMARKET_SQ', mapPos: { x: 48, y: 46 }, name: 'Ironmarket Square', type: 'market', district: 'Ironmarket', parent: 'LOC_IRONMARKET', description: 'The great market square: stalls, auction blocks, and a gallows nobody uses anymore. Mostly.', atmosphere: 'Crowded from bell to bell.', services: ['trade', 'food', 'rumors'], dangerRating: 4, connections: ['LOC_RATCATCHER', 'LOC_FORGE', 'LOC_GRAVEROW', 'LOC_TEMPLE', 'LOC_FIGHTGUILD', 'LOC_PHYSIC', 'LOC_DRYGOODS'], factionInfluence: { FAC_COINGUILD: 8, FAC_WATCH: 6 } }),
-    loc({ id: 'LOC_FORGE', mapPos: { x: 36, y: 38 }, name: 'Harrow’s Forge', type: 'shop', district: 'Ironmarket', parent: 'LOC_IRONMARKET', description: 'Best honest steel in the middle districts. Bring coin, not promises.', atmosphere: 'Heat, sparks, patience.', services: ['weapons', 'armor', 'repair'], dangerRating: 2, connections: ['LOC_IRONMARKET_SQ'], shop: { buys: true, buyRate: 0.5, restockDay: 1, stock: [
+    loc({ id: 'LOC_FORGE', mapPos: { x: 36, y: 38 }, name: 'Harrow’s Forge', type: 'shop', district: 'Ironmarket', parent: 'LOC_IRONMARKET', description: 'Best honest steel in the middle districts. Bring coin, not promises.', atmosphere: 'Heat, sparks, patience.', services: ['weapons', 'armor', 'repair'], dangerRating: 2, connections: ['LOC_IRONMARKET_SQ'], factionInfluence: { FAC_COINGUILD: 6, FAC_WATCH: 4 }, shop: { buys: true, buyRate: 0.5, restockDay: 1, stock: [
       { proto: 'dagger', qty: 3, price: 90 },
       { proto: 'iron-shortsword', qty: 2, price: 220 },
       { proto: 'iron-longsword', qty: 2, price: 380 },
@@ -156,7 +159,7 @@ export function buildSeedWorld(): WorldState {
 
     // Ironmarket services
     loc({ id: 'LOC_FIGHTGUILD', mapPos: { x: 58, y: 36 }, name: 'Fighters Guild', type: 'guildhall', district: 'Ironmarket', parent: 'LOC_IRONMARKET', description: 'A drill yard, a trophy hall, and men who charge money to beat lessons into you.', atmosphere: 'Sweat and drumbeat count.', services: ['fighter training', 'sparring'], dangerRating: 2, connections: ['LOC_IRONMARKET_SQ'], trainerFor: 'fighter' }),
-    loc({ id: 'LOC_PHYSIC', mapPos: { x: 40, y: 52 }, name: 'Petra’s Physic', type: 'shop', district: 'Ironmarket', parent: 'LOC_IRONMARKET', description: 'Shelves of stoppered glass; the good shelf is behind the counter.', atmosphere: 'Bitter herbs and beeswax.', services: ['potions', 'remedies'], dangerRating: 1, connections: ['LOC_IRONMARKET_SQ'], shop: { buys: true, buyRate: 0.45, restockDay: 1, stock: [
+    loc({ id: 'LOC_PHYSIC', mapPos: { x: 40, y: 52 }, name: 'Petra’s Physic', type: 'shop', district: 'Ironmarket', parent: 'LOC_IRONMARKET', description: 'Shelves of stoppered glass; the good shelf is behind the counter.', atmosphere: 'Bitter herbs and beeswax.', services: ['potions', 'remedies'], dangerRating: 1, connections: ['LOC_IRONMARKET_SQ'], factionInfluence: { FAC_COINGUILD: 5, FAC_WATCH: 4 }, shop: { buys: true, buyRate: 0.45, restockDay: 1, stock: [
       { proto: 'minor-healing-potion', qty: 6, price: 30 },
       { proto: 'healing-potion', qty: 3, price: 80 },
       { proto: 'greater-healing-potion', qty: 0, price: 220 },
@@ -165,7 +168,7 @@ export function buildSeedWorld(): WorldState {
       { proto: 'purification-elixir', qty: 1, price: 150 },
       { proto: 'stoneblood-tonic', qty: 1, price: 120 },
     ] } }),
-    loc({ id: 'LOC_DRYGOODS', mapPos: { x: 58, y: 54 }, name: 'The Dry Goods', type: 'shop', district: 'Ironmarket', parent: 'LOC_IRONMARKET', description: 'A general store: rope, tallow, torches, bread that keeps.', atmosphere: 'Cluttered, honest.', services: ['supplies'], dangerRating: 1, connections: ['LOC_IRONMARKET_SQ'], shop: { buys: true, buyRate: 0.4, restockDay: 1, stock: [
+    loc({ id: 'LOC_DRYGOODS', mapPos: { x: 58, y: 54 }, name: 'The Dry Goods', type: 'shop', district: 'Ironmarket', parent: 'LOC_IRONMARKET', description: 'A general store: rope, tallow, torches, bread that keeps.', atmosphere: 'Cluttered, honest.', services: ['supplies'], dangerRating: 1, connections: ['LOC_IRONMARKET_SQ'], factionInfluence: { FAC_COINGUILD: 5, FAC_WATCH: 4 }, shop: { buys: true, buyRate: 0.4, restockDay: 1, stock: [
       { proto: 'torch', qty: 20, price: 2 },
       { proto: 'rope', qty: 4, price: 10 },
       { proto: 'lockpick', qty: 6, price: 5 },
@@ -377,6 +380,8 @@ export function buildSeedWorld(): WorldState {
     entryRoom: '',
     bossDefeated: false,
   };
+
+  seedQuests(world);
 
   // ---------- opening scene ----------
   const opening: Scene = {

@@ -15,8 +15,10 @@ import {
   NEEDS,
   STATUS_RULES,
   TEMPLE_SERVICES,
+  dominantFaction,
   fmtMoney,
   levelUpAvailable,
+  shopPriceMult,
   slotCapacity,
   slotsUsed,
   templePrice,
@@ -24,9 +26,19 @@ import {
   trainingCost,
 } from '../engine/rules';
 import { Bar, RelBar, Tag } from './common';
+import { activeQuests, describeReward, objectiveDone, objectiveLabel, offeredQuestsAt, questProgress } from '../engine/quests';
+import {
+  chooseBackupFile,
+  diskSaveSupported,
+  getLinkedBackup,
+  lastBackupAt,
+  unlinkBackup,
+  writeBackupNow,
+} from '../engine/diskSave';
 
 const TABS: { key: PanelTab; label: string }[] = [
   { key: 'location', label: 'Location' },
+  { key: 'quests', label: 'Quests' },
   { key: 'characters', label: 'People' },
   { key: 'party', label: 'Party' },
   { key: 'inventory', label: 'Inventory' },
@@ -53,6 +65,7 @@ export function SidePanels() {
       </div>
       <div className="panel-body">
         {panel === 'location' && <LocationPanel />}
+        {panel === 'quests' && <QuestsPanel />}
         {panel === 'characters' && <CharactersPanel />}
         {panel === 'party' && <PartyPanel />}
         {panel === 'inventory' && <InventoryPanel />}
@@ -130,9 +143,14 @@ function LocationPanel() {
       {loc.shop && (
         <>
           <h4>Shop — {mc.name} has {fmtMoney(mc.money)}</h4>
+          {shopPriceMult(world, loc.id, mc) === Infinity && (
+            <p className="warn small">They won't serve you here — not with your standing among {world.factions[dominantFaction(world, loc.id) ?? '']?.name ?? 'the local powers'}.</p>
+          )}
           {loc.shop.stock.map((entry, i) => {
             const proto = ITEM_PROTOS[entry.proto];
             if (!proto) return null;
+            const mult = shopPriceMult(world, loc.id, mc);
+            const price = mult === Infinity ? entry.price : Math.round(entry.price * mult);
             return (
               <div key={entry.proto} className="row small">
                 <span className="grow" style={{ color: tierColor(proto.tier) }}>
@@ -143,7 +161,9 @@ function LocationPanel() {
                 {entry.qty > 0 ? (
                   <>
                     <span className="dim mono">×{entry.qty}</span>
-                    <button disabled={mc.money < entry.price} onClick={() => shopBuy(i)}>{fmtMoney(entry.price)}</button>
+                    <button disabled={mc.money < price || mult === Infinity} onClick={() => shopBuy(i)} title={mult !== 1 && mult !== Infinity ? (mult < 1 ? 'friendly price — they like your reputation' : 'grudging price — they don\u2019t like your reputation') : undefined}>
+                      {fmtMoney(price)}{mult !== 1 && mult !== Infinity ? (mult < 1 ? ' ▾' : ' ▴') : ''}
+                    </button>
                   </>
                 ) : (
                   <Tag tone="red">sold out</Tag>
@@ -235,6 +255,61 @@ function LocationPanel() {
           ))}
         </>
       )}
+    </div>
+  );
+}
+
+// ---------- Quests ----------
+function QuestsPanel() {
+  const world = useStore((s) => s.world);
+  const questAccept = useStore((s) => s.questAccept);
+  const questDecline = useStore((s) => s.questDecline);
+  const questTurnIn = useStore((s) => s.questTurnIn);
+  const offered = offeredQuestsAt(world, world.partyLocation);
+  const active = activeQuests(world);
+  const completed = Object.values(world.quests).filter((q) => q.status === 'completed');
+  const giverName = (q: (typeof active)[number]) => (q.giver === 'board' ? 'the notice board' : world.characters[q.giver]?.name ?? q.giver);
+  return (
+    <div>
+      <h3>Quests</h3>
+      <h4>On offer here</h4>
+      {offered.length === 0 && <p className="dim small">No work on offer where you stand. Patrons and boards post jobs around the city as days pass.</p>}
+      {offered.map((q) => (
+        <div key={q.id} className="card">
+          <div className="name">{q.title}</div>
+          <p className="small">{q.description}</p>
+          <p className="small dim">From {giverName(q)} · pays {describeReward(world, q)}{q.deadlineDay !== undefined ? ` · by Day ${q.deadlineDay}` : ''}</p>
+          {q.objectives.map((o, i) => <p key={i} className="small">• {objectiveLabel(world, o)}</p>)}
+          <div className="row">
+            <button className="primary" onClick={() => questAccept(q.id)}>Accept</button>
+            <button onClick={() => questDecline(q.id)}>Decline</button>
+          </div>
+        </div>
+      ))}
+      <h4>Active</h4>
+      {active.length === 0 && <p className="dim small">The party owes no one anything. Enjoy it while it lasts.</p>}
+      {active.map((q) => {
+        const prog = questProgress(world, q);
+        const late = q.deadlineDay !== undefined && world.time.day > q.deadlineDay;
+        const ready = q.status === 'ready' || prog.done === prog.total;
+        return (
+          <div key={q.id} className="card">
+            <div className="row">
+              <span className="name grow">{q.title}</span>
+              {ready ? <Tag tone="green">READY</Tag> : <Tag>{prog.done}/{prog.total}</Tag>}
+              {late && <Tag tone="red">LATE</Tag>}
+            </div>
+            {q.objectives.map((o, i) => (
+              <p key={i} className="small" style={objectiveDone(world, o) ? { color: 'var(--accent2)' } : undefined}>• {objectiveLabel(world, o)}</p>
+            ))}
+            <p className="small dim">Turn in with {giverName(q)} at {world.locations[q.giverLocation]?.name} · {describeReward(world, q)}{q.deadlineDay !== undefined ? ` · by Day ${q.deadlineDay}` : ''}</p>
+            {ready && world.partyLocation === q.giverLocation && (
+              <button className="primary" onClick={() => questTurnIn(q.id)}>Turn in — collect {describeReward(world, q)}</button>
+            )}
+          </div>
+        );
+      })}
+      {completed.length > 0 && <p className="dim small">{completed.length} job{completed.length === 1 ? '' : 's'} completed.</p>}
     </div>
   );
 }
@@ -625,6 +700,18 @@ function RelationshipsPanel() {
   return (
     <div>
       <h3>Bonds</h3>
+      <h4>Faction standing</h4>
+      {Object.values(world.factions).map((f) => {
+        const rep = mc.factionReputation[f.id] ?? 0;
+        return (
+          <div key={f.id} className="row small">
+            <span className="grow">{f.name}</span>
+            <span className="mono" style={{ color: rep < 0 ? 'var(--danger)' : rep > 0 ? 'var(--accent2)' : 'var(--text-dim)' }}>{rep > 0 ? '+' : ''}{rep}</span>
+          </div>
+        );
+      })}
+      <p className="dim small">Standing changes prices, and blood debts get collected on the street.</p>
+      <h4>People</h4>
       <p className="dim small">How others regard {mc.name}. These shift when characters witness acts that touch what they personally value — not because a quest completed.</p>
       {others.map((c) => {
         const rel = c.relationships[mc.id];
@@ -690,6 +777,10 @@ function HouseholdPanel() {
   const world = useStore((s) => s.world);
   const homeUpgradeTier = useStore((s) => s.homeUpgradeTier);
   const homeBuyUpgrade = useStore((s) => s.homeBuyUpgrade);
+  const homeCook = useStore((s) => s.homeCook);
+  const homeSpar = useStore((s) => s.homeSpar);
+  const homeBrew = useStore((s) => s.homeBrew);
+  const homeRepair = useStore((s) => s.homeRepair);
   const homeId = findHome(world);
   const home = homeId ? world.locations[homeId] : null;
   const mc = world.characters[world.mcId];
@@ -717,6 +808,29 @@ function HouseholdPanel() {
           <button disabled={tierIdx < u.minTier || mc.money < u.cost} onClick={() => homeBuyUpgrade(u.key)}>{u.cost}c</button>
         </div>
       ))}
+      <h4>Use the house</h4>
+      <div className="row">
+        {hh.upgrades.includes('kitchen') && <button onClick={homeCook}>🍲 Cook{hh.upgrades.includes('garden') ? ' (garden: free)' : ''}</button>}
+        {hh.upgrades.includes('training-yard') && <button onClick={homeSpar}>⚔ Spar in the yard</button>}
+        {hh.upgrades.includes('alchemy-room') && <button onClick={homeBrew}>⚗ Brew{hh.upgrades.includes('library') ? ' (library: better)' : ''}</button>}
+      </div>
+      {hh.upgrades.includes('workshop') && (
+        <div className="row small">
+          <label>🔧 Repair</label>
+          <select value="" onChange={(e) => { if (e.target.value) homeRepair(e.target.value); }}>
+            <option value="">choose gear…</option>
+            {Object.values(world.items)
+              .filter((i) => i.durability && i.durability.current < i.durability.max)
+              .filter((i) => typeof i.owner === 'string' && (world.characters[i.owner]?.inParty || i.owner === 'HOME_STORAGE' || i.owner === 'PARTY'))
+              .map((i) => (
+                <option key={i.id} value={i.id}>{i.name} ({i.durability!.current}/{i.durability!.max})</option>
+              ))}
+          </select>
+        </div>
+      )}
+      {!hh.upgrades.some((u) => ['kitchen', 'training-yard', 'alchemy-room', 'workshop'].includes(u)) && (
+        <p className="dim small">Functional rooms (kitchen, yard, alchemy, workshop) unlock actions here once built.</p>
+      )}
       <h4>Money chest (treasury)</h4>
       <p className="mono">{fmtMoney(hh.treasury)}</p>
       <TreasuryControls />
@@ -772,6 +886,65 @@ function ContinuityPanel() {
   );
 }
 
+// ---------- Disk backup ----------
+function DiskBackupSection() {
+  const world = useStore((s) => s.world);
+  const snapshots = useStore((s) => s.snapshots);
+  const setToast = useStore((s) => s.setToast);
+  const [linked, setLinked] = useState<string | null>(null);
+  const [checked, setChecked] = useState(false);
+  if (!checked) {
+    setChecked(true);
+    void getLinkedBackup().then((h) => setLinked(h?.name ?? null));
+  }
+  if (!diskSaveSupported()) {
+    return (
+      <>
+        <h4>Disk backup</h4>
+        <p className="dim small">This browser doesn't support direct file access — use Export below regularly instead.</p>
+      </>
+    );
+  }
+  return (
+    <>
+      <h4>Disk backup</h4>
+      {linked ? (
+        <div>
+          <p className="small">
+            Auto-backing up to <b>{linked}</b> (rewritten at most once a minute while you work).
+            {lastBackupAt() > 0 && <span className="dim"> Last written {new Date(lastBackupAt()).toLocaleTimeString()}.</span>}
+          </p>
+          <div className="row">
+            <button
+              onClick={() => void writeBackupNow(world, snapshots).then((err) => setToast(err ?? 'Backup written.'))}
+            >
+              Write now
+            </button>
+            <button className="danger" onClick={() => void unlinkBackup().then(() => setLinked(null))}>Unlink</button>
+          </div>
+        </div>
+      ) : (
+        <div>
+          <p className="dim small">localStorage can be evicted by the browser; a novel shouldn't live there alone. Link a file on disk and the app keeps it current automatically.</p>
+          <button
+            className="primary"
+            onClick={() =>
+              void chooseBackupFile().then((h) => {
+                if (h) {
+                  setLinked(h.name);
+                  void writeBackupNow(world, snapshots).then((err) => setToast(err ?? `Backing up to ${h.name}.`));
+                }
+              })
+            }
+          >
+            Link backup file…
+          </button>
+        </div>
+      )}
+    </>
+  );
+}
+
 // ---------- Saves ----------
 function SavesPanel() {
   const world = useStore((s) => s.world);
@@ -814,6 +987,7 @@ function SavesPanel() {
           <option value="full">Full (treated as Light for now)</option>
         </select>
       </div>
+      <DiskBackupSection />
       <h4>Checkpoints</h4>
       <div className="row">
         <input type="text" className="grow" placeholder="checkpoint label" value={label} onChange={(e) => setLabel(e.target.value)} />

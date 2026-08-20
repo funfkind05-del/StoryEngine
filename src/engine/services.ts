@@ -16,6 +16,7 @@ import {
   fmtMoney,
   hasRoomFor,
   levelUpAvailable,
+  shopPriceMult,
   makeItem,
   performTempleService,
   removeUnits,
@@ -31,18 +32,21 @@ export function buyFromShop(world: WorldState, locId: LocationId, entryIdx: numb
   const entry = loc.shop?.stock[entryIdx];
   if (!loc.shop || !entry) return 'No such ware.';
   if (entry.qty <= 0) return 'Sold out.';
-  if (buyer.money < entry.price) return `Not enough coin (${fmtMoney(entry.price)}).`;
+  const mult = shopPriceMult(world, locId, buyer);
+  if (mult === Infinity) return `They look at ${buyer.name} and shake their head. Your coin's no good here — not with the company you've crossed.`;
+  const price = Math.round(entry.price * mult);
+  if (buyer.money < price) return `Not enough coin (${fmtMoney(price)}).`;
   const item = makeItem(world, entry.proto, 1);
   if (!hasRoomFor(world, buyer, item)) {
     delete world.items[item.id];
     return `${buyer.name}'s pack is full.`;
   }
-  buyer.money -= entry.price;
+  buyer.money -= price;
   entry.qty -= 1;
   addMinutes(world, 5);
-  item.history.push(`Bought at ${loc.name} on Day ${world.time.day} for ${fmtMoney(entry.price)}`);
+  item.history.push(`Bought at ${loc.name} on Day ${world.time.day} for ${fmtMoney(price)}`);
   addToContainer(world, item, buyer);
-  logEvent(world, 'shop.buy', { item: entry.proto, price: entry.price, shop: locId }, `${buyer.name} bought ${item.name} at ${loc.name} for ${fmtMoney(entry.price)}.`, { location: locId });
+  logEvent(world, 'shop.buy', { item: entry.proto, price, shop: locId }, `${buyer.name} bought ${item.name} at ${loc.name} for ${fmtMoney(price)}${mult !== 1 ? ` (${mult < 1 ? 'friendly' : 'grudging'} price)` : ''}.`, { location: locId });
   return null;
 }
 

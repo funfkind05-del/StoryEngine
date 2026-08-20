@@ -75,10 +75,28 @@ const FREQ_CHANCE: Record<string, number> = { low: 0.1, normal: 0.25, high: 0.45
 export function rollCityEncounter(world: WorldState): SimEvent | null {
   const loc = world.locations[world.partyLocation];
   if (!loc || world.currentDungeon) return null;
-  const chance = FREQ_CHANCE[world.encounterFrequency] * (loc.dangerRating / 6);
+  const mc = world.characters[world.mcId];
+  // a gang you've bled comes looking for you on its own turf
+  const knivesRep = mc.factionReputation['FAC_REDKNIVES'] ?? 0;
+  const knivesTurf = (loc.factionInfluence['FAC_REDKNIVES'] ?? 0) >= 5;
+  const vendetta = knivesTurf && knivesRep <= -3;
+  const chance = FREQ_CHANCE[world.encounterFrequency] * (loc.dangerRating / 6) * (vendetta ? 1.6 : 1);
   const seed = randomSeed();
   const rng = new Rng(seed);
   if (!rng.chance(Math.min(0.85, chance))) return null;
+
+  if (vendetta && rng.chance(0.5)) {
+    const count = rng.int(2, Math.min(4, 2 + Math.floor(-knivesRep / 3)));
+    const desc = `${count} Red Knife Cutters`;
+    world.pendingEncounter = {
+      seed,
+      description: desc,
+      monsters: [{ templateKey: 'red-knife-cutter', count }],
+      source: 'city',
+      locationId: loc.id,
+    };
+    return logEvent(world, 'encounter.vendetta', { seed, faction: 'FAC_REDKNIVES', desc }, `The Red Knives came looking for the party near ${loc.name}: ${desc}, and they know your face. (seed ${seed})`, { seed, location: loc.id });
+  }
 
   const kind = rng.pick(['hostile', 'social', 'social', 'incident'] as const);
   if (kind === 'hostile' && loc.dangerRating >= 4) {

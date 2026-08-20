@@ -163,6 +163,7 @@ export const ITEM_PROTOS: Record<string, ItemProto> = {
   lockpick: { key: 'lockpick', name: 'Lockpick', kind: 'tool', slot: 'none', tier: 'mundane', stackable: true, value: 5 },
   bread: { key: 'bread', name: 'Bread', kind: 'supply', slot: 'none', tier: 'mundane', effectKey: 'food-25', stackable: true, value: 1 },
   ration: { key: 'ration', name: 'Trail Ration', kind: 'supply', slot: 'none', tier: 'mundane', effectKey: 'food-40', stackable: true, value: 4 },
+  'sealed-package': { key: 'sealed-package', name: 'Sealed Package', kind: 'misc', slot: 'none', tier: 'mundane', stackable: true, value: 0 },
   // weapons & armor (shop stock)
   dagger: { key: 'dagger', name: 'Dagger', kind: 'weapon', slot: 'main-hand', tier: 'mundane', damage: '1d4+1', durability: 50, value: 90 },
   'iron-shortsword': { key: 'iron-shortsword', name: 'Iron Shortsword', kind: 'weapon', slot: 'main-hand', tier: 'common', damage: '1d6+1', durability: 80, value: 220 },
@@ -464,6 +465,27 @@ export function needsBlocksHpRegen(c: Character): boolean {
 
 export function needsBlocksStaminaRegen(c: Character): boolean {
   return c.needs.hunger >= NEEDS.uncomfortable || c.needs.fatigue >= NEEDS.critical;
+}
+
+// ---------- Faction-aware pricing ----------
+export function dominantFaction(world: WorldState, locId: string): string | null {
+  const loc = world.locations[locId];
+  if (!loc) return null;
+  const entries = Object.entries(loc.factionInfluence);
+  if (!entries.length) return null;
+  return entries.sort((a, b) => b[1] - a[1])[0][0];
+}
+
+/** Price multiplier at a shop, from the buyer's standing with whoever runs the street. */
+export function shopPriceMult(world: WorldState, locId: string, buyer: Character): number {
+  const fac = dominantFaction(world, locId);
+  if (!fac) return 1;
+  const rep = buyer.factionReputation[fac] ?? 0;
+  if (rep <= -6) return Infinity; // refused service
+  if (rep <= -3) return 1.25;
+  if (rep >= 6) return 0.8;
+  if (rep >= 3) return 0.9;
+  return 1;
 }
 
 // ---------- Temple services ----------

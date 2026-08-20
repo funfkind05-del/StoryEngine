@@ -33,6 +33,7 @@ import {
   tickStatusesRound,
 } from './rules';
 import { generateLoot } from './loot';
+import { checkQuests } from './quests';
 
 export interface SkillDef {
   name: string;
@@ -428,6 +429,7 @@ function applyDamageToMonster(
   });
   if (m.hp.current === 0) {
     m.alive = false;
+    world.killCounts[m.templateKey] = (world.killCounts[m.templateKey] ?? 0) + 1;
     record({ round: combat.round, actor: m.id, actorName: m.name, action: 'attack', detail: 'death', result: 'death', text: `${m.name} died.` });
     // Companions react to the kill through their own values
     for (const cid of combat.partyIds) {
@@ -539,6 +541,22 @@ function finishCombat(world: WorldState, combat: CombatState) {
       logEvent(world, 'party.defeated', {}, 'STORY MODE: the party was left for dead but survived — beaten, robbed of nothing but pride.');
     }
   }
+  // political weight: killing a faction's people is noticed
+  const MONSTER_FACTION: Record<string, string> = { 'red-knife-cutter': 'FAC_REDKNIVES' };
+  const facKills: Record<string, number> = {};
+  for (const m of combat.monsters) {
+    if (!m.alive && MONSTER_FACTION[m.templateKey]) {
+      facKills[MONSTER_FACTION[m.templateKey]] = (facKills[MONSTER_FACTION[m.templateKey]] ?? 0) + 1;
+    }
+  }
+  for (const [fac, n] of Object.entries(facKills)) {
+    for (const id of combat.partyIds) {
+      const c = world.characters[id];
+      c.factionReputation[fac] = Math.max(-10, (c.factionReputation[fac] ?? 0) - n);
+    }
+    logEvent(world, 'faction.rep', { faction: fac, delta: -n, why: 'blood spilled' }, `${world.factions[fac]?.name ?? fac} will hear about their dead (reputation -${n}).`);
+  }
+  checkQuests(world);
   logEvent(
     world,
     'combat.end',

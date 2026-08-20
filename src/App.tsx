@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useStore } from './state/store';
 import { fmtWhen, locPath, partyMembers } from './engine/world';
 import { fmtMoney } from './engine/rules';
@@ -9,7 +9,27 @@ import { ChestLootModal, CombatModal, EncounterBanner } from './components/Comba
 import { PrepModal } from './components/PrepModal';
 import { TalkModal } from './components/TalkModal';
 import { MiniMap } from './components/MiniMap';
+import { CompileModal } from './components/CompileModal';
 import type { EncounterFrequency } from './engine/types';
+
+function MomentBanner() {
+  const world = useStore((s) => s.world);
+  const hearMoment = useStore((s) => s.hearMoment);
+  const dismissMoment = useStore((s) => s.dismissMoment);
+  const m = world.pendingMoment;
+  if (!m || world.combat) return null;
+  const npc = world.characters[m.npcId];
+  return (
+    <div className="encounter-banner" style={{ borderColor: 'var(--info)', background: '#16222a' }}>
+      <div className="row">
+        <b style={{ color: 'var(--info)' }}>🗨 {npc.name} wants a word</b>
+        <span className="grow dim small">({m.teaser})</span>
+        <button className="primary" onClick={() => void hearMoment()}>Hear them out</button>
+        <button onClick={dismissMoment}>Not now</button>
+      </div>
+    </div>
+  );
+}
 
 function MoneyTracker() {
   const world = useStore((s) => s.world);
@@ -34,6 +54,7 @@ function MoneyTracker() {
 
 export default function App() {
   const world = useStore((s) => s.world);
+  const [showCompile, setShowCompile] = useState(false);
   const advance = useStore((s) => s.advance);
   const sleepUntilMorning = useStore((s) => s.sleepUntilMorning);
   const setFrequency = useStore((s) => s.setFrequency);
@@ -81,7 +102,8 @@ export default function App() {
         <div className="sidebar">
           <div className="scenes">
             <h3>Manuscript</h3>
-            <button style={{ width: '100%', marginBottom: 8 }} onClick={addScene}>+ New scene (from sim state)</button>
+            <button style={{ width: '100%', marginBottom: 4 }} onClick={addScene}>+ New scene (from sim state)</button>
+            <button style={{ width: '100%', marginBottom: 8 }} onClick={() => setShowCompile(true)}>📖 Compile manuscript…</button>
             {chapters.map((ch) => (
               <div key={ch}>
                 <h3>Chapter {ch}</h3>
@@ -101,6 +123,7 @@ export default function App() {
         </div>
         <div className="editor-wrap" style={{ minHeight: 0 }}>
           <EncounterBanner />
+          <MomentBanner />
           <WritingStudio />
         </div>
         <SidePanels />
@@ -109,6 +132,7 @@ export default function App() {
       <ChestLootModal />
       <PrepModal />
       <TalkModal />
+      {showCompile && <CompileModal onClose={() => setShowCompile(false)} />}
       {toast && <div className="toast">{toast}</div>}
     </div>
   );

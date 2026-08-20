@@ -48,9 +48,14 @@ import {
 } from '../engine/npcChat';
 import { addMinutes } from '../engine/world';
 import { applyProposal, type SyncProposal } from '../engine/proseLlm';
+import { scheduleBackup } from '../engine/diskSave';
+import { acceptQuest, checkQuests, declineQuest, refreshJobs, turnInQuest } from '../engine/quests';
+import { maybeCompanionMoment } from '../engine/moments';
+import { brewAtHome, cookAtHome, repairAtHome, sparAtHome } from '../engine/household';
 
 export type PanelTab =
   | 'location'
+  | 'quests'
   | 'characters'
   | 'party'
   | 'inventory'
@@ -78,6 +83,8 @@ interface AppState {
     messages: ChatMessage[]; // excludes the system prompt
     busy: boolean;
     error: string | null;
+    /** companion-moment context appended to the system prompt */
+    hook?: string;
   } | null;
 
   commit: (opts?: { autosave?: string }) => void;
@@ -107,6 +114,21 @@ interface AppState {
   setEncumbrance: (r: WorldState['encumbrance']) => void;
   setNeedsEnabled: (on: boolean) => void;
   eatMeal: () => void;
+
+  // quests
+  questAccept: (id: string) => void;
+  questDecline: (id: string) => void;
+  questTurnIn: (id: string) => void;
+
+  // companion moments
+  hearMoment: () => Promise<void>;
+  dismissMoment: () => void;
+
+  // functional home rooms
+  homeCook: () => void;
+  homeSpar: () => void;
+  homeBrew: () => void;
+  homeRepair: (itemId: string) => void;
 
   // prose → sim sync (author-approved)
   applyProposals: (proposals: SyncProposal[]) => string[];
@@ -197,6 +219,7 @@ export const useStore = create<AppState>((set, get) => ({
       const s = get();
       persistProject(s.world, s.snapshots);
     }, 400);
+    scheduleBackup(() => ({ world: get().world, snapshots: get().snapshots }));
   },
 
   setToast: (t) => set({ toast: t }),
@@ -208,6 +231,8 @@ export const useStore = create<AppState>((set, get) => ({
     if (world.combat?.active) return;
     travelTo(world, dest);
     rollCityEncounter(world);
+    checkQuests(world);
+    maybeCompanionMoment(world);
     // auto-insert the movement into the manuscript as editable prose,
     // destination embedded as an @[Name](ID) token
     const scene = world.scenes.find((s) => s.id === selectedSceneId);
@@ -222,6 +247,8 @@ export const useStore = create<AppState>((set, get) => ({
     const { world, commit } = get();
     tick(world, minutes);
     restockShops(world);
+    refreshJobs(world);
+    maybeCompanionMoment(world);
     commit({ autosave: `Advanced ${minutes} min` });
   },
 
@@ -229,6 +256,8 @@ export const useStore = create<AppState>((set, get) => ({
     const { world, commit } = get();
     advanceUntilMorning(world);
     restockShops(world);
+    refreshJobs(world);
+    maybeCompanionMoment(world);
     commit({ autosave: 'Slept until morning' });
   },
 
@@ -340,6 +369,90 @@ export const useStore = create<AppState>((set, get) => ({
     commit();
   },
 
+  // ---------- quests ----------
+  questAccept: (id) => {
+    const { world, commit, setToast } = get();
+    const err = acceptQuest(world, id);
+    if (err) setToast(err);
+    commit({ autosave: 'Quest accepted' });
+  },
+
+  questDecline: (id) => {
+    const { world, commit } = get();
+    declineQuest(world, id);
+    commit();
+  },
+
+  questTurnIn: (id) => {
+    const { world, commit, setToast } = get();
+    const err = turnInQuest(world, id);
+    if (err) setToast(err);
+    commit({ autosave: 'Quest turned in' });
+  },
+
+  // ---------- companion moments ----------
+  hearMoment: async () => {
+    const { world, commit } = get();
+    const m = world.pendingMoment;
+    if (!m) return;
+    world.pendingMoment = null;
+    const npc = world.characters[m.npcId];
+    const pov = world.characters[world.mcId];
+    set({ talk: { npcId: m.npcId, povId: world.mcId, messages: [], busy: true, error: null, hook: m.hook } });
+    commit();
+    try {
+      const system = buildNpcSystemPrompt(world, m.npcId, world.mcId)
+        + `\n\n=== RIGHT NOW ===\n${m.hook}\nYOU approached ${pov.name} — speak first, in character, 1–3 sentences.`;
+      const reply = await chatWithNpc(loadLlmConfig(), [
+        { role: 'system', content: system },
+        { role: 'user', content: `*${pov.name} looks up as you approach.*` },
+      ]);
+      const cur = get().talk;
+      if (!cur || cur.npcId !== m.npcId) return;
+      set({ talk: { ...cur, messages: [{ role: 'assistant', content: reply }], busy: false } });
+    } catch {
+      const cur = get().talk;
+      if (cur) {
+        set({ talk: { ...cur, messages: [{ role: 'assistant', content: `*${npc.name} finds a quiet moment beside you.* \u201cGot a minute?\u201d` }], busy: false } });
+      }
+    }
+  },
+
+  dismissMoment: () => {
+    const { world, commit } = get();
+    world.pendingMoment = null;
+    commit();
+  },
+
+  // ---------- functional home rooms ----------
+  homeCook: () => {
+    const { world, commit, setToast } = get();
+    const err = cookAtHome(world);
+    if (err) setToast(err);
+    commit();
+  },
+
+  homeSpar: () => {
+    const { world, commit, setToast } = get();
+    const err = sparAtHome(world);
+    if (err) setToast(err);
+    commit({ autosave: 'Sparring' });
+  },
+
+  homeBrew: () => {
+    const { world, commit, setToast } = get();
+    const err = brewAtHome(world);
+    if (err) setToast(err);
+    commit({ autosave: 'Brewing' });
+  },
+
+  homeRepair: (itemId) => {
+    const { world, commit, setToast } = get();
+    const err = repairAtHome(world, itemId);
+    if (err) setToast(err);
+    commit();
+  },
+
   openPrep: (dungeonId) => set({ prepDungeon: dungeonId }),
   cancelPrep: () => set({ prepDungeon: null }),
 
@@ -365,7 +478,8 @@ export const useStore = create<AppState>((set, get) => ({
     const messages: ChatMessage[] = [...talk.messages, { role: 'user', content: text.trim() }];
     set({ talk: { ...talk, messages, busy: true, error: null } });
     try {
-      const system = buildNpcSystemPrompt(world, talk.npcId, talk.povId);
+      const system = buildNpcSystemPrompt(world, talk.npcId, talk.povId)
+        + (talk.hook ? `\n\n=== RIGHT NOW ===\n${talk.hook}` : '');
       const reply = await chatWithNpc(loadLlmConfig(), [{ role: 'system', content: system }, ...messages]);
       const cur = get().talk;
       if (!cur || cur.npcId !== talk.npcId) return; // conversation was closed meanwhile

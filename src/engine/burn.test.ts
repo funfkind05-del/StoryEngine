@@ -30,7 +30,9 @@ import {
   treasuryTransfer,
   useConsumable,
 } from './services';
-import { buyUpgrade, upgradeTier } from './household';
+import { brewAtHome, buyUpgrade, cookAtHome, sparAtHome, upgradeTier } from './household';
+import { acceptQuest, checkQuests, offeredQuestsAt, refreshJobs, turnInQuest } from './quests';
+import { maybeCompanionMoment } from './moments';
 import { applyProposal } from './proseLlm';
 import { generateBackgroundNpc, promoteNpc } from './npc';
 import { OWNER_HOME, OWNER_PARTY, type PlannedAction, type WorldState } from './types';
@@ -110,6 +112,13 @@ function checkInvariants(w: WorldState, step: number, action: string, deep: bool
       if (!m.alive && m.hp.current > 0) fail(`${m.name} dead with ${m.hp.current} HP`);
     }
     if (!w.combat.active && w.combat.outcome === 'ongoing') fail('inactive combat still ongoing');
+  }
+  // quests: no double-pay, objectives well-formed
+  for (const q of Object.values(w.quests)) {
+    for (const o of q.objectives) {
+      if (o.kind === 'kill' && (o.count <= 0 || o.baseline < 0)) fail(`quest ${q.id} bad kill objective`);
+    }
+    if (q.status === 'completed' && q.completedDay === undefined) fail(`quest ${q.id} completed without a day`);
   }
   // shops never oversell
   for (const l of Object.values(w.locations)) {
@@ -205,6 +214,7 @@ function step(w: WorldState, rng: Rng): string {
     if (dests.length) {
       travelTo(w, rng.pick(dests));
       rollCityEncounter(w);
+      checkQuests(w);
     }
     return 'travel';
   }
@@ -275,10 +285,29 @@ function step(w: WorldState, rng: Rng): string {
     return 'move-items';
   }
   if (roll < 0.76) { treasuryTransfer(w, rng.int(1, 200), rng.chance(0.5) ? 'deposit' : 'withdraw'); return 'treasury'; }
-  if (roll < 0.8) {
-    if (rng.chance(0.5)) upgradeTier(w);
-    else buyUpgrade(w, rng.pick(['kitchen', 'bath', 'storage', 'workshop', 'armory', 'library']));
+  if (roll < 0.78) {
+    if (rng.chance(0.4)) upgradeTier(w);
+    else if (rng.chance(0.5)) buyUpgrade(w, rng.pick(['kitchen', 'bath', 'storage', 'workshop', 'training-yard', 'alchemy-room', 'garden', 'armory', 'library']));
+    else {
+      const which = rng.next();
+      if (which < 0.34) cookAtHome(w);
+      else if (which < 0.67) sparAtHome(w);
+      else brewAtHome(w);
+    }
     return 'household';
+  }
+  if (roll < 0.8) {
+    // quests: accept whatever's offered here, turn in whatever's ready
+    refreshJobs(w);
+    for (const q of offeredQuestsAt(w, w.partyLocation)) if (rng.chance(0.7)) acceptQuest(w, q.id);
+    checkQuests(w);
+    for (const q of Object.values(w.quests)) if (q.status === 'ready' && rng.chance(0.8)) turnInQuest(w, q.id);
+    return 'quests';
+  }
+  if (roll < 0.82) {
+    maybeCompanionMoment(w);
+    if (w.pendingMoment && rng.chance(0.7)) w.pendingMoment = null; // author waves them off
+    return 'moment';
   }
   if (roll < 0.84) { restAtHome(w); return 'home-rest'; }
   if (roll < 0.88) {

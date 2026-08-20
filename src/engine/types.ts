@@ -92,6 +92,9 @@ export interface Household {
   residents: CharacterId[];
   storage: ItemId[]; // items owned by OWNER_HOME
   treasury: number; // copper, separate from personal purses
+  lastSparDay?: number; // training-yard use
+  lastBrewDay?: number; // alchemy-room use
+  lastHarvestDay?: number; // garden
 }
 
 // ---------- Shops, inns, temples ----------
@@ -448,6 +451,33 @@ export interface PendingEncounter {
   roomId?: RoomId;
 }
 
+// ---------- Quests ----------
+export type QuestObjective =
+  | { kind: 'kill'; templateKey: string; count: number; baseline: number }
+  | { kind: 'visit'; locationId: LocationId; done: boolean }
+  | { kind: 'clear-boss'; dungeonId: DungeonId; done: boolean }
+  | { kind: 'deliver'; itemProto: string; locationId: LocationId; done: boolean };
+
+export interface Quest {
+  id: string; // QST_*
+  title: string;
+  giver: CharacterId | 'board';
+  giverLocation: LocationId; // where to accept and turn in
+  description: string;
+  objectives: QuestObjective[];
+  reward: {
+    money: number;
+    itemProtos?: string[];
+    factionRep?: Record<FactionId, number>;
+    xp?: number;
+  };
+  status: 'offered' | 'active' | 'ready' | 'completed' | 'declined';
+  offeredDay: number;
+  deadlineDay?: number;
+  acceptedDay?: number;
+  completedDay?: number;
+}
+
 // ---------- Manuscript ----------
 export interface Scene {
   id: SceneId;
@@ -509,6 +539,12 @@ export interface WorldState {
   combat: CombatState | null;
   pendingEncounter: PendingEncounter | null;
   encounterFrequency: EncounterFrequency;
+  quests: Record<string, Quest>;
+  /** lifetime kill tallies per monster template (quest progress etc.) */
+  killCounts: Record<string, number>;
+  /** a companion wants a word (banner → conversation) */
+  pendingMoment?: { npcId: CharacterId; hook: string; teaser: string } | null;
+  lastMomentDay?: number;
   counters: Record<string, number>; // id counters
   masterSeed: number;
 }

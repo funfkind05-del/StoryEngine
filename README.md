@@ -97,6 +97,49 @@ after every step: no negative HP/coin, item↔owner consistency, equipment
 integrity, a monotonic clock, shop stock sanity, serializability, no NaN.
 The quick version runs as part of `npm test`.
 
+## Getting the novel out — and keeping it safe
+
+**📖 Compile manuscript** (sidebar) stitches scenes into chapters and exports
+Markdown or printable HTML (browser print → PDF). Entity tokens render as
+plain names; sim scaffolding blocks strip out; LitRPG stat windows stay in by
+default. **Disk backup** (Saves panel, Chromium browsers) links a .json file
+on disk that the app rewrites automatically while you work — localStorage can
+be evicted by the browser; your novel shouldn't live there alone.
+
+## Quests & jobs
+
+Patrons and notice boards offer work — hand-authored hooks from Day 1 (Sister
+Sella wants the crypts cleansed; Tobbe's cellar is scratching) plus
+procedural jobs that drift onto the boards as days pass. Objectives (kills
+counted from acceptance, deliveries, boss-clears) track against real sim
+state; turn in at the giver for coin, items, XP, and faction reputation —
+late past the deadline pays half. The Quests panel shows offers where you
+stand and progress on everything active.
+
+## Factions have memory
+
+Killing a gang's people costs standing with them; quest work shifts it both
+ways. Standing changes the world: friendly shops discount, hostile ones
+gouge or refuse outright, the temple already prices by reputation — and on
+Red Knives turf with blood between you, they come looking for you by name.
+
+## The household works for its keep
+
+Functional rooms unlock real actions at home: a **kitchen** cooks for the
+party for coppers (free with a **garden**), the **training yard** gives a
+daily sparring XP trickle, the **alchemy room** brews a potion a day into
+storage (**library** improves the formula), and the **workshop** mends worn
+and broken gear for material costs.
+
+## Companions start conversations
+
+Sometimes a companion wants a word — driven by their state, not yours:
+wounds, damaged trust, something unspoken crossing the attraction line, a
+level burning a hole in their pocket, hunger, or a defeat weighed against
+their values. A banner invites you to hear them out; the conversation opens
+with *them* speaking first (LLM-voiced), and as always nothing becomes canon
+unless you keep it.
+
 ## How story time advances
 
 Every sim action costs time automatically — the clock forces the story
