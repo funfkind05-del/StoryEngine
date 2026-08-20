@@ -3,10 +3,10 @@
 // Quality rolls on crafted gear reward a well-built home (forge annex)
 // and high strength; enchanting applies affix glyphs at the study.
 
-import type { WorldState } from './types';
+import type { WorldState, Item } from './types';
 import { Rng, randomSeed } from './rng';
 import { addMinutes, logEvent, partyMembers } from './world';
-import { addToContainer, fmtMoney, makeItem } from './rules';
+import { addToContainer, fmtMoney, makeItem, ITEM_PROTOS } from './rules';
 import { findHome } from './household';
 import { AFFIXES, rollGearMods } from './progression';
 
@@ -39,7 +39,7 @@ export const RECIPES: Recipe[] = [
   { key: 'temper-scale', label: 'Temper a scale hauberk', room: 'workshop', needs: [{ proto: 'iron-scrap', qty: 12 }, { proto: 'wyrm-scale', qty: 2 }, { proto: 'leather-strips', qty: 4 }], makes: 'scale-hauberk', minutes: 400 },
 ];
 
-function countMaterial(world: WorldState, proto: string): number {
+export function countMaterial(world: WorldState, proto: string): number {
   let n = 0;
   const scan = (ids: string[]) => {
     for (const iid of ids) {
@@ -114,7 +114,7 @@ export function craft(world: WorldState, recipeKey: string): string | null {
 }
 
 /** Enchant: burn ember essence to put a rolled affix on carried gear. */
-export function enchantItem(world: WorldState, itemId: string): string | null {
+export function enchantItem(world: WorldState, itemId: string, chosenAffix?: string): string | null {
   const home = findHome(world);
   if (!home || world.partyLocation !== home) return 'The study is at home.';
   const hh = world.locations[home].household!;
@@ -122,12 +122,15 @@ export function enchantItem(world: WorldState, itemId: string): string | null {
   const item = world.items[itemId];
   if (!item || (item.kind !== 'weapon' && item.kind !== 'armor' && item.kind !== 'shield')) return 'Only arms and armor take a glyph.';
   if (item.affix) return `${item.name} already carries an enchantment.`;
-  if (countMaterial(world, 'ember-essence') < 2) return 'Needs 2× ember essence.';
-  consumeMaterial(world, 'ember-essence', 2);
+  const cost = chosenAffix ? 3 : 2; // choosing the glyph costs a third essence
+  if (countMaterial(world, 'ember-essence') < cost) return `Needs ${cost}× ember essence${chosenAffix ? ' (a chosen glyph runs richer)' : ''}.`;
+  const picked = chosenAffix ? AFFIXES.find((a) => a.name === chosenAffix) : undefined;
+  if (chosenAffix && !picked) return 'No such glyph.';
+  consumeMaterial(world, 'ember-essence', cost);
   addMinutes(world, 120);
   const rng = new Rng(randomSeed());
   const before = item.name;
-  const affix = rng.pick(AFFIXES);
+  const affix = picked ?? rng.pick(AFFIXES);
   item.affix = { ...affix };
   item.name = `${item.name} ${affix.name}`;
   item.value = Math.round(item.value * 2 + 150);
@@ -163,5 +166,113 @@ export function gatherResource(world: WorldState): string | null {
   const item = makeItem(world, room.resource.proto, qty);
   addToContainer(world, item, 'party');
   logEvent(world, 'gather', { proto: room.resource.proto, qty }, `The party gathered ${qty}× ${item.name} (worth ${fmtMoney(item.value * qty)}).`, { witnesses: partyMembers(world).map((c) => c.id) });
+  return null;
+}
+
+
+// ---------- set stations (the ESO inheritance) ----------
+// Special gear is not found; it is MADE — at particular benches, from
+// materials the deep places guard, to designs with names.
+
+export interface SetRecipe {
+  key: string;
+  label: string;
+  station: string; // location id
+  stationName: string;
+  baseProto: string;
+  itemName: string;
+  lore: string;
+  quality: NonNullable<Item['quality']>;
+  tier: 'rare' | 'exceptional';
+  affixes: [NonNullable<Item['affix']>, NonNullable<Item['affix']>];
+  needs: { proto: string; qty: number }[];
+  minutes: number;
+}
+
+export const SET_RECIPES: SetRecipe[] = [
+  {
+    key: 'ashgrip',
+    label: 'Forge the Ashgrip Blade',
+    station: 'LOC_FORGE',
+    stationName: 'Harrow\u2019s Forge',
+    baseProto: 'steel-longsword',
+    itemName: 'Ashgrip Blade',
+    lore: 'Harrow\u2019s masterwork pattern: steel quenched in ember-ash, the grip wound with wyrm-scale. The old smiths made nine; the pattern-book says the tenth is whoever earns the metal.',
+    quality: 'superior',
+    tier: 'exceptional',
+    affixes: [{ name: 'of the Warlord', stat: 'attack', amount: 2 }, { name: 'of the Adder', stat: 'critChance', amount: 6 }],
+    needs: [{ proto: 'iron-scrap', qty: 8 }, { proto: 'ember-essence', qty: 2 }, { proto: 'wyrm-scale', qty: 1 }],
+    minutes: 480,
+  },
+  {
+    key: 'tidewalker',
+    label: 'Fit the Tidewalker Hauberk',
+    station: 'LOC_SALTMERE',
+    stationName: 'Saltmere\u2019s drying racks',
+    baseProto: 'scale-hauberk',
+    itemName: 'Tidewalker Hauberk',
+    lore: 'Scale cured in Saltmere brine until it forgets it was ever fish or steel. The village fits one a generation, for whoever the sea keeps refusing to drown.',
+    quality: 'superior',
+    tier: 'exceptional',
+    affixes: [{ name: 'of the Wall', stat: 'defense', amount: 2 }, { name: 'of the Fox', stat: 'evasion', amount: 2 }],
+    needs: [{ proto: 'iron-scrap', qty: 10 }, { proto: 'leather-strips', qty: 4 }, { proto: 'bogroot', qty: 3 }, { proto: 'wyrm-scale', qty: 1 }],
+    minutes: 480,
+  },
+  {
+    key: 'edgesong',
+    label: 'Cut the Edgesong Runes',
+    station: 'LOC_EDGEDHALL',
+    stationName: 'the Edged Hall',
+    baseProto: 'greatsword',
+    itemName: 'Edgesong Greatsword',
+    lore: 'A duelist\u2019s blade with the Hall\u2019s treaty-breaking sigils cut full length. It hums a fifth above the note of whatever it last struck. The College files a complaint annually.',
+    quality: 'superior',
+    tier: 'exceptional',
+    affixes: [{ name: 'of the Wind', stat: 'initiative', amount: 2 }, { name: 'of the Warlord', stat: 'attack', amount: 2 }],
+    needs: [{ proto: 'iron-scrap', qty: 9 }, { proto: 'silver-ash', qty: 3 }, { proto: 'ember-essence', qty: 2 }],
+    minutes: 480,
+  },
+  {
+    key: 'lamplight-mail',
+    label: 'Rivet the Lamplight Mail',
+    station: 'LOC_LAMPHALL',
+    stationName: 'Lamplighters\u2019 Hall',
+    baseProto: 'brigandine',
+    itemName: 'Lamplight Brigandine',
+    lore: 'Union work: plates lacquered with lamp-soot until they drink the light instead of throwing it. Ladder-crews wore these on the bad rounds. The bad rounds are why there are spares.',
+    quality: 'superior',
+    tier: 'rare',
+    affixes: [{ name: 'of the Lamplight', stat: 'evasion', amount: 3 }, { name: 'of the Wall', stat: 'defense', amount: 2 }],
+    needs: [{ proto: 'iron-scrap', qty: 8 }, { proto: 'leather-strips', qty: 5 }, { proto: 'night-herbs', qty: 2 }],
+    minutes: 420,
+  },
+];
+
+/** Craft a named set piece at its station. Materials from all pools. */
+export function craftSetPiece(world: WorldState, key: string): string | null {
+  const recipe = SET_RECIPES.find((r) => r.key === key);
+  if (!recipe) return 'No such pattern.';
+  if (world.partyLocation !== recipe.station) return `That pattern is worked at ${recipe.stationName}.`;
+  for (const n of recipe.needs) {
+    if (countMaterial(world, n.proto) < n.qty) {
+      return `The pattern wants ${recipe.needs.map((x) => `${x.qty}× ${ITEM_PROTOS[x.proto]?.name ?? x.proto}`).join(', ')} — short on ${ITEM_PROTOS[n.proto]?.name ?? n.proto}.`;
+    }
+  }
+  for (const n of recipe.needs) consumeMaterial(world, n.proto, n.qty);
+  addMinutes(world, recipe.minutes);
+  const mc = world.characters[world.mcId];
+  const item = makeItem(world, recipe.baseProto, 1);
+  item.name = recipe.itemName;
+  item.quality = recipe.quality;
+  item.tier = recipe.tier;
+  item.affix = { ...recipe.affixes[0] };
+  item.affix2 = { ...recipe.affixes[1] };
+  item.lore = recipe.lore;
+  item.value = Math.round(item.value * 5 + 800);
+  if (item.damage) item.damage = `${item.damage}+2`.replace(/\+(\d+)\+2$/, (_m, n) => `+${parseInt(n, 10) + 2}`);
+  if (item.defense !== undefined) item.defense += 2;
+  item.history.push(`Made to the ${recipe.itemName} pattern at ${recipe.stationName} on Day ${world.time.day}`);
+  addToContainer(world, item, mc);
+  logEvent(world, 'craft.set', { key, item: item.id }, `${mc.name} worked the ${recipe.itemName} pattern at ${recipe.stationName} — hours of it — and held up something with a NAME. ${recipe.lore}`, { location: recipe.station, witnesses: partyMembers(world).map((c) => c.id) });
   return null;
 }

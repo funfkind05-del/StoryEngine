@@ -4,6 +4,7 @@
 
 import type { Item, LootResult, WorldState } from './types';
 import { Rng } from './rng';
+import { veterancyPayMult } from './rules';
 import { nextId } from './world';
 import { maybeMakeUnique, rollGearMods } from './progression';
 import { MATERIAL_DROPS } from './crafting';
@@ -194,7 +195,7 @@ export function generateLoot(world: WorldState, monsterKeys: string[], seed: num
   for (const key of monsterKeys) {
     const tableKey = (lootTableFor(key));
     const table = TABLES[tableKey] ?? TABLES.vermin;
-    money += rng.roll(table.moneyDice);
+    money += Math.round(rng.roll(table.moneyDice) * veterancyPayMult(MONSTER_DEFS[key]?.level ?? 1));
     for (const entry of table.entries) {
       if (rng.chance(entry.chance)) {
         const it = entry.make(world, rng);

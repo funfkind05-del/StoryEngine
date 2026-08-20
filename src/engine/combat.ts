@@ -695,6 +695,7 @@ function finishCombat(world: WorldState, combat: CombatState) {
     if (combat.roomId && world.currentDungeon) {
       const room = world.dungeons[world.currentDungeon].rooms[combat.roomId];
       room.enemies = 'dead';
+      room.clearedDay = world.time.day;
       if (room.isBossRoom && !world.dungeons[world.currentDungeon].bossDefeated) {
         world.dungeons[world.currentDungeon].bossDefeated = true;
         logEvent(world, 'dungeon.conquered', { dungeon: world.currentDungeon }, `${world.dungeons[world.currentDungeon].name} is CONQUERED — its warden is dead and its deepest door stands open.`, { witnesses: partyMembers(world).map((c) => c.id) });

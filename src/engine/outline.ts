@@ -45,6 +45,20 @@ function minutesOf(e: SimEvent): number {
   return e.time.day * 1440 + e.time.minute;
 }
 
+/** A fight's outline bullets: the blow-by-blow lives on the combat.end
+ * event (data.log), but a beat wants highlights, not every whiff —
+ * kills, crits, deaths, heals, statuses, and the closing exchange. */
+function combatDigest(e: SimEvent): string[] {
+  const log = e.data.log as { result: string; text: string }[] | undefined;
+  if (!Array.isArray(log) || !log.length) return [];
+  const LOUD = ['crit', 'death', 'heal', 'status', 'flee-success', 'flee-fail'];
+  const picked = log.filter((l) => LOUD.includes(l.result)).map((l) => l.text);
+  // always keep the last strike — how it ended matters to the scene
+  const last = log[log.length - 1]?.text;
+  if (last && !picked.includes(last)) picked.push(last);
+  return picked.slice(-6).map((t) => `  ${t}`);
+}
+
 function beatTitle(world: WorldState, beat: OutlineBeat, events: SimEvent[]): string {
   const byKind = (k: string) => events.find((e) => e.kind === k);
   const combat = byKind('combat.end');
@@ -119,7 +133,7 @@ export function buildOutline(world: WorldState): OutlineBeat[] {
       startMinute: first.time.minute,
       location: first.location ?? world.partyLocation,
       participants: [...witnesses],
-      bullets: group.map((e) => e.summary),
+      bullets: group.flatMap((e) => (e.kind === 'combat.end' ? [e.summary, ...combatDigest(e)] : [e.summary])),
       carryForward: carryForwardOf(group),
     };
     beat.sceneType = beatType(group);

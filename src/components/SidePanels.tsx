@@ -38,7 +38,7 @@ import { loadLlmConfig } from '../engine/npcChat';
 import { MONSTERS } from '../engine/monsters';
 import { CARRIAGE_STOPS } from '../engine/services';
 import { RECIPES, canCraft } from '../engine/crafting';
-import { ascensionOptions } from '../engine/progression';
+import { AFFIXES, ascensionOptions } from '../engine/progression';
 import { COMPANION_ARCS } from '../engine/companions';
 import { FirstPersonView } from './FirstPersonView';
 import { isDark } from '../engine/dungeon';
@@ -55,6 +55,8 @@ import { generateArt, monsterPrompt, portraitPrompt } from '../engine/artGen';
 import { PIT_LOCATION, isPitTrialsDay } from '../engine/tournament';
 import { SONGS } from '../engine/dungeon';
 import { MOUNT_PRICE, getWrit } from '../engine/services';
+import { SET_RECIPES } from '../engine/crafting';
+import { countMaterial } from '../engine/crafting';
 import { LOREBOOKS, loreById } from '../engine/codex';
 import { ACHIEVEMENTS } from '../engine/achievements';
 import {
@@ -132,6 +134,7 @@ function LocationPanel() {
   const contestAct = useStore((s) => s.contestAct);
   const mountBuy = useStore((s) => s.mountBuy);
   const writAct = useStore((s) => s.writAct);
+  const setCraftAct = useStore((s) => s.setCraftAct);
   const [bids, setBids] = useState<Record<number, number>>({});
   const crimePickpocket = useStore((s) => s.crimePickpocket);
   const crimeBurgle = useStore((s) => s.crimeBurgle);
@@ -414,6 +417,29 @@ function LocationPanel() {
           <button onClick={mountBuy} title="A sound horse: roads at 0.6x time, +3 pack slots for everyone (saddlebags).">Buy a horse ({fmtMoney(MOUNT_PRICE)})</button>
         </>
       )}
+      {(() => {
+        const sets = SET_RECIPES.filter((r) => r.station === loc.id);
+        if (!sets.length) return null;
+        return (
+          <>
+            <h4>⚒ Set patterns worked here</h4>
+            {sets.map((r) => (
+              <div key={r.key} className="card">
+                <div className="row">
+                  <span className="name grow">{r.itemName}</span>
+                  <Tag tone="gold">{r.tier}</Tag>
+                </div>
+                <p className="small dim" style={{ fontStyle: 'italic' }}>{r.lore}</p>
+                <p className="small">Traits: {r.affixes.map((a) => `${a.name} (+${a.amount} ${a.stat})`).join(' · ')}</p>
+                <div className="row small">
+                  <span className="grow dim">{r.needs.map((n) => `${countMaterial(world, n.proto)}/${n.qty} ${ITEM_PROTOS[n.proto]?.name ?? n.proto}`).join(' · ')}</span>
+                  <button onClick={() => setCraftAct(r.key)} title={`${Math.round(r.minutes / 60)} hours at the bench.`}>Craft</button>
+                </div>
+              </div>
+            ))}
+          </>
+        );
+      })()}
       {(() => {
         const writ = getWrit(world, loc.id);
         if (!writ) return null;
@@ -1144,6 +1170,12 @@ function EventsPanel() {
         <div key={e.id} className={`event-line${e.authorOverride ? ' override' : ''}`}>
           <div className="when">{fmtWhen(e.time)} · {e.kind}{e.seed !== undefined ? ` · seed ${e.seed}` : ''}</div>
           <div>{e.summary}</div>
+          {e.kind === 'combat.end' && Array.isArray(e.data.log) && (e.data.log as { text: string; round: number }[]).length > 0 && (
+            <details>
+              <summary>blow by blow ({(e.data.log as unknown[]).length} entries)</summary>
+              <pre style={{ whiteSpace: 'pre-wrap' }}>{(e.data.log as { text: string; round: number }[]).map((l) => `R${l.round}: ${l.text}`).join('\n')}</pre>
+            </details>
+          )}
           <details>
             <summary>layer 1 (structured)</summary>
             <pre>{JSON.stringify(e.data, null, 1)}</pre>
@@ -1280,6 +1312,7 @@ function TimelinePanel() {
 
 // ---------- Household ----------
 function HouseholdPanel() {
+  const [glyphChoice, setGlyphChoice] = useState('');
   const world = useStore((s) => s.world);
   const homeUpgradeTier = useStore((s) => s.homeUpgradeTier);
   const homeBuyUpgrade = useStore((s) => s.homeBuyUpgrade);
@@ -1389,8 +1422,12 @@ function HouseholdPanel() {
       })}
       {hh.upgrades.includes('enchanters-study') && (
         <div className="row small">
-          <label>✨ Enchant (2× ember essence)</label>
-          <select value="" onChange={(e) => { if (e.target.value) enchantAct(e.target.value); }}>
+          <label title="2× ember essence for the study's choice of glyph; 3× to CHOOSE the glyph yourself — the ESO way.">✨ Enchant</label>
+          <select value={glyphChoice} onChange={(e) => setGlyphChoice(e.target.value)} title="Leave on 'study's choice' for 2 essence, or pick the exact trait for 3.">
+            <option value="">study's choice (2✦)</option>
+            {AFFIXES.map((a) => <option key={a.name} value={a.name}>{a.name} — +{a.amount} {a.stat} (3✦)</option>)}
+          </select>
+          <select value="" onChange={(e) => { if (e.target.value) enchantAct(e.target.value, glyphChoice || undefined); }}>
             <option value="">choose gear…</option>
             {Object.values(world.items)
               .filter((i) => (i.kind === 'weapon' || i.kind === 'armor' || i.kind === 'shield') && !i.affix && typeof i.owner === 'string' && (world.characters[i.owner]?.inParty || i.owner === 'PARTY' || i.owner === 'HOME_STORAGE'))

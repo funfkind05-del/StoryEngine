@@ -49,6 +49,15 @@ export function trainingCost(currentLevel: number): number {
   return 100 + currentLevel * 150; // L1: 250c, L5: 850c, L20: 3100c
 }
 
+/** Income must climb with the party or training math never closes:
+ * a 3-strong party pays 3×(100+150L) per rung while flat purses top
+ * out near 30c/day — the autoplayer proved the mid game stalls at L4
+ * with 30k XP banked. Deeper monsters carry more; boards pay
+ * veterans for harder work. */
+export function veterancyPayMult(level: number): number {
+  return 1 + 0.55 * Math.max(0, level - 1);
+}
+
 // ---------- Classes ----------
 export interface ClassDef {
   key: CharClass;

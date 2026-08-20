@@ -335,8 +335,25 @@ export function generateDungeon(world: WorldState, dungeonId: string): Dungeon {
   return d;
 }
 
+const RESPAWN_DAYS = 10;
+
+/** The dark refills: rooms cleared long enough ago restock while the
+ * party is away. Bosses stay dead — a conquest is a conquest. */
+function restockDungeon(world: WorldState, d: Dungeon) {
+  const rng = new Rng((world.masterSeed ^ (world.time.day * 48611) ^ d.id.length) >>> 0);
+  for (const room of Object.values(d.rooms)) {
+    if (room.isBossRoom) continue;
+    if ((room.enemies === 'dead' || room.enemies === 'fled') && room.clearedDay !== undefined && world.time.day - room.clearedDay >= RESPAWN_DAYS && rng.chance(0.6)) {
+      room.enemies = 'alive';
+      room.encounterKey = rng.pick(d.primaryEnemies);
+      room.clearedDay = undefined;
+    }
+  }
+}
+
 export function enterDungeon(world: WorldState, dungeonId: string): SimEvent {
   const d = generateDungeon(world, dungeonId);
+  restockDungeon(world, d);
   world.currentDungeon = d.id;
   world.currentRoom = d.entryRoom;
   world.partyLocation = d.entranceLocation;

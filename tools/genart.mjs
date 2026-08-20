@@ -140,11 +140,66 @@ async function runCharacters() {
   console.log(`portraits done: ${made} new, ${skipped} existing, ${failed} failed, manifest ${files.length}`);
 }
 
+// ---- doors & props: painted pieces the corridor composites ----
+const DOOR_PROMPTS = {
+  bones: 'an open ancient stone doorway in a crypt wall, carved skull motifs on the arch, pure darkness inside the opening',
+  slime: 'an open slimy brick doorway in a flooded tunnel wall, green algae dripping from the arch, pure darkness inside the opening',
+  flutes: 'an open doorway between two barnacle-crusted fluted stone columns in a sunken temple, pure darkness inside the opening',
+  brands: 'an open scorched stone doorway, ritual sigils branded around the frame, faint embers, pure darkness inside the opening',
+  rivets: 'an open massive riveted iron vault doorway, cold blue steel frame, pure darkness inside the opening',
+  cracks: 'an open heat-cracked stone doorway, melted edges faintly glowing, pure darkness inside the opening',
+  runes: 'an open smooth dark stone doorway carved with faint violet glowing runes, pure darkness inside the opening',
+  bricks: 'an open weathered brick doorway with a heavy timber lintel, pure darkness inside the opening',
+};
+const PROP_PROMPTS = {
+  chest: 'a closed ancient wooden treasure chest with iron bands and an old lock, slightly glowing highlights',
+  'stairs-down': 'worn stone stairs descending into darkness, viewed from above',
+  'stairs-up': 'worn stone stairs ascending toward faint daylight',
+  shrine: 'a small ancient stone shrine with a single lit candle and melted wax',
+  padlock: 'a massive ancient iron padlock with ornate keyhole, faintly glowing',
+  key: 'an ornate ancient iron key, faintly glowing',
+  spinner: 'a great circular stone disc set into a dungeon floor, carved with worn rotation grooves',
+  ring: 'a ring of fused glowing stone set into a dungeon floor, magical shimmer above it',
+};
+
+async function runProps() {
+  const dir = join(root, 'public', 'props');
+  mkdirSync(dir, { recursive: true });
+  let made = 0;
+  for (const [k, desc] of Object.entries(DOOR_PROMPTS)) {
+    const file = join(dir, `door-${k}.png`);
+    if (existsSync(file)) continue;
+    try {
+      const buf = await generate(`A dark fantasy game asset: ${desc}. Front view, centered, filling most of the frame, on a completely pure black background. No creatures, no people, no text. The art style is gritty digital painting with moody lighting.`, '2x3');
+      writeFileSync(file, buf);
+      made++;
+      console.log(`  door-${k} (${Math.round(buf.length / 1024)} KB)`);
+    } catch (e) { console.log(`  FAILED door-${k}: ${e.message}`); await sleep(2000); }
+    await sleep(400);
+  }
+  for (const [k, desc] of Object.entries(PROP_PROMPTS)) {
+    const file = join(dir, `${k}.png`);
+    if (existsSync(file)) continue;
+    try {
+      const buf = await generate(`A dark fantasy game asset icon: ${desc}. Single object, centered, on a completely pure black background. No creatures, no people, no text. The art style is gritty digital painting with moody lighting.`, '1x1');
+      writeFileSync(file, buf);
+      made++;
+      console.log(`  prop ${k} (${Math.round(buf.length / 1024)} KB)`);
+    } catch (e) { console.log(`  FAILED prop ${k}: ${e.message}`); await sleep(2000); }
+    await sleep(400);
+  }
+  const files = readdirSync(dir).filter((f) => f.endsWith('.png')).map((f) => f.replace(/\.png$/, ''));
+  writeFileSync(join(dir, 'manifest.json'), JSON.stringify(files));
+  console.log(`props done: ${made} new, manifest ${files.length}`);
+}
+
 const args = process.argv.slice(2);
 const doMonsters = args.length === 0 || args.includes('--monsters');
 const doDungeons = args.length === 0 || args.includes('--dungeons');
 const doCharacters = args.length === 0 || args.includes('--characters');
+const doProps = args.length === 0 || args.includes('--props');
 if (doDungeons) await runDungeons();
 if (doMonsters) await runMonsters();
 if (doCharacters) await runCharacters();
+if (doProps) await runProps();
 console.log('ALL DONE');

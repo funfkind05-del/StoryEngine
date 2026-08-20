@@ -15,6 +15,7 @@ import {
   enterDungeon,
   exitDungeon,
   lightTorch,
+  startSong,
   moveInDungeon,
   pickLock,
   searchRoom,
@@ -38,6 +39,10 @@ export interface AutoplayerState {
   goalWhy: string;
   lastXp: number;
   lastProgressStep: number;
+  /** consecutive in-dungeon walks with nothing to show — a floor that
+   * stops paying gets left, not paced until the torches die */
+  wanderStreak?: number;
+  leavingFloor?: boolean;
   log: string[];
 }
 
@@ -171,6 +176,7 @@ export function autoplayStep(world: WorldState, state: AutoplayerState, _rng: Rn
 
   // fight what's in front of us
   if (world.combat?.active) {
+    state.wanderStreak = 0;
     autoRound(world);
     if (world.combat && !world.combat.active) {
       if (world.combat.pendingLoot) takeLoot(world, 'all');
@@ -227,7 +233,11 @@ export function autoplayStep(world: WorldState, state: AutoplayerState, _rng: Rn
       return 'retreat';
     }
 
-    if ((world.torchMinutes ?? 0) <= 0 && !room.darkZone && !(room.floor === 1 && room.isStairsUp)) {
+    if ((world.torchMinutes ?? 0) <= 0 && world.activeSong !== 'light' && !room.darkZone && !(room.floor === 1 && room.isStairsUp)) {
+      // free light first: the Lantern Round burns breath, not coin —
+      // torches are the fallback for a winded singer
+      const sung = startSong(world, 'light');
+      if (sung === null) return 'song';
       const lit = lightTorch(world);
       if (lit === null) return 'torch';
       // genuinely out of torches: searching blind is misery — head out
@@ -237,13 +247,13 @@ export function autoplayStep(world: WorldState, state: AutoplayerState, _rng: Rn
     }
     // dark ZONES are passable — walk through, just don't linger searching
 
-    // work the current room first
+    // work the current room first — anything found here breaks a streak
     if (room.enemies === 'alive' && room.encounterKey) {
       const enc = generateDungeonEncounter(world);
-      if (!('error' in enc)) return 'provoke';
+      if (!('error' in enc)) { state.wanderStreak = 0; return 'provoke'; }
     }
-    if (room.key && !room.key.taken) { takeKey(world); return 'key'; }
-    if (room.lorebook && !room.lorebook.taken) { takeLorebook(world); return 'lore'; }
+    if (room.key && !room.key.taken) { state.wanderStreak = 0; takeKey(world); return 'key'; }
+    if (room.lorebook && !room.lorebook.taken) { state.wanderStreak = 0; takeLorebook(world); return 'lore'; }
     if (room.shrine && !room.shrine.used && hurtRatio(world) < 0.85) { useShrine(world); return 'shrine'; }
     if (room.riddleDoor && !room.riddleDoor.opened) {
       const spoke = answerRiddle(world);
@@ -265,6 +275,7 @@ export function autoplayStep(world: WorldState, state: AutoplayerState, _rng: Rn
         }
         equipBest(world);
       }
+      state.wanderStreak = 0;
       return 'chest';
     }
 
@@ -272,9 +283,35 @@ export function autoplayStep(world: WorldState, state: AutoplayerState, _rng: Rn
     const objective = (rid: string): boolean => {
       const r = d.rooms[rid];
       if (r.floor !== room.floor) return false;
-      return r.enemies === 'alive' || !r.explored || !!(r.chest && !r.chest.opened) || !!(r.key && !r.key.taken) || !!(r.lorebook && !r.lorebook.taken);
+      // an answerable riddle-door is an objective: standing before it
+      // is how it gets spoken open
+      const answerableRiddle = !!(r.riddleDoor && !r.riddleDoor.opened && (world.codex ?? []).includes(r.riddleDoor.loreId));
+      return r.enemies === 'alive' || !r.explored || !!(r.chest && !r.chest.opened) || !!(r.key && !r.key.taken) || !!(r.lorebook && !r.lorebook.taken) || answerableRiddle;
     };
-    let dir = dungeonStepToward(world, objective);
+    // sixty walks without a fight, a find, or a descent means the floor
+    // is milked — respawn-chasing here starves the whole run
+    if ((state.wanderStreak ?? 0) > 60) state.leavingFloor = true;
+    // outgrown floors are corridors, not hunting grounds: once the party
+    // is past this hole's weight class, go straight for its warden
+    const overleveled = !d.bossDefeated && avgLevel(world) >= (parseInt(d.recommendedLevel, 10) || 1) + 2;
+    const bossHunt = (rid: string): boolean => {
+      const r = d.rooms[rid];
+      return r.floor === room.floor && (!!r.connections.down || (!!r.isBossRoom && r.enemies === 'alive'));
+    };
+    let dir = state.leavingFloor ? null : dungeonStepToward(world, overleveled ? bossHunt : objective);
+    // stairs behind a lock or a riddle read as walls — go earn the way
+    // through (keys, lorebooks, answers) instead of giving up on the hole
+    if (overleveled && dir === null && !state.leavingFloor) dir = dungeonStepToward(world, objective);
+    if (dir === 'here' && overleveled) {
+      if (room.connections.down) {
+        moveInDungeon(world, 'down');
+        return 'descend';
+      }
+      // deepest floor, warden gone quiet — nothing here outranks us
+      exitDungeon(world);
+      state.targetDungeon = null;
+      return 'dungeon-done';
+    }
     if (dir === null) {
       // floor is spent — take the stairs, or claim the boss floor is done
       const stairs = (rid: string) => {
@@ -283,6 +320,8 @@ export function autoplayStep(world: WorldState, state: AutoplayerState, _rng: Rn
       };
       dir = dungeonStepToward(world, stairs);
       if (dir === 'here') {
+        state.wanderStreak = 0;
+        state.leavingFloor = false;
         if (room.connections.down) {
           moveInDungeon(world, 'down');
           return 'descend';
@@ -292,8 +331,17 @@ export function autoplayStep(world: WorldState, state: AutoplayerState, _rng: Rn
         state.targetDungeon = null;
         return 'dungeon-done';
       }
+      if (dir === null) {
+        // no stairs reachable either — this hole is done for the day
+        state.wanderStreak = 0;
+        state.leavingFloor = false;
+        exitDungeon(world);
+        state.targetDungeon = null;
+        return 'dungeon-done';
+      }
     }
     if (dir && dir !== 'here') {
+      state.wanderStreak = (state.wanderStreak ?? 0) + 1;
       const res = moveInDungeon(world, dir);
       if ('error' in res) {
         // locked from this side without recourse — search for another way
@@ -499,17 +547,28 @@ export function autoplayStep(world: WorldState, state: AutoplayerState, _rng: Rn
   const arrowCount = countProto('arrow');
   const atTorchStore = world.locations[world.partyLocation]?.shop?.stock.some((e) => e.proto === 'torch');
   const atArrowStore = world.locations[world.partyLocation]?.shop?.stock.some((e) => e.proto === 'arrow');
-  // travel for supplies only when nearly dry; once AT the store, stock DEEP
-  const needsTorches = (atTorchStore ? torchCount < 20 : torchCount < 2) && mc.money > 30;
-  const needsArrows = usesBow && (atArrowStore ? arrowCount < 100 : arrowCount < 4) && mc.money > 20;
+  // travel for supplies before they're critical; once AT the store,
+  // sweep the shelf in one visit — penny goods aren't bought one at a time
+  const needsTorches = (atTorchStore ? torchCount < 24 : torchCount < 6) && mc.money > 30;
+  const needsArrows = usesBow && (atArrowStore ? arrowCount < 60 : arrowCount < 12) && mc.money > 20;
   if (needsTorches || needsArrows) {
     const wantNow = needsTorches ? 'torch' : 'arrow';
     const store = Object.values(world.locations).find((l) => l.shop?.stock.some((e) => e.proto === wantNow));
     if (store) {
       if (world.partyLocation === store.id) {
+        let bought = 0;
+        while (bought < 24) {
+          const bulkIdx = store.shop!.stock.findIndex((e) => e.proto === wantNow && e.qty > 0);
+          if (bulkIdx < 0) break;
+          if (buyFromShop(world, store.id, bulkIdx, mc) !== null) break;
+          bought++;
+          if (wantNow === 'torch' && torchCount + bought >= 24) break;
+          if (wantNow === 'arrow' && arrowCount + bought >= 60) break;
+        }
+        if (bought > 0) return 'buy-supplies';
         const idx = store.shop!.stock.findIndex((e) => e.proto === wantNow && e.qty > 0);
-        const err = idx >= 0 ? buyFromShop(world, store.id, idx, mc) : 'sold out';
-        if (err === null) return 'buy-supplies';
+        const err = idx >= 0 ? 'pack full' : 'sold out';
+        void err;
         if (idx < 0) {
           // shelves bare until tomorrow — if we're truly dry, sleep on it;
           // if we're merely topping up, get on with the day
@@ -538,10 +597,12 @@ export function autoplayStep(world: WorldState, state: AutoplayerState, _rng: Rn
     }
   }
 
-  // restock potions when flush
+  // restock potions when flush — but not with a trainer's bill waiting:
+  // every copper spent topping the satchel is a level not bought
   const potionCount = [...mc.inventory, ...world.partyInventory].reduce((n, i) => n + (world.items[i]?.healing ? (world.items[i]?.qty ?? 1) : 0), 0);
   const atPhysic = world.locations[world.partyLocation]?.shop?.stock.some((e) => e.proto.includes('healing'));
-  if ((atPhysic ? potionCount < 5 : potionCount < 2) && mc.money > 150) {
+  const savingForTraining = partyMembers(world).some((c) => levelUpAvailable(c)) && mc.money < trainingCost(mc.level);
+  if ((atPhysic ? potionCount < 5 : potionCount < 2) && mc.money > 150 && (!savingForTraining || potionCount === 0)) {
     const physic = Object.values(world.locations).find((l) => l.shop?.stock.some((e) => e.proto.includes('healing')));
     if (physic) {
       if (world.partyLocation === physic.id) {

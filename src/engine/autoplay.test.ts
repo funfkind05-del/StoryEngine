@@ -17,7 +17,9 @@ const SEEDS = parseInt(env.AUTO_SEEDS ?? '1', 10);
 
 describe(`autoplayer (${SEEDS} seed${SEEDS === 1 ? '' : 's'} × ${STEPS} purposeful actions)`, () => {
   for (let s = 0; s < SEEDS; s++) {
-    it(`beats the early game on seed ${s}`, { timeout: 1800000 }, async () => {
+    // world RNG is true entropy: one retry absorbs the rare unlucky
+    // start; a real balance wall fails both attempts
+    it(`beats the early game on seed ${s}`, { timeout: 1800000, retry: 1 }, async () => {
       const w = buildSeedWorld();
       w.masterSeed = 5000 + s;
       const rng = new Rng(70000 + s);

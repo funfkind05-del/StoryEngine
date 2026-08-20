@@ -10,7 +10,7 @@ import { useSyncExternalStore } from 'react';
 import { MonsterPortrait } from './MonsterArt';
 import { isDark } from '../engine/dungeon';
 import { MONSTERS } from '../engine/monsters';
-import { artSnapshot, dungeonBackdropUrl, subscribeArt } from '../engine/artFiles';
+import { artSnapshot, dungeonBackdropUrl, propUrl, subscribeArt } from '../engine/artFiles';
 
 export type Cardinal = 'north' | 'south' | 'east' | 'west';
 export const LEFT_OF: Record<Cardinal, Cardinal> = { north: 'west', west: 'south', south: 'east', east: 'north' };
@@ -336,10 +336,10 @@ export function FirstPersonView() {
         <rect x="120" y="64" width="100" height="86" fill={wall} />
         {/* the painted atmosphere: Ideogram's corridor for this theme */}
         {backdrop && !dark && (
-          <image href={backdrop} x="0" y="0" width="340" height="214" preserveAspectRatio="xMidYMid slice" opacity="0.72" />
+          <image href={backdrop} x="0" y="0" width="340" height="214" preserveAspectRatio="xMidYMid slice" opacity="0.95" />
         )}
         {/* flagstone floor: courses converging on the far wall */}
-        <g stroke={dim} strokeWidth="0.6" opacity={backdrop ? 0.25 : 0.55}>
+        {!backdrop && <g stroke={dim} strokeWidth="0.6" opacity={0.55}>
           <line x1="0" y1="214" x2="130" y2="150" />
           <line x1="85" y1="214" x2="152" y2="150" />
           <line x1="170" y1="214" x2="170" y2="150" />
@@ -348,34 +348,46 @@ export function FirstPersonView() {
           <path d="M 26 200 q 144 -16 288 0" fill="none" />
           <path d="M 78 178 q 92 -10 184 0" fill="none" />
           <path d="M 108 162 q 62 -6 124 0" fill="none" />
-        </g>
+        </g>}
         {/* ceiling beams */}
-        <g stroke={dim} strokeWidth="0.6" opacity={backdrop ? 0.18 : 0.4}>
+        {!backdrop && <g stroke={dim} strokeWidth="0.6" opacity={0.4}>
           <path d="M 30 12 q 140 12 280 0" fill="none" />
           <path d="M 74 34 q 96 8 192 0" fill="none" />
           <path d="M 104 52 q 66 5 132 0" fill="none" />
-        </g>
-        {/* edge highlights keep the depth honest */}
-        <line x1="0" y1="0" x2="120" y2="64" stroke={line} strokeWidth="1.1" opacity="0.8" />
-        <line x1="340" y1="0" x2="220" y2="64" stroke={line} strokeWidth="1.1" opacity="0.8" />
-        <line x1="0" y1="214" x2="120" y2="150" stroke={line} strokeWidth="1.1" opacity="0.8" />
-        <line x1="340" y1="214" x2="220" y2="150" stroke={line} strokeWidth="1.1" opacity="0.8" />
-        <rect x="120" y="64" width="100" height="86" fill="none" stroke={line} strokeWidth="0.9" opacity="0.7" />
-        <SideAccents kind={theme.pattern} dim={dim} v={variant} />
+        </g>}
+        {/* edge highlights keep the depth honest — only over drawn walls */}
+        {!backdrop && (
+          <g>
+            <line x1="0" y1="0" x2="120" y2="64" stroke={line} strokeWidth="1.1" opacity="0.8" />
+            <line x1="340" y1="0" x2="220" y2="64" stroke={line} strokeWidth="1.1" opacity="0.8" />
+            <line x1="0" y1="214" x2="120" y2="150" stroke={line} strokeWidth="1.1" opacity="0.8" />
+            <line x1="340" y1="214" x2="220" y2="150" stroke={line} strokeWidth="1.1" opacity="0.8" />
+            <rect x="120" y="64" width="100" height="86" fill="none" stroke={line} strokeWidth="0.9" opacity="0.7" />
+          </g>
+        )}
+        {!backdrop && <SideAccents kind={theme.pattern} dim={dim} v={variant} />}
         {/* waterline in the flooded places */}
-        {theme.waterline && (
+        {!backdrop && theme.waterline && (
           <path d="M 0 200 q 20 -5 40 0 t 40 0 t 40 0 t 40 0 t 40 0 t 40 0 t 40 0 t 40 0" stroke={dim} strokeWidth="1.2" fill="none" opacity="0.9" />
         )}
 
         {/* the dungeon's own wallwork — the doorway (if any) opens through it */}
-        <FarPattern kind={theme.pattern} dim={dim} v={variant} />
+        {!backdrop && <FarPattern kind={theme.pattern} dim={dim} v={variant} />}
         {open(ahead) ? (
           <>
-            <DoorFrame x={146} y={82} w={48} h={68} theme={theme} open={true} />
+            {propUrl(`door-${theme.pattern}`) ? (
+              <image href={propUrl(`door-${theme.pattern}`)} x="138" y="68" width="64" height="86" preserveAspectRatio="xMidYMid slice" />
+            ) : (
+              <DoorFrame x={146} y={82} w={48} h={68} theme={theme} open={true} />
+            )}
             <rect className="fpv-door" x="139" y="71" width="62" height="82" fill="transparent" onClick={walk(ahead)}>
               <title>Walk {GLYPH[ahead]}</title>
             </rect>
-            {lockedDir === ahead && <text x="170" y="120" textAnchor="middle" fontSize="16" fill={line}>🔒</text>}
+            {lockedDir === ahead && (propUrl('padlock') ? (
+              <image href={propUrl('padlock')} x="156" y="102" width="28" height="28" preserveAspectRatio="xMidYMid meet" style={{ mixBlendMode: 'screen' }} />
+            ) : (
+              <text x="170" y="120" textAnchor="middle" fontSize="16" fill={line}>🔒</text>
+            ))}
             {hostile && lockedDir !== ahead && !monsterKey && (
               <>
                 <circle cx="162" cy="112" r="2.6" fill="#ff5544">
@@ -392,11 +404,17 @@ export function FirstPersonView() {
         {/* left wall doorway: stone frame in perspective */}
         {open(left) && (
           <>
+            {propUrl(`door-${theme.pattern}`) ? (
+              <image href={propUrl(`door-${theme.pattern}`)} x="24" y="30" width="70" height="150" preserveAspectRatio="xMidYMid slice" transform="skewY(14) translate(0,-16)" />
+            ) : (
+              <>
             <polygon points="26,26 92,52 92,152 26,188" fill={theme.jamb} stroke={theme.line} strokeWidth="0.8" />
             <line x1="30" y1="88" x2="86" y2="98" stroke={theme.dim} strokeWidth="0.7" />
             <line x1="30" y1="132" x2="86" y2="128" stroke={theme.dim} strokeWidth="0.7" />
             <polygon points="34,36 86,58 86,146 34,178" fill="#020202" />
             <polygon points="34,36 86,58 86,84 34,72" fill="url(#fpv-doorfog)" />
+              </>
+            )}
             <polygon className="fpv-door" points="26,26 92,52 92,152 26,188" fill="transparent" onClick={walk(left)}>
               <title>Walk {GLYPH[left]}</title>
             </polygon>
@@ -406,11 +424,17 @@ export function FirstPersonView() {
         {/* right wall doorway: stone frame in perspective */}
         {open(right) && (
           <>
+            {propUrl(`door-${theme.pattern}`) ? (
+              <image href={propUrl(`door-${theme.pattern}`)} x="246" y="30" width="70" height="150" preserveAspectRatio="xMidYMid slice" transform="skewY(-14) translate(0,78)" />
+            ) : (
+              <>
             <polygon points="314,26 248,52 248,152 314,188" fill={theme.jamb} stroke={theme.line} strokeWidth="0.8" />
             <line x1="310" y1="88" x2="254" y2="98" stroke={theme.dim} strokeWidth="0.7" />
             <line x1="310" y1="132" x2="254" y2="128" stroke={theme.dim} strokeWidth="0.7" />
             <polygon points="306,36 254,58 254,146 306,178" fill="#020202" />
             <polygon points="306,36 254,58 254,84 306,72" fill="url(#fpv-doorfog)" />
+              </>
+            )}
             <polygon className="fpv-door" points="314,26 248,52 248,152 314,188" fill="transparent" onClick={walk(right)}>
               <title>Walk {GLYPH[right]}</title>
             </polygon>
@@ -419,35 +443,43 @@ export function FirstPersonView() {
         )}
 
         {/* stairs on the floor */}
-        {stairs === 'down' && (
+        {stairs === 'down' && (propUrl('stairs-down') ? (
+          <image href={propUrl('stairs-down')} x="140" y="158" width="60" height="52" preserveAspectRatio="xMidYMid meet" style={{ mixBlendMode: 'screen' }} />
+        ) : (
           <g stroke={line} strokeWidth="1.5" fill="none">
             <path d="M 150 176 h 40 M 155 184 h 30 M 160 192 h 20" />
             <text x="170" y="208" textAnchor="middle" fontSize="9" fill={line}>STAIRS DOWN</text>
           </g>
-        )}
-        {stairs === 'up' && (
+        ))}
+        {stairs === 'up' && (propUrl('stairs-up') ? (
+          <image href={propUrl('stairs-up')} x="140" y="158" width="60" height="52" preserveAspectRatio="xMidYMid meet" style={{ mixBlendMode: 'screen' }} />
+        ) : (
           <g stroke={line} strokeWidth="1.5" fill="none">
             <path d="M 160 176 h 20 M 155 184 h 30 M 150 192 h 40" />
             <text x="170" y="208" textAnchor="middle" fontSize="9" fill={line}>STAIRS UP</text>
           </g>
-        )}
+        ))}
 
         {/* chest on the floor, stage right */}
-        {chest && (
+        {chest && (propUrl('chest') ? (
+          <image href={propUrl('chest')} x="228" y="152" width="58" height="44" preserveAspectRatio="xMidYMid meet" style={{ mixBlendMode: 'screen' }} />
+        ) : (
           <g>
             <polygon points="238,168 274,168 280,186 232,186" fill="#241c0c" stroke={line} strokeWidth="1.5" />
             <line x1="235" y1="177" x2="277" y2="177" stroke={line} strokeWidth="1" />
           </g>
-        )}
+        ))}
         {/* shrine candle */}
-        {room.shrine && !room.shrine.used && (
+        {room.shrine && !room.shrine.used && (propUrl('shrine') ? (
+          <image href={propUrl('shrine')} x="56" y="150" width="46" height="48" preserveAspectRatio="xMidYMid meet" style={{ mixBlendMode: 'screen' }} />
+        ) : (
           <g>
             <line x1="78" y1="188" x2="78" y2="176" stroke="#ddd" strokeWidth="2" />
             <circle cx="78" cy="172" r="3" fill="#ffb347">
               <animate attributeName="r" values="3;2.2;3" dur="1.4s" repeatCount="indefinite" />
             </circle>
           </g>
-        )}
+        ))}
 
         {/* facing compass + exits readout */}
         <text x="8" y="14" fontSize="10" fill={line} className="mono">FACING {GLYPH[facing]}</text>

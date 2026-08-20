@@ -88,8 +88,13 @@ export function restockShops(world: WorldState) {
     if (world.time.day - loc.shop.restockDay < 3) continue;
     loc.shop.restockDay = world.time.day;
     for (const entry of loc.shop.stock) {
-      const baseline = ITEM_PROTOS[entry.proto]?.stackable ? 8 : 2;
-      if (entry.qty < baseline && rng.chance(0.7)) entry.qty += rng.int(1, 2);
+      const proto = ITEM_PROTOS[entry.proto];
+      // penny goods arrive by the crate — nobody waits a week for
+      // torches (the autoplayer did: 800 nights of it, and starved)
+      const cheapBulk = proto?.stackable && proto.value <= 5;
+      const baseline = cheapBulk ? 24 : proto?.stackable ? 8 : 2;
+      if (cheapBulk) entry.qty = Math.max(entry.qty, baseline);
+      else if (entry.qty < baseline && rng.chance(0.7)) entry.qty += rng.int(1, 2);
       // someone else in the city bought something
       if (entry.qty > 0 && rng.chance(0.15)) entry.qty -= 1;
     }

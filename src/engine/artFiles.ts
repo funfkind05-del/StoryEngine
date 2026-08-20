@@ -50,6 +50,7 @@ export function allCachedArt(): Record<string, string> {
 const serverBestiary = new Set<string>();
 const serverDungeons = new Set<string>();
 const serverPortraits = new Set<string>();
+const serverProps = new Set<string>();
 
 export async function initServerArt(): Promise<void> {
   try {
@@ -64,7 +65,11 @@ export async function initServerArt(): Promise<void> {
     const p = await fetch('/portraits/manifest.json');
     if (p.ok) for (const k of (await p.json()) as string[]) serverPortraits.add(k);
   } catch { /* no generated portraits yet */ }
-  if (serverBestiary.size || serverDungeons.size || serverPortraits.size) notifyArt();
+  try {
+    const pr = await fetch('/props/manifest.json');
+    if (pr.ok) for (const k of (await pr.json()) as string[]) serverProps.add(k);
+  } catch { /* no generated props yet */ }
+  if (serverBestiary.size || serverDungeons.size || serverPortraits.size || serverProps.size) notifyArt();
 }
 
 export function serverMonsterArtUrl(templateKey: string): string | undefined {
@@ -77,6 +82,10 @@ export function dungeonBackdropUrl(pattern: string): string | undefined {
 
 export function serverPortraitUrl(charId: string): string | undefined {
   return serverPortraits.has(charId) ? `/portraits/${charId}.png` : undefined;
+}
+
+export function propUrl(name: string): string | undefined {
+  return serverProps.has(name) ? `/props/${name}.png` : undefined;
 }
 
 // ---------- IndexedDB plumbing ----------

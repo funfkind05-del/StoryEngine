@@ -409,6 +409,8 @@ export interface DungeonRoom {
   description: string;
   explored: boolean;
   enemies: 'alive' | 'dead' | 'none' | 'fled';
+  /** day the room was cleared — the dark refills after a while */
+  clearedDay?: number;
   encounterKey?: string; // pending encounter table key
   chest?: { opened: boolean; lootSeed: number };
   trap?: { kind: string; disarmed: boolean; triggered: boolean };

@@ -8,7 +8,7 @@ import type { Quest, QuestObjective, WorldState } from './types';
 import { MONSTERS } from './monsters';
 import { Rng } from './rng';
 import { grantXp, logEvent, partyMembers } from './world';
-import { addToContainer, fmtMoney, makeItem } from './rules';
+import { addToContainer, fmtMoney, makeItem, veterancyPayMult } from './rules';
 import { advanceCampaign, ensureCampaign } from './campaign';
 import { advanceGuild } from './guilds';
 import { advancePersonal, ensurePersonalArcs } from './companions';
@@ -194,6 +194,11 @@ export function activeQuests(world: WorldState): Quest[] {
   return Object.values(world.quests).filter((q) => q.status === 'active' || q.status === 'ready');
 }
 
+function avgPartyLevel(world: WorldState): number {
+  const members = partyMembers(world);
+  return members.reduce((n, c) => n + c.level, 0) / Math.max(1, members.length);
+}
+
 /** Procedural jobs drift onto the boards every few days. */
 const JOB_TEMPLATES: ((world: WorldState, rng: Rng) => Omit<Quest, 'id' | 'status' | 'offeredDay'> | null)[] = [
   (world, rng) => ({
@@ -202,7 +207,7 @@ const JOB_TEMPLATES: ((world: WorldState, rng: Rng) => Omit<Quest, 'id' | 'statu
     giverLocation: 'LOC_DOCK_0042',
     description: 'The Broken Crown pays per tail. The cellars and the crypts are crawling.',
     objectives: [{ kind: 'kill', templateKey: rng.chance(0.5) ? 'giant-rat' : 'carrion-beetle', count: rng.int(3, 6), baseline: 0 }],
-    reward: { money: rng.int(6, 12) * 10, xp: 40 },
+    reward: { money: Math.round(rng.int(6, 12) * 10 * veterancyPayMult(avgPartyLevel(world))), xp: 40 },
     deadlineDay: world.time.day + rng.int(4, 8),
   }),
   (world, rng) => ({
@@ -211,16 +216,16 @@ const JOB_TEMPLATES: ((world: WorldState, rng: Rng) => Omit<Quest, 'id' | 'statu
     giverLocation: 'LOC_SALTWAREHOUSE',
     description: 'Varga wants a package moved. Do not open it. Do not be seen by the Watch.',
     objectives: [{ kind: 'deliver', itemProto: 'sealed-package', locationId: rng.pick(['LOC_WHARVES', 'LOC_THIEFGUILD', 'LOC_GRAVEROW']), done: false }],
-    reward: { money: rng.int(15, 30) * 10, factionRep: { FAC_REDKNIVES: 1, FAC_WATCH: -1 }, xp: 30 },
+    reward: { money: Math.round(rng.int(15, 30) * 10 * veterancyPayMult(avgPartyLevel(world))), xp: 30, factionRep: { FAC_REDKNIVES: 1, FAC_WATCH: -1 } },
     deadlineDay: world.time.day + rng.int(2, 4),
   }),
-  (_world, rng) => ({
+  (world, rng) => ({
     title: rng.pick(['Bones walking', 'The Watch pays for quiet', 'Thug trouble']),
     giver: 'CHAR_DORN',
     giverLocation: 'LOC_IRONMARKET_SQ',
     description: 'Captain Dorn pays honest coin for dishonest men taken off his streets.',
     objectives: [{ kind: 'kill', templateKey: rng.chance(0.6) ? 'street-thug' : 'red-knife-cutter', count: rng.int(2, 4), baseline: 0 }],
-    reward: { money: rng.int(12, 22) * 10, factionRep: { FAC_WATCH: 1, FAC_REDKNIVES: -1 }, xp: 60 },
+    reward: { money: Math.round(rng.int(12, 22) * 10 * veterancyPayMult(avgPartyLevel(world))), xp: 60, factionRep: { FAC_WATCH: 1, FAC_REDKNIVES: -1 } },
   }),
 ];
 

@@ -52,7 +52,7 @@ import { scheduleBackup } from '../engine/diskSave';
 import { acceptQuest, checkQuests, declineQuest, refreshJobs, turnInQuest } from '../engine/quests';
 import { arrestFlee, arrestPay, arrestResist, arrestSurrender, burgleShop, maybePatrolStop, payBountyAt, pickpocket } from '../engine/crime';
 import { joinGuild } from '../engine/guilds';
-import { craft, enchantItem, gatherResource } from '../engine/crafting';
+import { craft, craftSetPiece, enchantItem, gatherResource } from '../engine/crafting';
 import { pickLock, takeLorebook, useShrine } from '../engine/dungeon';
 import { engageWorldEvent } from '../engine/worldEvents';
 import { adoptStray, buyMount, fulfillWrit, goFishing, rideCarriage } from '../engine/services';
@@ -188,7 +188,8 @@ interface AppState {
 
   // crafting & dungeon interactivity
   craftAct: (recipeKey: string) => void;
-  enchantAct: (itemId: string) => void;
+  enchantAct: (itemId: string, affixName?: string) => void;
+  setCraftAct: (key: string) => void;
   gatherAct: () => void;
   pickLockAct: () => void;
   shrineAct: () => void;
@@ -719,11 +720,20 @@ export const useStore = create<AppState>((set, get) => ({
     commit({ autosave: 'Crafting' });
   },
 
-  enchantAct: (itemId) => {
+  enchantAct: (itemId, affixName) => {
     const { world, commit, setToast } = get();
-    const err = enchantItem(world, itemId);
+    const err = enchantItem(world, itemId, affixName);
     if (err) setToast(err);
-    commit({ autosave: 'Enchanting' });
+    else sfx('levelup');
+    commit();
+  },
+
+  setCraftAct: (key) => {
+    const { world, commit, setToast } = get();
+    const err = craftSetPiece(world, key);
+    if (err) setToast(err);
+    else sfx('victory');
+    commit({ autosave: err ? undefined : 'Set piece crafted' });
   },
 
   gatherAct: () => {
