@@ -13,7 +13,7 @@ import type {
   WorldTime,
 } from './types';
 import { Rng } from './rng';
-import { CLASSES, advanceNeeds, needsBlocksHpRegen, needsBlocksStaminaRegen, sleepOff, tickStatusesOverTime, xpForLevel as xpForLevelRule } from './rules';
+import { CLASSES, advanceNeeds, calendarLabel, needsBlocksHpRegen, needsBlocksStaminaRegen, sleepOff, tickStatusesOverTime, weatherFor, xpForLevel as xpForLevelRule } from './rules';
 
 // ---------- IDs ----------
 export function nextId(world: WorldState, prefix: string): string {
@@ -186,6 +186,15 @@ export function tick(world: WorldState, minutes: number): SimEvent[] {
     remaining -= step;
     addMinutes(world, step);
     applySchedules(world);
+    // daily weather
+    if (!world.weather || world.weather.day !== world.time.day) {
+      const kind = weatherFor(world.masterSeed, world.time.day);
+      const changed = world.weather && world.weather.kind !== kind;
+      world.weather = { kind, day: world.time.day };
+      if (changed) {
+        produced.push(logEvent(world, 'weather', { kind }, `The weather turned: ${kind} over Blackwall (${calendarLabel(world.time.day)}).`));
+      }
+    }
     // ~18% chance of a notable background event per hour advanced
     if (rng.chance(0.18 * (step / 60))) {
       const totalW = BG_EVENTS.reduce((s, e) => s + e.weight, 0);
@@ -299,6 +308,20 @@ export function grantXp(world: WorldState, c: Character, xp: number): string[] {
     logEvent(world, 'level.available', { character: c.id, level: c.level + 1 }, `${c.name} has enough experience for level ${c.level + 1}. Trainer required: ${CLASSES[c.charClass].trainer}.`);
   }
   return notes;
+}
+
+/** Move a scene up/down within its chapter's ordering. */
+export function reorderScene(world: WorldState, sceneId: string, dir: -1 | 1): boolean {
+  const scene = world.scenes.find((s) => s.id === sceneId);
+  if (!scene) return false;
+  const siblings = world.scenes.filter((s) => s.chapter === scene.chapter).sort((a, b) => a.order - b.order);
+  const idx = siblings.indexOf(scene);
+  const swap = siblings[idx + dir];
+  if (!swap) return false;
+  const tmp = scene.order;
+  scene.order = swap.order;
+  swap.order = tmp;
+  return true;
 }
 
 export function locPath(world: WorldState, id: LocationId): GameLocation[] {

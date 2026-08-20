@@ -55,6 +55,7 @@ function chr(partial: Partial<Character> & Pick<Character, 'id' | 'name' | 'occu
     critChance: 5,
     resistances: {},
     needs: { hunger: 25, fatigue: 30 },
+    injuries: [],
     statuses: [],
     tempBonuses: [],
     permanentBonuses: [],
@@ -129,27 +130,30 @@ export function buildSeedWorld(): WorldState {
     loc({ id: 'LOC_HIGHCOURT', name: 'Highcourt', type: 'district', district: 'Highcourt', parent: 'LOC_CITY', description: 'Noble houses, temple spires, and private guards who ask questions last.', dangerRating: 2, factionInfluence: { FAC_WATCH: 8, FAC_VEILEDFLAME: 7 } }),
 
     // Dock Ward
-    loc({ id: 'LOC_RATCATCHER', mapPos: { x: 22, y: 74 }, name: 'Ratcatcher Lane', type: 'street', district: 'Dock Ward', parent: 'LOC_DOCKWARD', description: 'A crooked lane of taverns and flophouses one block off the wharves.', atmosphere: 'Loud, lamp-lit, smelling of tar and fried fish.', dangerRating: 6, connections: ['LOC_DOCK_0042', 'LOC_WHARVES', 'LOC_SALTWAREHOUSE', 'LOC_IRONMARKET_SQ', 'LOC_THIEFGUILD'], factionInfluence: { FAC_REDKNIVES: 8 } }),
+    loc({ id: 'LOC_RATCATCHER', mapPos: { x: 22, y: 74 }, name: 'Ratcatcher Lane', type: 'street', district: 'Dock Ward', parent: 'LOC_DOCKWARD', description: 'A crooked lane of taverns and flophouses one block off the wharves.', atmosphere: 'Loud, lamp-lit, smelling of tar and fried fish.', dangerRating: 6, connections: ['LOC_DOCK_0042', 'LOC_WHARVES', 'LOC_SALTWAREHOUSE', 'LOC_IRONMARKET_SQ', 'LOC_THIEFGUILD', 'LOC_SEWERGATE'], factionInfluence: { FAC_REDKNIVES: 8 } }),
     loc({ id: 'LOC_DOCK_0042', mapPos: { x: 33, y: 66 }, name: 'Broken Crown Tavern', type: 'tavern', district: 'Dock Ward', parent: 'LOC_RATCATCHER', description: 'A low-ceilinged dockside tavern under a cracked sign of a broken crown. Rooms upstairs, trouble downstairs.', atmosphere: 'Dangerous, crowded, smoky, inexpensive.', services: ['food', 'alcohol', 'rooms', 'rumors', 'gambling'], dangerRating: 5, connections: ['LOC_RATCATCHER', 'LOC_KAELROOM'], factionInfluence: { FAC_REDKNIVES: 7, FAC_WATCH: 1 }, innRooms: [
       { name: 'Common Room floor', price: 3, quality: 1 },
       { name: 'Private Room', price: 8, quality: 2 },
       { name: 'Good Room', price: 20, quality: 3 },
     ] }),
     loc({ id: 'LOC_KAELROOM', mapPos: { x: 41, y: 60 }, name: 'Kael’s Rented Room', type: 'residence', district: 'Dock Ward', parent: 'LOC_DOCK_0042', description: 'A narrow room above the Broken Crown: a cot, a chest, one shuttered window over the lane.', atmosphere: 'Cramped but defensible.', dangerRating: 3, connections: ['LOC_DOCK_0042'], household: { tier: 'rented-room', upgrades: [], residents: ['CHAR_KAEL'], storage: [], treasury: 0 } }),
-    loc({ id: 'LOC_WHARVES', mapPos: { x: 10, y: 86 }, name: 'The Black Wharves', type: 'dock', district: 'Dock Ward', parent: 'LOC_DOCKWARD', description: 'Tar-black piers where the ships come in and the bodies go out.', atmosphere: 'Fog, gulls, muscle.', dangerRating: 7, connections: ['LOC_RATCATCHER', 'LOC_SALTWAREHOUSE', 'LOC_CELLARDOOR'], services: ['passage', 'smuggling'], factionInfluence: { FAC_REDKNIVES: 6, FAC_COINGUILD: 7 } }),
+    loc({ id: 'LOC_WHARVES', mapPos: { x: 10, y: 86 }, name: 'The Black Wharves', type: 'dock', district: 'Dock Ward', parent: 'LOC_DOCKWARD', description: 'Tar-black piers where the ships come in and the bodies go out.', atmosphere: 'Fog, gulls, muscle.', dangerRating: 7, connections: ['LOC_RATCATCHER', 'LOC_SALTWAREHOUSE', 'LOC_CELLARDOOR', 'LOC_SEWERGATE', 'LOC_SUNKENSTAIR'], services: ['passage', 'smuggling'], factionInfluence: { FAC_REDKNIVES: 6, FAC_COINGUILD: 7 } }),
     loc({ id: 'LOC_SALTWAREHOUSE', mapPos: { x: 24, y: 90 }, name: 'Saltmerchant’s Warehouse', type: 'warehouse', district: 'Dock Ward', parent: 'LOC_DOCKWARD', description: 'A Coin Guild warehouse; the Red Knives fence stolen goods out the back.', atmosphere: 'Quiet by day, busy by night.', dangerRating: 6, connections: ['LOC_WHARVES', 'LOC_RATCATCHER'], services: ['fencing'], factionInfluence: { FAC_REDKNIVES: 7, FAC_COINGUILD: 5 }, shop: { buys: true, buyRate: 0.35, restockDay: 1, stock: [
       { proto: 'dagger', qty: 1, price: 70 },
       { proto: 'lockpick', qty: 8, price: 4 },
     ] } }),
 
     // Ironmarket
-    loc({ id: 'LOC_IRONMARKET_SQ', mapPos: { x: 48, y: 46 }, name: 'Ironmarket Square', type: 'market', district: 'Ironmarket', parent: 'LOC_IRONMARKET', description: 'The great market square: stalls, auction blocks, and a gallows nobody uses anymore. Mostly.', atmosphere: 'Crowded from bell to bell.', services: ['trade', 'food', 'rumors'], dangerRating: 4, connections: ['LOC_RATCATCHER', 'LOC_FORGE', 'LOC_GRAVEROW', 'LOC_TEMPLE', 'LOC_FIGHTGUILD', 'LOC_PHYSIC', 'LOC_DRYGOODS'], factionInfluence: { FAC_COINGUILD: 8, FAC_WATCH: 6 } }),
+    loc({ id: 'LOC_IRONMARKET_SQ', mapPos: { x: 48, y: 46 }, name: 'Ironmarket Square', type: 'market', district: 'Ironmarket', parent: 'LOC_IRONMARKET', description: 'The great market square: stalls, auction blocks, and a gallows nobody uses anymore. Mostly.', atmosphere: 'Crowded from bell to bell.', services: ['trade', 'food', 'rumors'], dangerRating: 4, connections: ['LOC_RATCATCHER', 'LOC_FORGE', 'LOC_GRAVEROW', 'LOC_TEMPLE', 'LOC_FIGHTGUILD', 'LOC_PHYSIC', 'LOC_DRYGOODS', 'LOC_VAULTDOOR'], factionInfluence: { FAC_COINGUILD: 8, FAC_WATCH: 6 } }),
     loc({ id: 'LOC_FORGE', mapPos: { x: 36, y: 38 }, name: 'Harrow’s Forge', type: 'shop', district: 'Ironmarket', parent: 'LOC_IRONMARKET', description: 'Best honest steel in the middle districts. Bring coin, not promises.', atmosphere: 'Heat, sparks, patience.', services: ['weapons', 'armor', 'repair'], dangerRating: 2, connections: ['LOC_IRONMARKET_SQ'], factionInfluence: { FAC_COINGUILD: 6, FAC_WATCH: 4 }, shop: { buys: true, buyRate: 0.5, restockDay: 1, stock: [
       { proto: 'dagger', qty: 3, price: 90 },
       { proto: 'iron-shortsword', qty: 2, price: 220 },
       { proto: 'iron-longsword', qty: 2, price: 380 },
       { proto: 'steel-longsword', qty: 1, price: 840 },
       { proto: 'wooden-buckler', qty: 3, price: 60 },
+      { proto: 'hunting-bow', qty: 1, price: 300 },
+      { proto: 'longbow', qty: 1, price: 780 },
+      { proto: 'arrow', qty: 40, price: 1 },
       { proto: 'leather-armor', qty: 2, price: 180 },
       { proto: 'studded-leather', qty: 1, price: 420 },
       { proto: 'chain-shirt', qty: 1, price: 950 },
@@ -170,6 +174,7 @@ export function buildSeedWorld(): WorldState {
     ] } }),
     loc({ id: 'LOC_DRYGOODS', mapPos: { x: 58, y: 54 }, name: 'The Dry Goods', type: 'shop', district: 'Ironmarket', parent: 'LOC_IRONMARKET', description: 'A general store: rope, tallow, torches, bread that keeps.', atmosphere: 'Cluttered, honest.', services: ['supplies'], dangerRating: 1, connections: ['LOC_IRONMARKET_SQ'], factionInfluence: { FAC_COINGUILD: 5, FAC_WATCH: 4 }, shop: { buys: true, buyRate: 0.4, restockDay: 1, stock: [
       { proto: 'torch', qty: 20, price: 2 },
+      { proto: 'arrow', qty: 30, price: 1 },
       { proto: 'rope', qty: 4, price: 10 },
       { proto: 'lockpick', qty: 6, price: 5 },
       { proto: 'bread', qty: 12, price: 1 },
@@ -180,12 +185,19 @@ export function buildSeedWorld(): WorldState {
     loc({ id: 'LOC_THIEFGUILD', mapPos: { x: 10, y: 66 }, name: 'The Counting House', type: 'guildhall', district: 'Dock Ward', parent: 'LOC_DOCKWARD', description: 'Officially a shipping clerk’s office. Unofficially, where the Thieves Guild teaches quiet trades.', atmosphere: 'Ledgers in front, lockpicks in back.', services: ['rogue training', 'fencing'], dangerRating: 5, connections: ['LOC_RATCATCHER'], trainerFor: 'rogue', factionInfluence: { FAC_REDKNIVES: 5 } }),
 
     // Highcourt / Old Quarter services
-    loc({ id: 'LOC_COLLEGE', mapPos: { x: 64, y: 8 }, name: 'Arcane College', type: 'guildhall', district: 'Highcourt', parent: 'LOC_HIGHCOURT', description: 'A tower of blue slate where magic is taught to those who can pay, and watched in those who can’t.', atmosphere: 'Ozone and old paper.', services: ['mage training', 'identification'], dangerRating: 1, connections: ['LOC_TEMPLE'], trainerFor: 'mage' }),
+    loc({ id: 'LOC_COLLEGE', mapPos: { x: 64, y: 8 }, name: 'Arcane College', type: 'guildhall', district: 'Highcourt', parent: 'LOC_HIGHCOURT', description: 'A tower of blue slate where magic is taught to those who can pay, and watched in those who can’t.', atmosphere: 'Ozone and old paper.', services: ['mage training', 'identification'], dangerRating: 1, connections: ['LOC_TEMPLE', 'LOC_WYRMSPIRE'], trainerFor: 'mage' }),
     loc({ id: 'LOC_LODGE', mapPos: { x: 84, y: 54 }, name: 'Hunter’s Lodge', type: 'guildhall', district: 'Old Quarter', parent: 'LOC_OLDQUARTER', description: 'Smoke-cured beams hung with antlers and worse. Rangers trade routes and lessons here.', atmosphere: 'Woodsmoke and quiet.', services: ['ranger training', 'tracking work'], dangerRating: 3, connections: ['LOC_GRAVEROW'], trainerFor: 'ranger' }),
 
+    loc({ id: 'LOC_ASHDOOR', mapPos: { x: 92, y: 46 }, name: 'The Branded Door', type: 'dungeon-entrance', district: 'Old Quarter', parent: 'LOC_OLDQUARTER', description: 'A tenement cellar door branded with the Ash Circle\u2019s mark, ajar on darkness that smells of burnt offerings.', atmosphere: 'Warm air where it should be cold.', dangerRating: 7, connections: ['LOC_GRAVEROW'], dungeonId: 'DUN_OLDQUARTER_002' }),
+    loc({ id: 'LOC_VAULTDOOR', mapPos: { x: 30, y: 30 }, name: 'The Sealed Countinghouse', type: 'dungeon-entrance', district: 'Ironmarket', parent: 'LOC_IRONMARKET', description: 'A bank that shut its doors mid-panic forty years ago. The Coin Guild pays no one to ask why.', atmosphere: 'Dust and the smell of old coin.', dangerRating: 8, connections: ['LOC_IRONMARKET_SQ'], dungeonId: 'DUN_IRONMARKET_001' }),
+    loc({ id: 'LOC_SEWERGATE', mapPos: { x: 16, y: 58 }, name: 'The Iron Sewer-Gate', type: 'dungeon-entrance', district: 'Dock Ward', parent: 'LOC_DOCKWARD', description: 'The great rusted grate where the under-river meets the harbor. Things come up it at night.', atmosphere: 'The city\u2019s breath, exhaled.', dangerRating: 8, connections: ['LOC_RATCATCHER', 'LOC_WHARVES'], dungeonId: 'DUN_DOCKWARD_002' }),
+    loc({ id: 'LOC_SUNKENSTAIR', mapPos: { x: 4, y: 78 }, name: 'The Sunken Stair', type: 'dungeon-entrance', district: 'Dock Ward', parent: 'LOC_DOCKWARD', description: 'At the lowest tide, a marble stair descends below the harbor \u2014 into a temple older than Blackwall\u2019s gods.', atmosphere: 'Salt, and singing, faintly.', dangerRating: 9, connections: ['LOC_WHARVES'], dungeonId: 'DUN_HARBOR_001' }),
+    loc({ id: 'LOC_WYRMSPIRE', mapPos: { x: 78, y: 8 }, name: 'Wyrmspire Gate', type: 'dungeon-entrance', district: 'Highcourt', parent: 'LOC_HIGHCOURT', description: 'The ruined tower the nobles pretend is a folly. The undercroft beneath it is why no one builds nearby.', atmosphere: 'Scorch-marks on the lintel.', dangerRating: 9, connections: ['LOC_COLLEGE'], dungeonId: 'DUN_HIGHCOURT_001' }),
+    loc({ id: 'LOC_HOLLOWGATE', mapPos: { x: 94, y: 66 }, name: 'The Hollow Gate', type: 'dungeon-entrance', district: 'Old Quarter', parent: 'LOC_OLDQUARTER', description: 'Behind the oldest mausoleum, a gate of black stone with no hinges. It has opened three times in written history.', atmosphere: 'Your own heartbeat, too loud.', dangerRating: 10, connections: ['LOC_MAUSOLEUM'], dungeonId: 'DUN_DEEP_001' }),
+
     // Old Quarter
-    loc({ id: 'LOC_GRAVEROW', mapPos: { x: 74, y: 40 }, name: 'Cemetery District', type: 'street', district: 'Old Quarter', parent: 'LOC_OLDQUARTER', description: 'Grave rows, mausoleums, and mourners who don’t linger after dark.', atmosphere: 'Still. Too still.', dangerRating: 6, connections: ['LOC_IRONMARKET_SQ', 'LOC_MAUSOLEUM', 'LOC_TEMPLE', 'LOC_LODGE'], factionInfluence: { FAC_ASHCIRCLE: 5 } }),
-    loc({ id: 'LOC_MAUSOLEUM', mapPos: { x: 88, y: 32 }, name: 'Abandoned Mausoleum', type: 'dungeon-entrance', district: 'Old Quarter', parent: 'LOC_GRAVEROW', description: 'A defaced family tomb. The slab over the lower stair has been pushed aside — recently.', atmosphere: 'Cold air rises from below.', dangerRating: 7, connections: ['LOC_GRAVEROW'], dungeonId: 'DUN_OLDQUARTER_001' }),
+    loc({ id: 'LOC_GRAVEROW', mapPos: { x: 74, y: 40 }, name: 'Cemetery District', type: 'street', district: 'Old Quarter', parent: 'LOC_OLDQUARTER', description: 'Grave rows, mausoleums, and mourners who don’t linger after dark.', atmosphere: 'Still. Too still.', dangerRating: 6, connections: ['LOC_IRONMARKET_SQ', 'LOC_MAUSOLEUM', 'LOC_TEMPLE', 'LOC_LODGE', 'LOC_ASHDOOR'], factionInfluence: { FAC_ASHCIRCLE: 5 } }),
+    loc({ id: 'LOC_MAUSOLEUM', mapPos: { x: 88, y: 32 }, name: 'Abandoned Mausoleum', type: 'dungeon-entrance', district: 'Old Quarter', parent: 'LOC_GRAVEROW', description: 'A defaced family tomb. The slab over the lower stair has been pushed aside — recently.', atmosphere: 'Cold air rises from below.', dangerRating: 7, connections: ['LOC_GRAVEROW', 'LOC_HOLLOWGATE'], dungeonId: 'DUN_OLDQUARTER_001' }),
 
     // Highcourt
     loc({ id: 'LOC_TEMPLE', mapPos: { x: 50, y: 16 }, name: 'Temple of the Veiled Flame', type: 'temple', district: 'Highcourt', parent: 'LOC_HIGHCOURT', description: 'Marble and incense. Healing for the faithful; healing for a fee for everyone else.', atmosphere: 'Hushed, watchful.', services: ['healing', 'blessing', 'sanctuary', 'priest training'], dangerRating: 1, connections: ['LOC_IRONMARKET_SQ', 'LOC_GRAVEROW', 'LOC_COLLEGE'], factionInfluence: { FAC_VEILEDFLAME: 9 }, temple: true, trainerFor: 'priest' }),
@@ -199,7 +211,9 @@ export function buildSeedWorld(): WorldState {
     { id: 'ITEM_POTION_0001', proto: 'minor-healing-potion', name: 'Minor Healing Potion', kind: 'potion', slot: 'none', tier: 'common', healing: '1d11+9', stackable: true, qty: 2, value: 30, owner: 'CHAR_KAEL', history: [] },
     { id: 'ITEM_SUPPLY_0001', proto: 'torch', name: 'Torch', kind: 'supply', slot: 'none', tier: 'mundane', stackable: true, qty: 4, value: 2, owner: 'PARTY', history: [] },
     { id: 'ITEM_SUPPLY_0002', proto: 'rope', name: 'Rope (50 ft)', kind: 'supply', slot: 'none', tier: 'mundane', stackable: true, qty: 1, value: 10, owner: 'PARTY', history: [] },
-    { id: 'ITEM_SWORD_0002', name: 'Lyra’s Short Sword', kind: 'weapon', slot: 'main-hand', damage: '1d6', durability: { current: 70, max: 80 }, value: 100, owner: 'CHAR_LYRA', equippedBy: 'CHAR_LYRA', history: [] },
+    { id: 'ITEM_SWORD_0002', name: 'Lyra’s Short Sword', kind: 'weapon', slot: 'main-hand', damage: '1d6', durability: { current: 70, max: 80 }, value: 100, owner: 'CHAR_LYRA', history: [] },
+    { id: 'ITEM_BOW_0001', proto: 'hunting-bow', name: 'Lyra’s Hunting Bow', kind: 'weapon', slot: 'main-hand', tier: 'common', damage: '1d6+2', ranged: true, ammoProto: 'arrow', durability: { current: 60, max: 70 }, value: 300, owner: 'CHAR_LYRA', equippedBy: 'CHAR_LYRA', history: ['Carried through three caravan seasons'] },
+    { id: 'ITEM_AMMO_0001', proto: 'arrow', name: 'Arrow', kind: 'supply', slot: 'none', tier: 'mundane', stackable: true, qty: 24, value: 1, owner: 'CHAR_LYRA', history: [] },
     { id: 'ITEM_ARMOR_0002', name: 'Traveler’s Leathers', kind: 'armor', slot: 'armor', defense: 1, durability: { current: 55, max: 70 }, value: 60, owner: 'CHAR_LYRA', equippedBy: 'CHAR_LYRA', history: [] },
   ];
   for (const it of items) world.items[it.id] = it;
@@ -232,8 +246,8 @@ export function buildSeedWorld(): WorldState {
     attributes: { strength: 11, dexterity: 14, constitution: 11, intelligence: 12, wisdom: 12, charisma: 10 },
     skills: { swordsmanship: 2, archery: 3, magic: 0, stealth: 3, lockpicking: 2, tracking: 3, healing: 2, streetwise: 3 },
     attack: 3, defense: 11, armor: 0, initiative: 4, critChance: 8,
-    money: 45, inventory: ['ITEM_SWORD_0002', 'ITEM_ARMOR_0002'],
-    equipment: { 'main-hand': 'ITEM_SWORD_0002', armor: 'ITEM_ARMOR_0002' },
+    money: 45, inventory: ['ITEM_SWORD_0002', 'ITEM_BOW_0001', 'ITEM_AMMO_0001', 'ITEM_ARMOR_0002'],
+    equipment: { 'main-hand': 'ITEM_BOW_0001', armor: 'ITEM_ARMOR_0002' },
     values: ['honesty', 'courage', 'freedom'],
     objectives: ['Earn enough to re-shoe and re-arm', 'Figure out whether Kael is worth partnering with'],
     combatAI: 'aggressive',
@@ -380,6 +394,32 @@ export function buildSeedWorld(): WorldState {
     entryRoom: '',
     bossDefeated: false,
   };
+
+  const D = (id: string, name: string, entrance: string, rec: string, kind: string, floors: number, enemies: string[], boss: string, features: string[]) => {
+    world.dungeons[id] = {
+      id, name, entranceLocation: entrance, recommendedLevel: rec, dungeonType: kind,
+      floors, primaryEnemies: enemies, bossKey: boss, specialFeatures: features,
+      generated: false, generationSeed: randomSeed(), rooms: {}, entryRoom: '', bossDefeated: false,
+    };
+  };
+  D('DUN_OLDQUARTER_002', 'The Ash Warrens', 'LOC_ASHDOOR', '5–9', 'cult tunnels', 3,
+    ['cult-acolyte', 'bog-hag', 'gutter-mage', 'dire-wolf'], 'ashen-hierophant',
+    ['ritual chambers', 'ash-choked shrines', 'branded doors']);
+  D('DUN_IRONMARKET_001', 'The Undervaults', 'LOC_VAULTDOOR', '8–13', 'sealed bank vaults', 3,
+    ['animated-armor', 'flesh-golem', 'gargoyle', 'gutter-mage'], 'gilded-golem',
+    ['coin-counting machines', 'vault doors', 'gilded traps']);
+  D('DUN_DOCKWARD_002', 'The Sewers Deep', 'LOC_SEWERGATE', '10–16', 'drowned sewer labyrinth', 4,
+    ['sewer-serpent', 'wight', 'giant-spider', 'plague-priest'], 'sewer-tyrant',
+    ['flooded galleries', 'plague nests', 'the under-river']);
+  D('DUN_HARBOR_001', 'The Sunken Temple', 'LOC_SUNKENSTAIR', '14–20', 'drowned temple', 4,
+    ['deep-one', 'wraith', 'bone-knight', 'storm-witch'], 'drowned-priest',
+    ['tide-locked doors', 'barnacled idols', 'salt-white bones']);
+  D('DUN_HIGHCOURT_001', 'Wyrmspire Undercroft', 'LOC_WYRMSPIRE', '20–27', 'dragon-haunted undercroft', 5,
+    ['vampire-thrall', 'stone-golem', 'chimera', 'harbor-drake'], 'young-dragon',
+    ['scorched galleries', 'a hoard-smell on the air', 'melted stone']);
+  D('DUN_DEEP_001', 'The Hollow Crown', 'LOC_HOLLOWGATE', '30–45', 'the palace under everything', 6,
+    ['lich-acolyte', 'shadow-reaper', 'iron-colossus', 'elder-vampire', 'pit-fiend', 'void-spawn'], 'the-hollow-king',
+    ['a throne older than the city', 'silence with weight', 'doors that remember names']);
 
   seedQuests(world);
 

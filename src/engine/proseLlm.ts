@@ -226,6 +226,50 @@ export function applyProposal(world: WorldState, p: SyncProposal): string {
   }
 }
 
+// ---------- draft a scene ----------
+import type { Scene } from './types';
+import { fmtTime } from './world';
+import { calendarLabel } from './rules';
+
+/** The full context handed to the model for a first-pass scene draft. */
+export function buildDraftPrompt(world: WorldState, scene: Scene, outline: string): ChatMessage[] {
+  const participants = scene.participants
+    .map((id) => world.characters[id])
+    .filter(Boolean)
+    .map((c) => `${c.name} — ${c.charClass} L${c.level}, ${c.personality.join(', ') || 'plain'}; ${c.description}`);
+  const loc = world.locations[scene.location];
+  const recent = world.events.slice(-14).map((e) => `- [Day ${e.time.day}] ${e.summary}`);
+  const ordered = [...world.scenes].sort((a, b) => a.chapter - b.chapter || a.order - b.order);
+  const prevIdx = ordered.findIndex((s) => s.id === scene.id) - 1;
+  const prevTail = prevIdx >= 0 ? ordered[prevIdx].text.replace(/\s+$/, '').slice(-600) : '';
+  return [
+    {
+      role: 'system',
+      content:
+        `You are drafting one scene of a gritty LitRPG novel set in Blackwall City, in close third person past tense, POV ${world.characters[scene.pov]?.name ?? 'the protagonist'}. ` +
+        `Spare, concrete prose; period voice; dialogue that earns its place. 400–700 words. ` +
+        `Use ONLY the facts provided — invent texture (weather on skin, sounds, small gestures), never events, items, wounds, or coin that the simulation did not report. ` +
+        `Output only the scene prose, no headings or commentary.`,
+    },
+    {
+      role: 'user',
+      content: [
+        `SCENE: "${scene.title}" — Day ${scene.day}, ${fmtTime({ day: scene.day, minute: scene.startMinute })}, ${calendarLabel(scene.day)}${world.weather ? `, weather: ${world.weather.kind}` : ''}.`,
+        `LOCATION: ${loc?.name ?? scene.location} — ${loc?.description ?? ''} ${loc?.atmosphere ?? ''}`,
+        `CHARACTERS PRESENT:\n${participants.join('\n')}`,
+        prevTail ? `THE PREVIOUS SCENE ENDED:\n…${prevTail}` : '',
+        `RECENT SIMULATION EVENTS (the facts):\n${recent.join('\n')}`,
+        `AUTHOR'S OUTLINE FOR THIS SCENE:\n${outline}`,
+      ].filter(Boolean).join('\n\n'),
+    },
+  ];
+}
+
+export async function draftScene(cfg: LlmConfig, world: WorldState, scene: Scene, outline: string): Promise<string> {
+  const reply = await chatWithNpc({ ...cfg, temperature: 0.7 }, buildDraftPrompt(world, scene, outline));
+  return reply.trim();
+}
+
 // ---------- polish ----------
 /**
  * Line-edit a passage. Facts, names, plot, and @[Name](ID) tokens must

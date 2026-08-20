@@ -138,6 +138,8 @@ export interface Item {
   defense?: number;
   healing?: string; // dice for potions
   effectKey?: string; // rules-engine consumable effect ('antidote', ...)
+  ranged?: boolean; // uses DEX and consumes ammo
+  ammoProto?: string; // e.g. 'arrow'
   durability?: { current: number; max: number };
   /** stackable items carry a quantity; unique items omit it */
   stackable?: boolean;
@@ -172,6 +174,15 @@ export interface ActiveStatus {
   roundsLeft?: number;
   magnitude?: number;
   source?: string;
+}
+
+export interface Injury {
+  name: string; // 'a deep thigh wound'
+  stat: 'attack' | 'defense';
+  amount: number; // negative
+  day: number;
+  treated: boolean;
+  scar: string; // permanent flavor once treated
 }
 
 export interface TempBonus {
@@ -265,6 +276,8 @@ export interface Character {
 
   /** survival needs, 0 (sated/rested) .. 100 (starving/collapsing) */
   needs: { hunger: number; fatigue: number };
+  /** lasting wounds from going down in combat; penalties until treated */
+  injuries: Injury[];
   statuses: ActiveStatus[];
   tempBonuses: TempBonus[];
   permanentBonuses: string[]; // human-readable, e.g. 'Blessing of the Flame: +1 WIS'
@@ -320,6 +333,8 @@ export interface MonsterTemplate {
   ai: 'aggressive' | 'cowardly' | 'pack';
   /** status a hit may inflict */
   inflicts?: { status: StatusKey; chance: number };
+  /** bestiary-plate rendering for monsters without a dedicated drawing */
+  art?: { archetype: 'beast' | 'humanoid' | 'undead' | 'construct' | 'horror' | 'serpent' | 'dragon' | 'demon' | 'spirit' | 'giant'; accent?: string };
 }
 
 export interface CombatantMonster {
@@ -547,6 +562,10 @@ export interface WorldState {
   lastMomentDay?: number;
   /** author-supplied art overrides per monster template (data URIs) */
   monsterArt?: Record<string, string>;
+  /** author-supplied portrait overrides per character (data URIs) */
+  characterArt?: Record<string, string>;
+  /** current weather; changes daily with the season */
+  weather?: { kind: string; day: number };
   counters: Record<string, number>; // id counters
   masterSeed: number;
 }

@@ -131,6 +131,49 @@ daily sparring XP trickle, the **alchemy room** brews a potion a day into
 storage (**library** improves the formula), and the **workshop** mends worn
 and broken gear for material costs.
 
+## A universe for twenty books
+
+- **Levels 1–50**: full ability trees per class — ten fighter skills from
+  Shield Bash to Worldbreaker, rogues to Kingslayer, rangers to The Wind That
+  Kills, mages to The Unmaking Word, priests to Divine Wrath (with party-wide
+  heals and wards along the way).
+- **40+ monsters** from Giant Rat (L1) to Elder Dragon (L45), each with loot
+  tables and a bestiary plate (drawn or archetype-rendered).
+- **8 dungeons** laddering the whole saga: Crypts of Saint Varro (1–4), the
+  Drowning Cellars (2–5), the Ash Warrens (5–9), the Undervaults (8–13), the
+  Sewers Deep (10–16), the Sunken Temple (14–20), Wyrmspire Undercroft
+  (20–27), and The Hollow Crown (30–45) — whose master drops an artifact.
+- **Ranged combat**: bows use DEX, draw from a tracked arrow supply
+  (personal or party quiver), and go quiet when it empties. Arrows at the
+  Forge and Dry Goods.
+- **Injuries & scars**: going down in combat can leave a lasting wound
+  (attack/defense penalty) until treated — the workshop can't fix flesh; the
+  temple's *Mend Lasting Harm* can. Every treated wound leaves a permanent
+  scar in the character sheet.
+- **Weather & calendar**: four 90-day seasons, daily deterministic weather
+  (snow only in winter), shown in the topbar and fed to the scene drafter.
+
+## Character portraits
+
+Everyone gets a deterministic drawn portrait (race skin tones, hair
+variants, class accents — hood for rogues, circlet for mages, half-helm for
+fighters) shown in conversations, the party panel, the prep screen, and the
+People panel. Upload your own per character (🖼, stored in the save).
+
+## Writing tools
+
+- **🪶 Draft scene**: give the LLM a one-line outline; it writes a 400–700
+  word first pass grounded in the scene header, participants, the previous
+  scene's ending, and the sim's recent events — with explicit instructions
+  to invent texture, never facts. Appended for you to rewrite.
+- **Scene reordering**: ▲▼ on hover in the manuscript sidebar.
+
+## Multiple books
+
+Saves panel → Books: each book is its own world and manuscript. Create,
+open, rename, delete; switching saves the current book first. Reset World
+(same panel) restarts the current book from Day 1.
+
 ## Bestiary art
 
 Every monster has a drawn bestiary plate (self-contained SVG, no assets)

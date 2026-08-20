@@ -3,9 +3,8 @@
 
 import type { Snapshot, WorldState } from './types';
 import { seedQuests } from './quests';
+import { activeSlot, slotKeys, touchBook } from './books';
 
-const PROJECT_KEY = 'storyengine.project.v1';
-const SNAPSHOTS_KEY = 'storyengine.snapshots.v1';
 const MAX_AUTO = 20;
 
 export function makeSnapshot(world: WorldState, kind: Snapshot['kind'], label: string): Snapshot {
@@ -32,17 +31,19 @@ export function restoreSnapshot(snap: Snapshot): WorldState {
 }
 
 export function persistProject(world: WorldState, snapshots: Snapshot[]) {
+  const keys = slotKeys(activeSlot());
   try {
-    localStorage.setItem(PROJECT_KEY, JSON.stringify(world));
-    localStorage.setItem(SNAPSHOTS_KEY, JSON.stringify(snapshots));
+    localStorage.setItem(keys.project, JSON.stringify(world));
+    localStorage.setItem(keys.snapshots, JSON.stringify(snapshots));
   } catch {
     // localStorage may be full; snapshots are the likeliest culprit
     try {
-      localStorage.setItem(PROJECT_KEY, JSON.stringify(world));
+      localStorage.setItem(keys.project, JSON.stringify(world));
     } catch {
       /* give up quietly; export still works */
     }
   }
+  touchBook(activeSlot());
 }
 
 /** Fill fields added after a save was written, so old saves keep working. */
@@ -53,12 +54,14 @@ export function migrateWorld(world: WorldState): WorldState {
   world.partyInventory ??= [];
   world.killCounts ??= {};
   world.monsterArt ??= {};
+  world.characterArt ??= {};
   if (!world.quests) {
     world.quests = {};
     seedQuests(world);
   }
   for (const c of Object.values(world.characters)) {
     c.needs ??= { hunger: 25, fatigue: 30 };
+    c.injuries ??= [];
     c.statuses ??= [];
     c.tempBonuses ??= [];
     c.permanentBonuses ??= [];
@@ -77,11 +80,12 @@ export function migrateWorld(world: WorldState): WorldState {
 }
 
 export function loadProject(): { world: WorldState; snapshots: Snapshot[] } | null {
-  const raw = localStorage.getItem(PROJECT_KEY);
+  const keys = slotKeys(activeSlot());
+  const raw = localStorage.getItem(keys.project);
   if (!raw) return null;
   try {
     const world = migrateWorld(JSON.parse(raw) as WorldState);
-    const snapsRaw = localStorage.getItem(SNAPSHOTS_KEY);
+    const snapsRaw = localStorage.getItem(keys.snapshots);
     const snapshots = snapsRaw ? (JSON.parse(snapsRaw) as Snapshot[]) : [];
     return { world, snapshots };
   } catch {
@@ -90,8 +94,9 @@ export function loadProject(): { world: WorldState; snapshots: Snapshot[] } | nu
 }
 
 export function clearProject() {
-  localStorage.removeItem(PROJECT_KEY);
-  localStorage.removeItem(SNAPSHOTS_KEY);
+  const keys = slotKeys(activeSlot());
+  localStorage.removeItem(keys.project);
+  localStorage.removeItem(keys.snapshots);
 }
 
 export function exportProject(world: WorldState, snapshots: Snapshot[]) {

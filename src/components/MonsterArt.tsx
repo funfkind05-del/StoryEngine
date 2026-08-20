@@ -4,6 +4,7 @@
 // data URI), so generated or commissioned art drops straight in.
 
 import type { WorldState } from '../engine/types';
+import { MONSTERS } from '../engine/monsters';
 
 const INK = '#0e0c09'; // plate background
 const BODY = '#5f564a'; // silhouette
@@ -190,6 +191,126 @@ const PLATES: Record<string, React.ReactNode> = {
   ),
 };
 
+// ---------- archetype plates (procedural, tinted per monster) ----------
+type Archetype = 'beast' | 'humanoid' | 'undead' | 'construct' | 'horror' | 'serpent' | 'dragon' | 'demon' | 'spirit' | 'giant';
+
+function ArchetypePlate({ archetype, accent }: { archetype: Archetype; accent: string }) {
+  const eyes = (x1: number, x2: number, y: number, r = 2.2) => (
+    <>
+      <circle cx={x1} cy={y} r={r} fill={accent} />
+      <circle cx={x2} cy={y} r={r} fill={accent} />
+    </>
+  );
+  switch (archetype) {
+    case 'beast':
+      return (
+        <Plate>
+          <path d="M18 76 Q18 50 40 44 Q62 38 74 50 Q84 60 78 76 Z" fill={BODY} />
+          <path d="M70 48 Q66 34 58 30 L66 44 M78 52 Q82 38 90 36 L80 48" fill={BODY} stroke={BODY} strokeWidth="3" />
+          <ellipse cx="72" cy="50" rx="9" ry="7" fill={BODY} />
+          {eyes(69, 76, 48)}
+          <path d="M78 55 L88 58 L79 57 Z" fill={BONE} />
+          <path d="M28 76 l-2 8 M42 76 l0 8 M58 76 l2 8 M70 76 l3 8" stroke={FLESH} strokeWidth="3" strokeLinecap="round" />
+        </Plate>
+      );
+    case 'humanoid':
+      return (
+        <Plate>
+          <path d="M30 88 Q28 56 50 48 Q72 56 70 88 Z" fill={BODY} />
+          <path d="M38 48 Q36 26 50 24 Q64 26 62 48 Q56 42 50 42 Q44 42 38 48 Z" fill={BODY} />
+          <path d="M41 39 Q50 45 59 39 Q57 47 50 47 Q43 47 41 39 Z" fill={INK} />
+          {eyes(46, 54, 40, 1.7)}
+          <path d="M40 54 Q50 60 60 54 L58 62 Q50 66 42 62 Z" fill={accent} opacity="0.85" />
+        </Plate>
+      );
+    case 'undead':
+      return (
+        <Plate>
+          <ellipse cx="50" cy="33" rx="13" ry="12.5" fill={BONE} />
+          <ellipse cx="45" cy="31" rx="3.2" ry="4.2" fill={INK} />
+          <ellipse cx="55" cy="31" rx="3.2" ry="4.2" fill={INK} />
+          {eyes(45, 55, 32, 1.5)}
+          <path d="M46 41 l1.5 3 M50 42 l0 3 M54 41 l-1.5 3" stroke={INK} strokeWidth="1.3" />
+          <path d="M32 88 Q30 58 50 50 Q70 58 68 88 Z" fill={BODY} />
+          <path d="M38 58 Q50 64 62 58 M40 66 Q50 71 60 66" stroke={accent} strokeWidth="2" fill="none" opacity="0.8" />
+        </Plate>
+      );
+    case 'construct':
+      return (
+        <Plate>
+          <rect x="34" y="22" width="32" height="26" rx="4" fill={STEEL} />
+          <rect x="28" y="50" width="44" height="38" rx="5" fill={BODY} />
+          <rect x="40" y="30" width="20" height="7" rx="3" fill={INK} />
+          {eyes(45, 55, 33.5, 2)}
+          <path d="M50 54 L50 84 M38 60 L62 60 M38 72 L62 72" stroke={accent} strokeWidth="2" opacity="0.8" />
+          <path d="M28 56 L16 66 L18 78 M72 56 L84 66 L82 78" stroke={STEEL} strokeWidth="5" fill="none" strokeLinecap="round" />
+        </Plate>
+      );
+    case 'horror':
+      return (
+        <Plate>
+          <path d="M30 82 Q22 54 40 42 Q50 34 60 42 Q78 54 70 82 Q50 90 30 82 Z" fill={FLESH} />
+          {eyes(42, 58, 52, 2.6)}
+          <circle cx="50" cy="44" r="2" fill={accent} />
+          <path d="M36 66 Q40 74 44 66 M48 68 Q52 76 56 68 M60 66 Q64 74 68 66" stroke={INK} strokeWidth="1.6" fill="none" />
+          <path d="M30 72 Q14 76 10 88 M70 72 Q86 76 90 88 M36 80 Q30 90 22 94 M64 80 Q70 90 78 94" stroke={FLESH} strokeWidth="4" fill="none" strokeLinecap="round" />
+        </Plate>
+      );
+    case 'serpent':
+      return (
+        <Plate>
+          <path d="M20 82 Q10 70 22 62 Q34 56 46 62 Q58 68 68 62 Q78 56 74 46 Q70 38 60 40" fill="none" stroke={BODY} strokeWidth="11" strokeLinecap="round" />
+          <path d="M62 42 Q52 34 56 24 Q66 20 74 28 Q80 36 72 44 Q68 46 62 42 Z" fill={BODY} />
+          <circle cx="66" cy="32" r="2.4" fill={accent} />
+          <path d="M72 40 Q80 44 84 50 L78 48 L80 54 Z" fill={accent} opacity="0.9" />
+        </Plate>
+      );
+    case 'dragon':
+      return (
+        <Plate>
+          <path d="M16 80 Q20 58 44 54 Q68 50 78 62 Q84 70 80 80 Z" fill={BODY} />
+          <path d="M60 56 Q56 40 64 30 Q74 26 82 34 Q88 42 80 52 Q72 58 60 56 Z" fill={BODY} />
+          <path d="M66 30 L60 16 L70 24 M76 30 L78 14 L82 26" fill={BODY} stroke={BODY} strokeWidth="2" />
+          <circle cx="72" cy="40" r="2.6" fill={accent} />
+          <path d="M80 46 Q90 48 94 54 L84 52 L86 58 Z" fill={accent} opacity="0.9" />
+          <path d="M30 58 Q18 40 8 38 Q16 52 26 62 Z" fill={FLESH} />
+          <path d="M24 80 l-2 8 M42 80 l0 8 M62 80 l2 8" stroke={FLESH} strokeWidth="3.4" strokeLinecap="round" />
+        </Plate>
+      );
+    case 'demon':
+      return (
+        <Plate>
+          <path d="M30 88 Q26 56 50 48 Q74 56 70 88 Z" fill={BODY} />
+          <ellipse cx="50" cy="36" rx="12" ry="12" fill={BODY} />
+          <path d="M40 28 Q32 14 28 8 Q40 14 44 24 Z M60 28 Q68 14 72 8 Q60 14 56 24 Z" fill={accent} />
+          {eyes(45, 55, 36, 2.2)}
+          <path d="M44 44 L47 47 L50 44 L53 47 L56 44" stroke={accent} strokeWidth="1.5" fill="none" />
+          <path d="M34 58 Q50 66 66 58" stroke={accent} strokeWidth="2" fill="none" opacity="0.7" />
+        </Plate>
+      );
+    case 'spirit':
+      return (
+        <Plate>
+          <path d="M34 86 Q28 46 50 30 Q72 46 66 86 Q60 78 54 86 Q50 78 46 86 Q42 78 34 86 Z" fill={BODY} opacity="0.75" />
+          <path d="M40 44 Q50 38 60 44 Q58 52 50 52 Q42 52 40 44 Z" fill={INK} opacity="0.8" />
+          {eyes(45, 55, 45, 2.2)}
+          <path d="M38 62 Q50 68 62 62" stroke={accent} strokeWidth="1.6" fill="none" opacity="0.7" />
+        </Plate>
+      );
+    case 'giant':
+      return (
+        <Plate>
+          <path d="M24 88 Q22 52 40 46 L60 46 Q78 52 76 88 Z" fill={BODY} />
+          <ellipse cx="50" cy="34" rx="14" ry="14" fill={FLESH} />
+          {eyes(44, 56, 34, 2)}
+          <path d="M42 44 Q50 48 58 44" stroke={INK} strokeWidth="1.8" fill="none" />
+          <path d="M44 40 L48 42 M56 40 L52 42" stroke={BONE} strokeWidth="2" />
+          <path d="M76 66 L92 40 Q94 34 90 32 Q86 32 84 38 L72 62 Z" fill={accent} opacity="0.9" />
+        </Plate>
+      );
+  }
+}
+
 /** Generic plate for unknown/modded templates. */
 function GenericPlate() {
   return (
@@ -216,9 +337,10 @@ export function MonsterPortrait({
   if (custom) {
     return <img src={custom} width={size} height={size} className="monster-portrait" alt={templateKey} />;
   }
+  const art = MONSTERS[templateKey]?.art;
   return (
     <svg viewBox="0 0 100 100" width={size} height={size} className="monster-portrait" role="img" aria-label={templateKey}>
-      {PLATES[templateKey] ?? <GenericPlate />}
+      {PLATES[templateKey] ?? (art ? <ArchetypePlate archetype={art.archetype} accent={art.accent ?? GOLD} /> : <GenericPlate />)}
     </svg>
   );
 }

@@ -130,6 +130,8 @@ select, input[type='text'], input[type='number'] {
 .scene-item.active { background: var(--bg3); border-color: var(--accent); }
 .scene-item .t { font-family: var(--serif); font-size: 13.5px; }
 .scene-item .m { color: var(--text-dim); font-size: 11px; font-family: var(--mono); }
+.scene-item .scene-move { padding: 0 4px; font-size: 9px; line-height: 1.4; opacity: 0; }
+.scene-item:hover .scene-move { opacity: 0.8; }
 
 .editor-wrap {
   display: flex;
@@ -389,6 +391,19 @@ select, input[type='text'], input[type='number'] {
   border-radius: 6px;
 }
 .sugg-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 6px 0; }
+.draft-outline {
+  width: 100%;
+  min-height: 64px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-family: var(--sans);
+  font-size: 12.5px;
+  resize: vertical;
+}
+
 .sugg-text {
   font-family: var(--serif);
   font-size: 13.5px;

@@ -67,6 +67,7 @@ export function generateBackgroundNpc(world: WorldState, at: LocationId, seed: n
     critChance: 5,
     resistances: {},
     needs: { hunger: rng.int(10, 50), fatigue: rng.int(10, 50) },
+    injuries: [],
     statuses: [],
     tempBonuses: [],
     permanentBonuses: [],

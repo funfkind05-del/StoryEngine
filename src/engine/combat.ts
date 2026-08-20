@@ -26,8 +26,12 @@ import {
   consumeItem,
   cureStatus,
   hasStatus,
+  injuryAttackMod,
+  injuryDefenseMod,
   needsAttackMod,
   needsDefenseMod,
+  removeUnits,
+  rollInjury,
   statusAttackMod,
   statusDefenseMod,
   tickStatusesRound,
@@ -48,13 +52,37 @@ export interface SkillDef {
 }
 
 export const SKILLS: Record<string, SkillDef> = {
+  // fighter line
   'shield-bash': { name: 'Shield Bash', stamina: 3, toHitMod: 0, dmgBonus: 2, stuns: true },
   'power-strike': { name: 'Power Strike', stamina: 4, toHitMod: -2, dmgBonus: 5 },
   cleave: { name: 'Cleave', stamina: 5, toHitMod: -1, dmgBonus: 2, extraTargets: 1 },
+  whirlwind: { name: 'Whirlwind', stamina: 7, toHitMod: -2, dmgBonus: 2, extraTargets: 3 },
+  'crushing-blow': { name: 'Crushing Blow', stamina: 6, toHitMod: -1, dmgBonus: 8, stuns: true },
+  execute: { name: 'Execute', stamina: 7, toHitMod: 0, dmgBonus: 6, critBonus: 35 },
+  'twin-cleave': { name: 'Twin Cleave', stamina: 9, toHitMod: -1, dmgBonus: 3, doubleHit: true, extraTargets: 1 },
+  'titanic-strike': { name: 'Titanic Strike', stamina: 10, toHitMod: -2, dmgBonus: 14 },
+  'avatar-of-war': { name: 'Avatar of War', stamina: 12, toHitMod: 0, dmgBonus: 10, extraTargets: 4 },
+  worldbreaker: { name: 'Worldbreaker', stamina: 15, toHitMod: 0, dmgBonus: 20, stuns: true },
+  // rogue line
   backstab: { name: 'Backstab', stamina: 3, toHitMod: 1, dmgBonus: 3, critBonus: 20 },
   'dirty-fighting': { name: 'Dirty Fighting', stamina: 3, toHitMod: 0, dmgBonus: 1, blinds: true },
+  hamstring: { name: 'Hamstring', stamina: 5, toHitMod: 0, dmgBonus: 3, stuns: true },
+  'shadow-strike': { name: 'Shadow Strike', stamina: 6, toHitMod: 2, dmgBonus: 4, critBonus: 30 },
+  'twin-fangs': { name: 'Twin Fangs', stamina: 7, toHitMod: 0, dmgBonus: 2, doubleHit: true },
+  garrote: { name: 'Garrote', stamina: 8, toHitMod: 1, dmgBonus: 8, stuns: true },
+  'death-mark': { name: 'Death Mark', stamina: 9, toHitMod: 2, dmgBonus: 6, critBonus: 50 },
+  'thousand-cuts': { name: 'A Thousand Cuts', stamina: 11, toHitMod: 0, dmgBonus: 4, doubleHit: true, extraTargets: 2 },
+  kingslayer: { name: 'Kingslayer', stamina: 14, toHitMod: 2, dmgBonus: 18, critBonus: 40 },
+  // ranger line
   'aimed-shot': { name: 'Aimed Shot', stamina: 3, toHitMod: 3, dmgBonus: 2 },
   'twin-strike': { name: 'Twin Strike', stamina: 5, toHitMod: -1, dmgBonus: 0, doubleHit: true },
+  'pinning-shot': { name: 'Pinning Shot', stamina: 5, toHitMod: 1, dmgBonus: 2, stuns: true },
+  volley: { name: 'Volley', stamina: 7, toHitMod: -1, dmgBonus: 1, extraTargets: 2 },
+  'piercing-arrow': { name: 'Piercing Arrow', stamina: 7, toHitMod: 2, dmgBonus: 8 },
+  'double-volley': { name: 'Double Volley', stamina: 9, toHitMod: -1, dmgBonus: 2, doubleHit: true, extraTargets: 2 },
+  heartseeker: { name: 'Heartseeker', stamina: 10, toHitMod: 3, dmgBonus: 8, critBonus: 40 },
+  'storm-of-arrows': { name: 'Storm of Arrows', stamina: 12, toHitMod: -1, dmgBonus: 4, extraTargets: 4 },
+  'wind-that-kills': { name: 'The Wind That Kills', stamina: 15, toHitMod: 2, dmgBonus: 16, doubleHit: true },
 };
 
 export interface SpellDef {
@@ -62,6 +90,7 @@ export interface SpellDef {
   mana: number;
   damage?: string;
   heal?: string;
+  healAll?: boolean; // heal the whole party
   cures?: boolean; // purify
   partyDefense?: number; // sanctuary
   hitsAll?: boolean; // fireball
@@ -69,12 +98,28 @@ export interface SpellDef {
 }
 
 export const SPELLS: Record<string, SpellDef> = {
+  // mage line
   firebolt: { name: 'Firebolt', mana: 4, damage: '2d6' },
   'frost-grasp': { name: 'Frost Grasp', mana: 5, damage: '1d8', stunChance: 0.4 },
   fireball: { name: 'Fireball', mana: 9, damage: '2d6', hitsAll: true },
+  'lightning-lance': { name: 'Lightning Lance', mana: 8, damage: '3d6' },
+  'ice-storm': { name: 'Ice Storm', mana: 12, damage: '2d6', hitsAll: true, stunChance: 0.25 },
+  immolate: { name: 'Immolate', mana: 12, damage: '4d6' },
+  'chain-lightning': { name: 'Chain Lightning', mana: 16, damage: '3d6', hitsAll: true },
+  meteor: { name: 'Meteor', mana: 20, damage: '6d6' },
+  cataclysm: { name: 'Cataclysm', mana: 26, damage: '4d6', hitsAll: true },
+  unmaking: { name: 'The Unmaking Word', mana: 34, damage: '10d6' },
+  // priest line
   'mend-wounds': { name: 'Mend Wounds', mana: 3, heal: '1d8+2' },
   purify: { name: 'Purify', mana: 4, cures: true },
   sanctuary: { name: 'Sanctuary', mana: 6, partyDefense: 2 },
+  'greater-mending': { name: 'Greater Mending', mana: 7, heal: '2d8+6' },
+  smite: { name: 'Smite', mana: 7, damage: '2d8' },
+  'circle-of-renewal': { name: 'Circle of Renewal', mana: 12, heal: '1d8+6', healAll: true },
+  'holy-fire': { name: 'Holy Fire', mana: 12, damage: '3d8' },
+  aegis: { name: 'Aegis', mana: 14, partyDefense: 4 },
+  'mass-renewal': { name: 'Mass Renewal', mana: 20, heal: '2d8+8', healAll: true },
+  'divine-wrath': { name: 'Divine Wrath', mana: 26, damage: '3d8', hitsAll: true },
 };
 
 function weaponOf(world: WorldState, c: Character): Item | null {
@@ -82,16 +127,26 @@ function weaponOf(world: WorldState, c: Character): Item | null {
   return id ? world.items[id] ?? null : null;
 }
 
+function findAmmo(world: WorldState, c: Character, proto: string): Item | null {
+  for (const iid of [...c.inventory, ...world.partyInventory]) {
+    const it = world.items[iid];
+    if (it && it.proto === proto && (it.qty ?? 0) > 0) return it;
+  }
+  return null;
+}
+
 function charDamage(world: WorldState, c: Character, rng: Rng, bonus: number): number {
   const w = weaponOf(world, c);
   const dice = w && !w.broken && w.damage ? w.damage : '1d3';
-  const strMod = Math.floor((c.attributes.strength - 10) / 2);
-  return Math.max(1, rng.roll(dice) + strMod + bonus);
+  const statMod = w?.ranged
+    ? Math.floor((c.attributes.dexterity - 10) / 2)
+    : Math.floor((c.attributes.strength - 10) / 2);
+  return Math.max(1, rng.roll(dice) + statMod + bonus);
 }
 
 function charDefense(world: WorldState, c: Character): number {
   let def = c.defense + c.evasion + Math.floor((c.attributes.dexterity - 10) / 2) + statusDefenseMod(c)
-    + (world.needsEnabled ? needsDefenseMod(c) : 0);
+    + (world.needsEnabled ? needsDefenseMod(c) : 0) + injuryDefenseMod(c);
   for (const slot of ['armor', 'off-hand'] as const) {
     const id = c.equipment[slot];
     const it = id ? world.items[id] : null;
@@ -293,7 +348,18 @@ function resolveCharacterAction(
         return;
       }
       c.mana.current -= spell.mana;
-      if (spell.heal) {
+      if (spell.heal && spell.healAll) {
+        const healedNames: string[] = [];
+        for (const pid of combat.partyIds) {
+          const ally = world.characters[pid];
+          if (!ally.alive) continue;
+          const healed = rng.roll(spell.heal) + Math.floor(c.skills.magic / 2);
+          ally.hp.current = Math.min(ally.hp.max, ally.hp.current + healed);
+          if (ally.hp.current > 0) cureStatus(ally, 'unconscious');
+          healedNames.push(`${ally.name} +${healed}`);
+        }
+        record({ round, actor: c.id, actorName: c.name, action: 'spell', detail: spell.name, result: 'heal', text: `${c.name} cast ${spell.name} over the whole party: ${healedNames.join(', ')}.` });
+      } else if (spell.heal) {
         const targetChar = action.target ? world.characters[action.target] ?? c : c;
         const healed = rng.roll(spell.heal) + Math.floor(c.skills.magic / 2);
         targetChar.hp.current = Math.min(targetChar.hp.max, targetChar.hp.current + healed);
@@ -366,10 +432,21 @@ function swingAt(
   record: (e: CombatLogEntry) => void,
 ) {
   const t = MONSTERS[m.templateKey];
+  // ranged weapons need ammunition; loose an arrow per swing
+  const w0 = weaponOf(world, c);
+  if (w0?.ranged && w0.ammoProto) {
+    const ammo = findAmmo(world, c, w0.ammoProto);
+    if (!ammo) {
+      record({ round: combat.round, actor: c.id, actorName: c.name, action: 'attack', detail: w0.name, result: 'info', text: `${c.name} reached for an arrow and found the quiver empty.` });
+      return;
+    }
+    removeUnits(world, ammo, 1);
+  }
+  const weaponSkill = w0?.ranged ? Math.floor(c.skills.archery / 2) : Math.floor(c.skills.swordsmanship / 2);
   const roll = rng.die(20);
-  const toHit = roll + c.attack + c.accuracy + Math.floor(c.skills.swordsmanship / 2) + (skill?.toHitMod ?? 0) + statusAttackMod(c)
-    + (world.needsEnabled ? needsAttackMod(c) : 0);
-  const detail = skill ? skill.name : weaponOf(world, c)?.name ?? 'bare hands';
+  const toHit = roll + c.attack + c.accuracy + weaponSkill + (skill?.toHitMod ?? 0) + statusAttackMod(c)
+    + (world.needsEnabled ? needsAttackMod(c) : 0) + injuryAttackMod(c);
+  const detail = skill ? skill.name : w0?.name ?? 'bare hands';
   if (roll !== 20 && (roll === 1 || toHit < t.defense)) {
     record({ round: combat.round, actor: c.id, actorName: c.name, action: skill ? 'skill' : 'attack', targetName: m.name, detail, roll, result: 'miss', text: `${c.name} ${skill ? `used ${skill.name} against` : 'attacked'} ${m.name} and missed. (roll ${roll})` });
     return;
@@ -509,10 +586,17 @@ function finishCombat(world: WorldState, combat: CombatState) {
   }
   if (combat.outcome === 'victory' && combat.pendingLoot) {
     const survivors = combat.partyIds.map((id) => world.characters[id]).filter((c) => c.alive);
+    const injuryRng = new Rng((combat.seed ^ 0x9e3779b9) >>> 0);
     for (const c of survivors) {
       if (c.hp.current === 0) {
         c.hp.current = 1; // downed allies stabilize after victory
         cureStatus(c, 'unconscious');
+        // going down can leave a mark that outlasts the fight
+        const injury = rollInjury(c, injuryRng);
+        if (injury) {
+          c.injuries[c.injuries.length - 1].day = world.time.day;
+          logEvent(world, 'injury', { character: c.id, injury }, `${c.name} took ${injury} — it will need proper treatment (temple or time won't fix it alone).`);
+        }
       }
       // full XP to each participant (rules-engine policy)
       grantXp(world, c, combat.pendingLoot.xp);

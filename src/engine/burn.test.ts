@@ -385,7 +385,8 @@ describe(`burn test (${SEEDS} seeds × ${ITERS} actions)`, () => {
         }
       }
       expect(combats).toBeGreaterThan(0);
-      expect(w.events.length).toBeGreaterThan(50);
+      // classic/permadeath runs may end early in a legitimate party wipe
+      if (w.deathRule === 'story') expect(w.events.length).toBeGreaterThan(50);
     });
   }
 });

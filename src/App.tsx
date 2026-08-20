@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useStore } from './state/store';
 import { fmtWhen, locPath, partyMembers } from './engine/world';
-import { fmtMoney } from './engine/rules';
+import { WEATHER_GLYPH, calendarLabel, fmtMoney } from './engine/rules';
 import { findHome } from './engine/household';
 import { WritingStudio } from './components/WritingStudio';
 import { SidePanels } from './components/SidePanels';
@@ -60,6 +60,7 @@ export default function App() {
   const setFrequency = useStore((s) => s.setFrequency);
   const addScene = useStore((s) => s.addScene);
   const selectScene = useStore((s) => s.selectScene);
+  const moveScene = useStore((s) => s.moveScene);
   const selectedSceneId = useStore((s) => s.selectedSceneId);
   const toast = useStore((s) => s.toast);
   const setToast = useStore((s) => s.setToast);
@@ -80,6 +81,9 @@ export default function App() {
       <div className="topbar">
         <span className="title">Blackwall</span>
         <span className="clock">{fmtWhen(world.time)}</span>
+        <span className="dim small" title={`Weather: ${world.weather?.kind ?? 'clear'}`}>
+          {WEATHER_GLYPH[world.weather?.kind ?? 'clear']} {calendarLabel(world.time.day)}
+        </span>
         <span className="crumb">
           {path.map((p) => p.name).join(' → ')}
           {room && <b> → {room.name} (floor {room.floor})</b>}
@@ -112,7 +116,11 @@ export default function App() {
                   .sort((a, b) => a.order - b.order)
                   .map((s) => (
                     <div key={s.id} className={`scene-item${s.id === selectedSceneId ? ' active' : ''}`} onClick={() => selectScene(s.id)}>
-                      <div className="t">{s.title}</div>
+                      <div className="t" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ flex: 1 }}>{s.title}</span>
+                        <button className="scene-move" onClick={(e) => { e.stopPropagation(); moveScene(s.id, -1); }} title="Move scene up">▲</button>
+                        <button className="scene-move" onClick={(e) => { e.stopPropagation(); moveScene(s.id, 1); }} title="Move scene down">▼</button>
+                      </div>
                       <div className="m">Day {s.day} · {world.locations[s.location]?.name ?? '?'}</div>
                     </div>
                   ))}

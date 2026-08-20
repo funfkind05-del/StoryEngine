@@ -120,10 +120,10 @@ describe('prose→sim proposals (author-approved execution)', () => {
   });
 });
 
-describe('second dungeon', () => {
-  it('exists with its own entrance and boss', () => {
+describe('dungeon roster', () => {
+  it('spans the campaign with entrances and bosses', () => {
     const w = freshWorld();
-    expect(Object.keys(w.dungeons)).toHaveLength(2);
+    expect(Object.keys(w.dungeons).length).toBe(8);
     const d = w.dungeons['DUN_DOCKWARD_001'];
     expect(d.name).toBe('The Drowning Cellars');
     expect(w.locations['LOC_CELLARDOOR'].dungeonId).toBe('DUN_DOCKWARD_001');

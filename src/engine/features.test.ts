@@ -222,8 +222,9 @@ describe('bestiary art', () => {
   it('every monster template has a drawn plate', async () => {
     const { PLATE_KEYS } = await import('../components/MonsterArt');
     const { MONSTERS } = await import('./monsters');
-    for (const key of Object.keys(MONSTERS)) {
-      expect(PLATE_KEYS, `missing plate for ${key}`).toContain(key);
+    for (const [key, t] of Object.entries(MONSTERS)) {
+      const covered = PLATE_KEYS.includes(key) || !!t.art;
+      expect(covered, `no plate or art archetype for ${key}`).toBe(true);
     }
   });
 });

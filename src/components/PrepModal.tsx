@@ -5,6 +5,7 @@
 import { useStore } from '../state/store';
 import { CLASSES, fmtMoney } from '../engine/rules';
 import { Bar, Tag } from './common';
+import { CharacterPortrait } from './CharacterArt';
 
 export function PrepModal() {
   const world = useStore((s) => s.world);
@@ -42,7 +43,8 @@ export function PrepModal() {
           <p className="dim small">{d.dungeonType} · {d.floors} floors · recommended level {d.recommendedLevel} · via {world.locations[d.entranceLocation]?.name}</p>
           <h4>Party</h4>
           {party.map((c) => (
-            <div key={c.id} className="row small">
+            <div key={c.id} className="row small" style={{ flexWrap: 'nowrap' }}>
+              <CharacterPortrait charId={c.id} size={26} world={world} />
               <span style={{ width: 90 }}>{c.name}</span>
               <span className="dim" style={{ width: 70 }}>{CLASSES[c.charClass].label}</span>
               <span className="mono dim" style={{ width: 34 }}>L{c.level}</span>

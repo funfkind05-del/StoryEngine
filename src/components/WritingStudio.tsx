@@ -33,6 +33,10 @@ export function WritingStudio() {
   const [polishBusy, setPolishBusy] = useState(false);
   const [autoPolish, setAutoPolish] = useState(() => parseInt(localStorage.getItem(AUTOPOLISH_KEY) ?? '0', 10));
   const [syncState, setSyncState] = useState<{ busy: boolean; proposals: SyncProposal[] | null; checked: boolean[]; results: string[] | null } | null>(null);
+  const [drafting, setDrafting] = useState(false);
+  const [draftOutline, setDraftOutline] = useState('');
+  const [draftBusy, setDraftBusy] = useState(false);
+  const draftSelectedScene = useStore((st) => st.draftSelectedScene);
   const lastPolishedText = useRef('');
 
   const sceneForHooks = world.scenes.find((s) => s.id === selectedSceneId);
@@ -266,7 +270,30 @@ export function WritingStudio() {
         <button disabled={!!syncState?.busy} onClick={() => void runSync()} title="LLM reads what you've written since the last sync and proposes simulation actions. Nothing changes until you approve.">
           {syncState?.busy ? '⇄ reading…' : '⇄ Sync → sim'}
         </button>
+        <button onClick={() => setDrafting((d) => !d)} title="Have the LLM write a first pass of this scene from the sim's recent events plus your outline.">🪶 Draft scene…</button>
       </div>
+
+      {drafting && (
+        <div className="suggestion-box">
+          <div className="row"><b>🪶 Draft this scene</b><span className="dim small">first pass from sim facts + your outline — appended for you to rewrite</span></div>
+          <textarea
+            className="draft-outline"
+            placeholder="Outline: what should happen in this scene? (e.g. Kael confronts Mara about the warehouse; she deflects; ends with the Watch arriving)"
+            value={draftOutline}
+            onChange={(e) => setDraftOutline(e.target.value)}
+          />
+          <div className="row">
+            <button className="primary" disabled={draftBusy || draftOutline.trim().length < 10} onClick={() => {
+              setDraftBusy(true);
+              void draftSelectedScene(draftOutline).then((r) => {
+                setDraftBusy(false);
+                if (r !== null) { setDrafting(false); setToast('Draft appended — it is yours to rewrite.'); }
+              });
+            }}>{draftBusy ? 'writing…' : 'Draft it'}</button>
+            <button onClick={() => setDrafting(false)}>Cancel</button>
+          </div>
+        </div>
+      )}
 
       {polish && (
         <div className="suggestion-box">

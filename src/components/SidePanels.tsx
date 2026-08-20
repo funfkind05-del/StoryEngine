@@ -28,6 +28,8 @@ import {
 import { Bar, RelBar, Tag } from './common';
 import { activeQuests, describeReward, objectiveDone, objectiveLabel, offeredQuestsAt, questProgress } from '../engine/quests';
 import { MonsterPortrait } from './MonsterArt';
+import { CharacterPortrait } from './CharacterArt';
+import { activeSlot, listBooks } from '../engine/books';
 import { MONSTERS } from '../engine/monsters';
 import {
   chooseBackupFile,
@@ -316,6 +318,28 @@ function QuestsPanel() {
   );
 }
 
+function PortraitUpload({ charId }: { charId: string }) {
+  const world = useStore((s) => s.world);
+  const setCharacterArt = useStore((s) => s.setCharacterArt);
+  const setToast = useStore((s) => s.setToast);
+  const ref = useRef<HTMLInputElement>(null);
+  return (
+    <>
+      <button title="Upload a portrait for this character (stored in the save)" onClick={() => ref.current?.click()}>🖼</button>
+      {world.characterArt?.[charId] && <button title="Revert to the drawn portrait" onClick={() => setCharacterArt(charId, null)}>↺</button>}
+      <input ref={ref} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => {
+        const f = e.target.files?.[0];
+        e.target.value = '';
+        if (!f) return;
+        if (f.size > 400_000) { setToast('Keep portraits under 400 KB — they live inside the save file.'); return; }
+        const reader = new FileReader();
+        reader.onload = () => setCharacterArt(charId, String(reader.result));
+        reader.readAsDataURL(f);
+      }} />
+    </>
+  );
+}
+
 // ---------- Characters ----------
 function CharSheet({ c }: { c: Character }) {
   const world = useStore((s) => s.world);
@@ -372,9 +396,11 @@ function CharactersPanel() {
   const elsewhere = chars.filter((c) => c.location !== world.partyLocation);
   const renderChar = (c: Character) => (
     <div key={c.id} className="card">
-      <div className="row">
+      <div className="row" style={{ flexWrap: 'nowrap' }}>
+        <CharacterPortrait charId={c.id} size={36} world={world} />
         <span className="name grow">{c.name} {c.isMC && <Tag tone="gold">MC</Tag>} {c.inParty && !c.isMC && <Tag tone="green">party</Tag>} {!c.persistent && <Tag>background</Tag>}</span>
         <span className="mono dim">L{c.level}</span>
+        <PortraitUpload charId={c.id} />
       </div>
       <div className="small dim">{c.race} {c.occupation}, {c.age} — {c.personality.join(', ')}</div>
       <div className="small dim">{c.activity} @ {world.locations[c.location]?.name ?? c.location}</div>
@@ -416,11 +442,15 @@ function PartyPanel() {
       <h3>Party</h3>
       {party.map((c) => (
         <div key={c.id} className="card">
-          <div className="row">
+          <div className="row" style={{ flexWrap: 'nowrap' }}>
+            <CharacterPortrait charId={c.id} size={40} world={world} />
             <span className="name grow">{c.name} <span className="dim small">{CLASSES[c.charClass].label}</span></span>
             <span className="mono dim">L{c.level} · {c.xp}/{xpForLevel(c.level)} xp</span>
             {!c.isMC && !world.combat && <button onClick={() => openTalk(c.id)}>🗨 Talk</button>}
           </div>
+          {c.injuries.some((i) => !i.treated) && (
+            <div>{c.injuries.filter((i) => !i.treated).map((i, idx) => <Tag key={idx} tone="red">{i.name} ({i.stat} {i.amount})</Tag>)}</div>
+          )}
           {levelUpAvailable(c) && <Tag tone="gold">LEVEL AVAILABLE — trainer: {CLASSES[c.charClass].trainer}</Tag>}
           {c.statuses.length > 0 && (
             <div>{c.statuses.map((s) => <Tag key={s.key} tone="red">{STATUS_RULES[s.key].label}{s.roundsLeft !== undefined ? ` (${s.roundsLeft}r)` : ''}</Tag>)}</div>
@@ -888,6 +918,43 @@ function ContinuityPanel() {
   );
 }
 
+// ---------- Books ----------
+function BooksSection() {
+  const switchBook = useStore((s) => s.switchBook);
+  const createBook = useStore((s) => s.createBook);
+  const removeBook = useStore((s) => s.removeBook);
+  const renameActiveBook = useStore((s) => s.renameActiveBook);
+  const world = useStore((s) => s.world); // subscribe so the list re-renders on commits
+  void world;
+  const [newName, setNewName] = useState('');
+  const books = listBooks();
+  const active = activeSlot();
+  const activeMeta = books.find((b) => b.slot === active);
+  return (
+    <>
+      <h4>Books</h4>
+      <p className="dim small">Each book is its own world and manuscript. Switching saves the current one first.</p>
+      {books.map((b) => (
+        <div key={b.slot} className="row small">
+          <span className="grow">{b.slot === active ? <b>{b.name}</b> : b.name} {b.slot === active && <Tag tone="gold">open</Tag>}</span>
+          {b.slot !== active && <button onClick={() => switchBook(b.slot)}>Open</button>}
+          {b.slot !== active && b.slot !== 'default' && (
+            <button className="danger" onClick={() => { if (confirm(`Delete the book "${b.name}" and its world forever?`)) removeBook(b.slot); }}>Delete</button>
+          )}
+        </div>
+      ))}
+      <div className="row">
+        <input type="text" className="grow" placeholder="new book title" value={newName} onChange={(e) => setNewName(e.target.value)} />
+        <button className="primary" onClick={() => { if (newName.trim()) { createBook(newName.trim()); setNewName(''); } }}>+ New book</button>
+      </div>
+      <div className="row small">
+        <label>Rename current</label>
+        <input type="text" defaultValue={activeMeta?.name ?? ''} key={active} onBlur={(e) => { if (e.target.value.trim()) renameActiveBook(e.target.value.trim()); }} />
+      </div>
+    </>
+  );
+}
+
 // ---------- Disk backup ----------
 function DiskBackupSection() {
   const world = useStore((s) => s.world);
@@ -1022,6 +1089,7 @@ function SavesPanel() {
           <option value="full">Full (treated as Light for now)</option>
         </select>
       </div>
+      <BooksSection />
       <DiskBackupSection />
       <MonsterArtSection />
       <h4>Checkpoints</h4>

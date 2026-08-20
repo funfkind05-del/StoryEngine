@@ -32,12 +32,14 @@ export function fmtMoney(copper: number): string {
 }
 
 // ---------- XP & levels ----------
+export const MAX_LEVEL = 50;
+
 export function xpForLevel(level: number): number {
   return level * level * 100;
 }
 
 export function levelUpAvailable(c: Character): boolean {
-  return c.alive && c.xp >= xpForLevel(c.level);
+  return c.alive && c.level < MAX_LEVEL && c.xp >= xpForLevel(c.level);
 }
 
 export function trainingCost(currentLevel: number): number {
@@ -62,27 +64,27 @@ export const CLASSES: Record<CharClass, ClassDef> = {
   fighter: {
     key: 'fighter', label: 'Fighter', trainer: 'Fighters Guild',
     hpPerLevel: 6, manaPerLevel: 0, staminaPerLevel: 3, attackEvery: 1, defenseEvery: 2,
-    unlocks: { 2: 'shield-bash', 3: 'power-strike', 5: 'cleave' },
+    unlocks: { 2: 'shield-bash', 3: 'power-strike', 5: 'cleave', 8: 'whirlwind', 12: 'crushing-blow', 16: 'execute', 20: 'twin-cleave', 25: 'titanic-strike', 32: 'avatar-of-war', 40: 'worldbreaker' },
   },
   rogue: {
     key: 'rogue', label: 'Rogue', trainer: 'Thieves Guild',
     hpPerLevel: 4, manaPerLevel: 0, staminaPerLevel: 3, attackEvery: 1, defenseEvery: 2,
-    unlocks: { 2: 'backstab', 4: 'dirty-fighting' },
+    unlocks: { 2: 'backstab', 4: 'dirty-fighting', 8: 'hamstring', 12: 'shadow-strike', 16: 'twin-fangs', 20: 'garrote', 25: 'death-mark', 32: 'thousand-cuts', 40: 'kingslayer' },
   },
   mage: {
     key: 'mage', label: 'Mage', trainer: 'Arcane College',
     hpPerLevel: 3, manaPerLevel: 5, staminaPerLevel: 1, attackEvery: 3, defenseEvery: 3,
-    unlocks: { 1: 'firebolt', 3: 'frost-grasp', 5: 'fireball' },
+    unlocks: { 1: 'firebolt', 3: 'frost-grasp', 5: 'fireball', 8: 'lightning-lance', 12: 'ice-storm', 16: 'immolate', 20: 'chain-lightning', 25: 'meteor', 32: 'cataclysm', 40: 'unmaking' },
   },
   priest: {
     key: 'priest', label: 'Priest', trainer: 'Temple',
     hpPerLevel: 4, manaPerLevel: 4, staminaPerLevel: 2, attackEvery: 2, defenseEvery: 2,
-    unlocks: { 1: 'mend-wounds', 3: 'purify', 5: 'sanctuary' },
+    unlocks: { 1: 'mend-wounds', 3: 'purify', 5: 'sanctuary', 8: 'greater-mending', 12: 'smite', 16: 'circle-of-renewal', 20: 'holy-fire', 25: 'aegis', 32: 'mass-renewal', 40: 'divine-wrath' },
   },
   ranger: {
     key: 'ranger', label: 'Ranger', trainer: "Hunter's Lodge",
     hpPerLevel: 5, manaPerLevel: 1, staminaPerLevel: 3, attackEvery: 1, defenseEvery: 2,
-    unlocks: { 2: 'aimed-shot', 4: 'twin-strike' },
+    unlocks: { 2: 'aimed-shot', 4: 'twin-strike', 8: 'pinning-shot', 12: 'volley', 16: 'piercing-arrow', 20: 'double-volley', 25: 'heartseeker', 32: 'storm-of-arrows', 40: 'wind-that-kills' },
   },
   commoner: {
     key: 'commoner', label: 'Commoner', trainer: 'nowhere',
@@ -143,6 +145,8 @@ export interface ItemProto {
   defense?: number;
   healing?: string;
   effectKey?: string;
+  ranged?: boolean;
+  ammoProto?: string;
   durability?: number;
   stackable?: boolean;
   value: number;
@@ -169,7 +173,9 @@ export const ITEM_PROTOS: Record<string, ItemProto> = {
   'iron-shortsword': { key: 'iron-shortsword', name: 'Iron Shortsword', kind: 'weapon', slot: 'main-hand', tier: 'common', damage: '1d6+1', durability: 80, value: 220 },
   'iron-longsword': { key: 'iron-longsword', name: 'Iron Longsword', kind: 'weapon', slot: 'main-hand', tier: 'common', damage: '1d8+1', durability: 100, value: 380 },
   'steel-longsword': { key: 'steel-longsword', name: 'Steel Longsword', kind: 'weapon', slot: 'main-hand', tier: 'uncommon', damage: '1d8+3', durability: 120, value: 840 },
-  'hunting-bow': { key: 'hunting-bow', name: 'Hunting Bow', kind: 'weapon', slot: 'main-hand', tier: 'common', damage: '1d6+2', durability: 70, value: 300 },
+  'hunting-bow': { key: 'hunting-bow', name: 'Hunting Bow', kind: 'weapon', slot: 'main-hand', tier: 'common', damage: '1d6+2', durability: 70, value: 300, ranged: true, ammoProto: 'arrow' },
+  longbow: { key: 'longbow', name: 'Longbow', kind: 'weapon', slot: 'main-hand', tier: 'uncommon', damage: '1d8+3', durability: 90, value: 780, ranged: true, ammoProto: 'arrow' },
+  arrow: { key: 'arrow', name: 'Arrow', kind: 'supply', slot: 'none', tier: 'mundane', stackable: true, value: 1 },
   'wooden-buckler': { key: 'wooden-buckler', name: 'Wooden Buckler', kind: 'shield', slot: 'off-hand', tier: 'mundane', defense: 1, durability: 40, value: 60 },
   'leather-armor': { key: 'leather-armor', name: 'Leather Armor', kind: 'armor', slot: 'armor', tier: 'common', defense: 1, durability: 60, value: 180 },
   'studded-leather': { key: 'studded-leather', name: 'Studded Leather Armor', kind: 'armor', slot: 'armor', tier: 'common', defense: 2, durability: 80, value: 420 },
@@ -196,6 +202,8 @@ export function makeItem(world: WorldState, protoKey: string, qty = 1): Item {
     defense: p.defense,
     healing: p.healing,
     effectKey: p.effectKey,
+    ranged: p.ranged,
+    ammoProto: p.ammoProto,
     durability: p.durability ? { current: p.durability, max: p.durability } : undefined,
     stackable: p.stackable,
     qty: p.stackable ? qty : undefined,
@@ -467,6 +475,82 @@ export function needsBlocksStaminaRegen(c: Character): boolean {
   return c.needs.hunger >= NEEDS.uncomfortable || c.needs.fatigue >= NEEDS.critical;
 }
 
+// ---------- Injuries & scars ----------
+const INJURY_FORMS: { name: string; stat: 'attack' | 'defense'; scar: string }[] = [
+  { name: 'a deep shoulder wound', stat: 'attack', scar: 'a ridged scar across the shoulder' },
+  { name: 'a badly bruised sword-arm', stat: 'attack', scar: 'an arm that aches before rain' },
+  { name: 'cracked ribs', stat: 'defense', scar: 'a hitch in the breath on cold mornings' },
+  { name: 'a torn thigh muscle', stat: 'defense', scar: 'a thin white line down the thigh' },
+  { name: 'a gashed brow', stat: 'attack', scar: 'a pale scar through the eyebrow' },
+  { name: 'a mangled hand', stat: 'attack', scar: 'two fingers that never sit quite straight' },
+];
+
+/** Roll a lasting injury for a character who went down. Returns its name or null. */
+export function rollInjury(c: Character, rng: Rng): string | null {
+  if (!rng.chance(0.4)) return null;
+  const form = rng.pick(INJURY_FORMS);
+  c.injuries.push({ ...form, amount: -1, day: 0, treated: false });
+  return form.name;
+}
+
+export function injuryAttackMod(c: Character): number {
+  return c.injuries.filter((i) => !i.treated && i.stat === 'attack').reduce((s, i) => s + i.amount, 0);
+}
+
+export function injuryDefenseMod(c: Character): number {
+  return c.injuries.filter((i) => !i.treated && i.stat === 'defense').reduce((s, i) => s + i.amount, 0);
+}
+
+/** Treat all untreated injuries; each leaves its scar as permanent flavor. */
+export function treatInjuries(c: Character): string[] {
+  const treated: string[] = [];
+  for (const inj of c.injuries) {
+    if (inj.treated) continue;
+    inj.treated = true;
+    c.permanentBonuses.push(`Scar: ${inj.scar}`);
+    treated.push(inj.name);
+  }
+  return treated;
+}
+
+// ---------- Weather & calendar ----------
+export const SEASONS = ['spring', 'summer', 'autumn', 'winter'] as const;
+
+export function seasonOf(day: number): (typeof SEASONS)[number] {
+  return SEASONS[Math.floor(((day - 1) % 360) / 90)];
+}
+
+export function calendarLabel(day: number): string {
+  const season = seasonOf(day);
+  const into = ((day - 1) % 90) + 1;
+  const part = into <= 30 ? 'early' : into <= 60 ? 'mid' : 'late';
+  return `${part} ${season}`;
+}
+
+const WEATHER_BY_SEASON: Record<string, [string, number][]> = {
+  spring: [['clear', 3], ['overcast', 3], ['rain', 3], ['fog', 2], ['storm', 1]],
+  summer: [['clear', 5], ['overcast', 2], ['rain', 1], ['storm', 2]],
+  autumn: [['overcast', 4], ['rain', 3], ['fog', 3], ['clear', 2], ['storm', 1]],
+  winter: [['overcast', 3], ['snow', 3], ['fog', 2], ['clear', 2], ['storm', 1]],
+};
+
+export const WEATHER_GLYPH: Record<string, string> = {
+  clear: '☀', overcast: '☁', rain: '🌧', storm: '⛈', fog: '🌫', snow: '❄',
+};
+
+/** Deterministic weather for a given world-day. */
+export function weatherFor(masterSeed: number, day: number): string {
+  const rng = new Rng((masterSeed ^ (day * 2654435761)) >>> 0);
+  const table = WEATHER_BY_SEASON[seasonOf(day)];
+  const total = table.reduce((s, [, w]) => s + w, 0);
+  let at = rng.next() * total;
+  for (const [kind, w] of table) {
+    at -= w;
+    if (at <= 0) return kind;
+  }
+  return 'clear';
+}
+
 // ---------- Faction-aware pricing ----------
 export function dominantFaction(world: WorldState, locId: string): string | null {
   const loc = world.locations[locId];
@@ -502,6 +586,7 @@ export const TEMPLE_SERVICES: TempleService[] = [
   { key: 'cure-poison', label: 'Cure Poison', basePrice: 120 },
   { key: 'cure-disease', label: 'Cure Disease', basePrice: 300 },
   { key: 'remove-curse', label: 'Remove Curse', basePrice: 750 },
+  { key: 'mend-injuries', label: 'Mend Lasting Harm (injuries)', basePrice: 500 },
   { key: 'resurrection', label: 'Resurrection', basePrice: 3000, needsDead: true },
 ];
 
@@ -530,6 +615,12 @@ export function performTempleService(svcKey: string, target: Character): string 
     case 'remove-curse':
       cureStatus(target, 'cursed');
       return `The curse on ${target.name} was lifted.`;
+    case 'mend-injuries': {
+      const treated = treatInjuries(target);
+      return treated.length
+        ? `${target.name}'s lasting wounds were mended: ${treated.join(', ')}. The scars remain.`
+        : `${target.name} carries no lasting wounds.`;
+    }
     case 'resurrection':
       target.alive = true;
       target.diedOnDay = undefined;

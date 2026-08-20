@@ -50,6 +50,9 @@ import { addMinutes } from '../engine/world';
 import { applyProposal, type SyncProposal } from '../engine/proseLlm';
 import { scheduleBackup } from '../engine/diskSave';
 import { acceptQuest, checkQuests, declineQuest, refreshJobs, turnInQuest } from '../engine/quests';
+import { activeSlot, deleteBook, newBookSlot, renameBook, setActiveSlot, touchBook } from '../engine/books';
+import { draftScene } from '../engine/proseLlm';
+import { reorderScene } from '../engine/world';
 import { maybeCompanionMoment } from '../engine/moments';
 import { brewAtHome, cookAtHome, repairAtHome, sparAtHome } from '../engine/household';
 
@@ -115,6 +118,17 @@ interface AppState {
   setNeedsEnabled: (on: boolean) => void;
   eatMeal: () => void;
   setMonsterArt: (templateKey: string, dataUri: string | null) => void;
+  setCharacterArt: (charId: string, dataUri: string | null) => void;
+
+  // scenes extras
+  moveScene: (id: SceneId, dir: -1 | 1) => void;
+  draftSelectedScene: (outline: string) => Promise<string | null>;
+
+  // books
+  switchBook: (slot: string) => void;
+  createBook: (name: string) => void;
+  removeBook: (slot: string) => void;
+  renameActiveBook: (name: string) => void;
 
   // quests
   questAccept: (id: string) => void;
@@ -376,6 +390,77 @@ export const useStore = create<AppState>((set, get) => ({
     if (dataUri) world.monsterArt[templateKey] = dataUri;
     else delete world.monsterArt[templateKey];
     commit();
+  },
+
+  setCharacterArt: (charId, dataUri) => {
+    const { world, commit } = get();
+    world.characterArt ??= {};
+    if (dataUri) world.characterArt[charId] = dataUri;
+    else delete world.characterArt[charId];
+    commit();
+  },
+
+  moveScene: (id, dir) => {
+    const { world, commit } = get();
+    if (reorderScene(world, id, dir)) commit();
+  },
+
+  draftSelectedScene: async (outline) => {
+    const { world, selectedSceneId, setToast } = get();
+    const scene = world.scenes.find((sc) => sc.id === selectedSceneId);
+    if (!scene) {
+      setToast('Select a scene first.');
+      return null;
+    }
+    try {
+      const draft = await draftScene(loadLlmConfig(), world, scene, outline);
+      const cur = get().world.scenes.find((sc) => sc.id === selectedSceneId);
+      if (cur) {
+        cur.text = cur.text.replace(/\s*$/, '') + (cur.text.trim() ? '\n\n' : '') + draft + '\n';
+        get().commit();
+      }
+      return draft;
+    } catch (e) {
+      setToast(`Draft failed: ${e instanceof Error ? e.message : e}`);
+      return null;
+    }
+  },
+
+  // ---------- books ----------
+  switchBook: (slot) => {
+    const { world, snapshots } = get();
+    persistProject(world, snapshots); // save the current book first
+    setActiveSlot(slot);
+    const loaded = loadProject();
+    if (loaded) {
+      set({ world: loaded.world, snapshots: loaded.snapshots, selectedSceneId: loaded.world.scenes[0]?.id ?? null, chestLoot: null, talk: null, prepDungeon: null });
+    } else {
+      const fresh = buildSeedWorld();
+      logEvent(fresh, 'world.created', {}, 'The chronicle begins.');
+      const snaps = [makeSnapshot(fresh, 'manual', 'World created')];
+      persistProject(fresh, snaps);
+      set({ world: fresh, snapshots: snaps, selectedSceneId: fresh.scenes[0]?.id ?? null, chestLoot: null, talk: null, prepDungeon: null });
+    }
+  },
+
+  createBook: (name) => {
+    const { world, snapshots, switchBook } = get();
+    persistProject(world, snapshots);
+    const slot = newBookSlot();
+    touchBook(slot, name || 'Untitled book');
+    switchBook(slot);
+  },
+
+  removeBook: (slot) => {
+    deleteBook(slot);
+    if (activeSlot() === 'default' && slot !== 'default') {
+      get().switchBook('default');
+    }
+  },
+
+  renameActiveBook: (name) => {
+    renameBook(activeSlot(), name);
+    get().commit();
   },
 
   // ---------- quests ----------
