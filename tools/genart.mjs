@@ -10,6 +10,9 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from 
 import { homedir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+// run with `npx tsx tools/genart.mjs` — these are TypeScript modules
+import { MONSTERS } from '../src/engine/monsters';
+import { ART_STYLE_PREFIX, MONSTER_ART_PROMPTS } from '../src/engine/artPrompts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -39,34 +42,10 @@ async function generate(prompt, aspect = '1x1') {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// ---- monster prompts: pull the curated list straight from the source ----
-function parseMonsterPrompts() {
-  const src = readFileSync(join(root, 'src/engine/artPrompts.ts'), 'utf8');
-  const map = {};
-  const re = /^\s*'?([a-z-]+)'?:\s*(['"])([\s\S]*?)\2,\s*$/gm;
-  let m;
-  while ((m = re.exec(src))) map[m[1]] = m[3].replace(/\\'/g, "'");
-  return map;
-}
-
-function parseMonsters() {
-  // name + level + archetype from the MONSTERS source, enough for fallback prompts
-  const src = readFileSync(join(root, 'src/engine/monsters.ts'), 'utf8');
-  const out = [];
-  const re = /key: '([a-z-]+)', name: '([^']+)', level: (\d+)[\s\S]*?(?:art: \{ archetype: '([a-z]+)' \})?/g;
-  const blocks = src.split(/\n  '/).slice(1);
-  for (const b of blocks) {
-    const k = b.match(/^([a-z-]+)':/)?.[1];
-    const name = b.match(/name: '([^']+)'/)?.[1];
-    const level = b.match(/level: (\d+)/)?.[1];
-    const arch = b.match(/archetype: '([a-z]+)'/)?.[1];
-    if (k && name) out.push({ key: k, name, level: level ?? '1', arch: arch ?? 'beast' });
-  }
-  return out;
-}
-
-const PREFIX = (name, desc) =>
-  `A dark fantasy RPG portrait of ${name}, ${desc} The art style is gritty digital painting with moody lighting.`;
+// the real engine tables — no source parsing, no drift
+const parseMonsterPrompts = () => MONSTER_ART_PROMPTS;
+const parseMonsters = () => Object.values(MONSTERS).map((t) => ({ key: t.key, name: t.name, level: String(t.level), arch: t.art?.archetype ?? 'beast' }));
+const PREFIX = ART_STYLE_PREFIX;
 
 async function runMonsters() {
   const dir = join(root, 'public', 'bestiary');
