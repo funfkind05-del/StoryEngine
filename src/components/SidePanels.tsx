@@ -51,6 +51,7 @@ import { artSnapshot, getCharacterArtCached, getMonsterArtCached, subscribeArt }
 import { openThreads } from '../engine/muse';
 import { currentBook, scenesInBook } from '../engine/series';
 import { PREGNANCY_TERM_DAYS } from '../engine/family';
+import { generateArt, monsterPrompt, portraitPrompt } from '../engine/artGen';
 import { PIT_LOCATION, isPitTrialsDay } from '../engine/tournament';
 import { LOREBOOKS, loreById } from '../engine/codex';
 import { ACHIEVEMENTS } from '../engine/achievements';
@@ -609,8 +610,24 @@ function PortraitUpload({ charId }: { charId: string }) {
   const setCharacterArt = useStore((s) => s.setCharacterArt);
   const setToast = useStore((s) => s.setToast);
   const ref = useRef<HTMLInputElement>(null);
+  const [genBusy, setGenBusy] = useState(false);
+  const generate = async () => {
+    const c = world.characters[charId];
+    if (!c) return;
+    setGenBusy(true);
+    setToast(`Ideogram is painting ${c.name}…`);
+    try {
+      const uri = await generateArt(portraitPrompt(c));
+      setCharacterArt(charId, uri);
+      setToast(`${c.name} has a portrait — generated and stored.`);
+    } catch (e) {
+      setToast(`Generation failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+    setGenBusy(false);
+  };
   return (
     <>
+      <button disabled={genBusy} title="Ideogram paints this character from their sheet — description, class, city. Key stays on the dev server." onClick={() => void generate()}>{genBusy ? '…' : '🎨'}</button>
       <button title="Upload a portrait for this character (kept in browser storage, not the save)" onClick={() => ref.current?.click()}>🖼</button>
       {(getCharacterArtCached(charId) ?? world.characterArt?.[charId]) && <button title="Revert to the drawn portrait" onClick={() => setCharacterArt(charId, null)}>↺</button>}
       <input ref={ref} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => {
@@ -1496,6 +1513,40 @@ function MonsterArtSection() {
   const setMonsterArt = useStore((s) => s.setMonsterArt);
   const setToast = useStore((s) => s.setToast);
   const [key, setKey] = useState('giant-rat');
+  const [genBusy, setGenBusy] = useState(false);
+  const generate = async () => {
+    setGenBusy(true);
+    setToast(`Ideogram is painting ${MONSTERS[key].name}…`);
+    try {
+      const uri = await generateArt(monsterPrompt(MONSTERS[key]));
+      setMonsterArt(key, uri);
+      setToast(`${MONSTERS[key].name} has a new plate — generated and stored.`);
+    } catch (e) {
+      setToast(`Generation failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+    setGenBusy(false);
+  };
+  const generateBatch = async () => {
+    const missing = Object.keys(MONSTERS).filter((k) => !getMonsterArtCached(k) && !world.monsterArt?.[k]);
+    if (!missing.length) { setToast('Every monster already has custom art.'); return; }
+    if (!confirm(`Generate art for ${missing.length} monsters? That is ${missing.length} Ideogram API calls, one image each. You can stop the tab anytime; finished plates are already saved.`)) return;
+    setGenBusy(true);
+    let done = 0;
+    for (const k of missing) {
+      try {
+        setToast(`Painting ${done + 1}/${missing.length}: ${MONSTERS[k].name}…`);
+        const uri = await generateArt(monsterPrompt(MONSTERS[k]));
+        setMonsterArt(k, uri);
+        done++;
+      } catch (e) {
+        setToast(`Stopped at ${MONSTERS[k].name}: ${e instanceof Error ? e.message : String(e)} (${done} plates saved)`);
+        setGenBusy(false);
+        return;
+      }
+    }
+    setToast(`${done} bestiary plates generated and stored.`);
+    setGenBusy(false);
+  };
   const fileRef = useRef<HTMLInputElement>(null);
   const onFile = (f: File) => {
     if (f.size > 4_000_000) {
@@ -1516,6 +1567,12 @@ function MonsterArtSection() {
           {Object.keys(MONSTERS).map((k) => <option key={k} value={k}>{MONSTERS[k].name}</option>)}
         </select>
         <button onClick={() => fileRef.current?.click()}>Upload…</button>
+        <button disabled={genBusy} onClick={() => void generate()} title="Ideogram paints this monster from the curated prompt list (gritty digital painting, moody lighting). Stored in browser art storage; the API key never leaves the dev server.">{genBusy ? 'painting…' : '🎨 Generate'}</button>
+        <button
+          disabled={genBusy}
+          onClick={() => void generateBatch()}
+          title="Generate art for every monster that doesn't have a custom plate yet — one API call each, with a confirm first."
+        >🎨 Batch…</button>
         {(getMonsterArtCached(key) ?? world.monsterArt?.[key]) && <button className="danger" onClick={() => setMonsterArt(key, null)}>Use drawn plate</button>}
         <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = ''; }} />
       </div>
