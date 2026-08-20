@@ -68,6 +68,7 @@ export function migrateWorld(world: WorldState): WorldState {
   world.eventArchive ??= [];
   world.rivals ??= [];
   world.resurrectionRule ??= 'safe';
+  world.torchMinutes ??= 0;
   world.writingStats ??= {};
   if (!world.quests) {
     world.quests = {};

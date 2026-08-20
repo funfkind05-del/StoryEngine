@@ -13,7 +13,7 @@ import type {
 } from '../engine/types';
 import { buildSeedWorld } from '../data/seed';
 import { advanceUntilMorning, logEvent, nextId, partyMembers, tick, travelTo } from '../engine/world';
-import { disarmTrap, enterDungeon, exitDungeon, moveInDungeon, searchRoom, type MoveDir } from '../engine/dungeon';
+import { campInDungeon, disarmTrap, enterDungeon, exitDungeon, lightTorch, moveInDungeon, searchRoom, type MoveDir } from '../engine/dungeon';
 import { generateDungeonEncounter, rollCityEncounter } from '../engine/encounter';
 import { closeCombat, resolveRound, startCombat, takeLoot } from '../engine/combat';
 import { openChest } from '../engine/loot';
@@ -46,7 +46,7 @@ import {
   summarizeConversation,
   type ChatMessage,
 } from '../engine/npcChat';
-import { addMinutes } from '../engine/world';
+import { addMinutes, remakeMc } from '../engine/world';
 import { applyProposal, type SyncProposal } from '../engine/proseLlm';
 import { scheduleBackup } from '../engine/diskSave';
 import { acceptQuest, checkQuests, declineQuest, refreshJobs, turnInQuest } from '../engine/quests';
@@ -68,9 +68,10 @@ import { reorderScene } from '../engine/world';
 import { createScenesFromBeats, markOutlined, type OutlineBeat } from '../engine/outline';
 import { maybeCompanionMoment } from '../engine/moments';
 import { brewAtHome, buyFirstHome, cookAtHome, fletchArrows, hostFeast, prayAtShrine, repairAtHome, sparAtHome } from '../engine/household';
-import { setSfxEnabled, sfx } from '../sound';
+import { setMusicEnabled, setSfxEnabled, sfx, startMusic, stopMusic, type MusicTheme } from '../sound';
 
 setSfxEnabled(localStorage.getItem('storyengine.sound') !== '0');
+setMusicEnabled(localStorage.getItem('storyengine.music') !== '0');
 
 export type PanelTab =
   | 'location'
@@ -104,6 +105,10 @@ interface AppState {
   soundOn: boolean;
   /** direction the party last walked — the first-person view faces this way */
   facing: 'north' | 'south' | 'east' | 'west';
+  /** chip-tune loops on/off */
+  musicOn: boolean;
+  /** 'compass' = arrows are absolute N/S/E/W; 'relative' = up walks forward, left/right turn */
+  moveScheme: 'compass' | 'relative';
   /** live NPC conversation (LLM-driven) */
   talk: {
     npcId: string;
@@ -197,6 +202,12 @@ interface AppState {
   setResurrectionRule: (rule: 'safe' | 'risky') => void;
   setPlayMode: (on: boolean) => void;
   setSoundOn: (on: boolean) => void;
+  setMusicOn: (on: boolean) => void;
+  setMoveScheme: (scheme: 'compass' | 'relative') => void;
+  turnFacing: (dir: 'north' | 'south' | 'east' | 'west') => void;
+  setRow: (charId: string, row: 'front' | 'back') => void;
+  torchAct: () => void;
+  campAct: () => void;
   identifyItem: (itemId: string) => void;
   ascend: (charId: string, pathKey: string) => void;
   compactLog: () => void;
@@ -267,7 +278,7 @@ interface AppState {
   deleteSnapshot: (snapId: string) => void;
   doExport: () => void;
   doImport: (file: File) => Promise<void>;
-  resetWorld: (opts?: { deathRule?: WorldState['deathRule']; resurrectionRule?: 'safe' | 'risky' }) => void;
+  resetWorld: (opts?: { deathRule?: WorldState['deathRule']; resurrectionRule?: 'safe' | 'risky'; mcClass?: import('../engine/types').CharClass; mcBonus?: Partial<import('../engine/types').Attributes> }) => void;
 }
 
 function initial(): { world: WorldState; snapshots: Snapshot[] } {
@@ -294,6 +305,8 @@ export const useStore = create<AppState>((set, get) => ({
   museOutline: null,
   playMode: localStorage.getItem('storyengine.playmode') === '1',
   soundOn: localStorage.getItem('storyengine.sound') !== '0',
+  musicOn: localStorage.getItem('storyengine.music') !== '0',
+  moveScheme: (localStorage.getItem('storyengine.movescheme') === 'relative' ? 'relative' : 'compass') as 'compass' | 'relative',
   facing: 'north',
   talk: null,
 
@@ -305,6 +318,9 @@ export const useStore = create<AppState>((set, get) => ({
       snapshots = pruneSnapshots([...snapshots, makeSnapshot(world, 'auto', opts.autosave)]);
     }
     set({ world: { ...world }, snapshots });
+    if (get().musicOn) {
+      startMusic((world.combat?.active ? 'combat' : world.currentDungeon ? 'dungeon' : 'city') as MusicTheme);
+    }
     if (persistTimer) clearTimeout(persistTimer);
     persistTimer = setTimeout(() => {
       const s = get();
@@ -753,6 +769,51 @@ export const useStore = create<AppState>((set, get) => ({
     setSfxEnabled(on);
     if (on) sfx('coin');
     set({ soundOn: on });
+  },
+
+  setMusicOn: (on) => {
+    localStorage.setItem('storyengine.music', on ? '1' : '0');
+    setMusicEnabled(on);
+    if (on) {
+      const w = get().world;
+      startMusic(w.combat?.active ? 'combat' : w.currentDungeon ? 'dungeon' : 'city');
+    } else {
+      stopMusic();
+    }
+    set({ musicOn: on });
+  },
+
+  setMoveScheme: (scheme) => {
+    localStorage.setItem('storyengine.movescheme', scheme);
+    set({ moveScheme: scheme });
+  },
+
+  turnFacing: (dir) => {
+    set({ facing: dir });
+  },
+
+  setRow: (charId, row) => {
+    const { world, commit } = get();
+    const c = world.characters[charId];
+    if (!c) return;
+    c.row = row;
+    commit();
+  },
+
+  torchAct: () => {
+    const { world, commit, setToast } = get();
+    const err = lightTorch(world);
+    if (err) setToast(err);
+    else sfx('fight');
+    commit();
+  },
+
+  campAct: () => {
+    const { world, commit, setToast } = get();
+    const err = campInDungeon(world);
+    if (err) setToast(err);
+    else if (world.pendingEncounter) setToast('Something found the fire.');
+    commit({ autosave: err ? undefined : 'Camped underground' });
   },
 
   identifyItem: (itemId) => {
@@ -1295,6 +1356,7 @@ export const useStore = create<AppState>((set, get) => ({
     world.masterSeed = randomSeed();
     if (opts?.deathRule) world.deathRule = opts.deathRule;
     if (opts?.resurrectionRule) world.resurrectionRule = opts.resurrectionRule;
+    if (opts?.mcClass || opts?.mcBonus) remakeMc(world, opts?.mcClass ?? 'fighter', opts?.mcBonus ?? {});
     logEvent(world, 'world.created', {}, `The chronicle of Blackwall City begins. (${world.deathRule} death, ${world.resurrectionRule ?? 'safe'} resurrection)`);
     const snapshots = [makeSnapshot(world, 'manual', 'World created')];
     persistProject(world, snapshots);

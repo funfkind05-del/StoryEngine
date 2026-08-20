@@ -4,6 +4,8 @@
 // owns re-render + snapshotting.
 
 import type {
+  Attributes,
+  CharClass,
   Character,
   CharacterId,
   GameLocation,
@@ -40,6 +42,14 @@ export function addMinutes(world: WorldState, minutes: number) {
   while (world.time.minute >= 1440) {
     world.time.minute -= 1440;
     world.time.day += 1;
+  }
+  // torchlight burns whenever time passes underground
+  if (world.currentDungeon && (world.torchMinutes ?? 0) > 0) {
+    const before = world.torchMinutes ?? 0;
+    world.torchMinutes = Math.max(0, before - minutes);
+    if (world.torchMinutes === 0) {
+      logEvent(world, 'dungeon.torch', { minutes: 0 }, 'The last torch guttered out. The dark came back like it had never left.');
+    }
   }
 }
 
@@ -300,6 +310,39 @@ export function advanceUntilMorning(world: WorldState, quality: 'bed' | 'rough' 
     }
   }
   return evts;
+}
+
+// ---------- Character creation ----------
+/**
+ * Remake the MC at world start: class swap grants that class's early
+ * unlocks; bonus attribute points apply with the trainer's side
+ * effects (CON→HP, INT→mana).
+ */
+export function remakeMc(world: WorldState, charClass: CharClass, bonus: Partial<Attributes>): void {
+  const mc = world.characters[world.mcId];
+  const def = CLASSES[charClass];
+  mc.charClass = charClass;
+  mc.abilities = Object.entries(def.unlocks)
+    .filter(([lvl]) => parseInt(lvl, 10) <= mc.level)
+    .map(([, key]) => key);
+  if (def.manaPerLevel > 0) {
+    mc.mana.max = Math.max(mc.mana.max, 4 + def.manaPerLevel * mc.level);
+    mc.mana.current = mc.mana.max;
+  }
+  for (const attr of Object.keys(bonus) as (keyof Attributes)[]) {
+    const n = bonus[attr] ?? 0;
+    if (n <= 0) continue;
+    mc.attributes[attr] += n;
+    if (attr === 'constitution') {
+      mc.hp.max += 2 * n;
+      mc.hp.current = mc.hp.max;
+    }
+    if (attr === 'intelligence') {
+      mc.mana.max += 2 * n;
+      mc.mana.current = mc.mana.max;
+    }
+  }
+  logEvent(world, 'mc.created', { charClass, bonus }, `${mc.name} came to Blackwall a ${def.label.toLowerCase()} — whatever he was before stayed on the road behind him.`);
 }
 
 // ---------- Birthdays ----------

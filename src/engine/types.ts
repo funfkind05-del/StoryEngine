@@ -314,6 +314,8 @@ export interface Character {
   birthDay?: number;
   /** what's left after a failed risky resurrection */
   remains?: 'ashes' | 'beyondRecall';
+  /** battle line: melee reaches the front rank only (Bard's Tale rows) */
+  row?: 'front' | 'back';
   permanentBonuses: string[]; // human-readable, e.g. 'Blessing of the Flame: +1 WIS'
   abilities: string[]; // known skill/spell keys from the rules engine
 
@@ -597,6 +599,8 @@ export interface WorldState {
   deathRule: DeathRule;
   /** 'risky' makes temple resurrection a CON gamble (Wizardry rules) */
   resurrectionRule?: 'safe' | 'risky';
+  /** minutes of torchlight left underground; 0 = dark */
+  torchMinutes?: number;
   encumbrance: EncumbranceRule;
   /** survival needs (hunger/fatigue) tracked against story time */
   needsEnabled: boolean;

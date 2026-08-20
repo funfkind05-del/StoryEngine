@@ -229,7 +229,9 @@ export function addToContainer(world: WorldState, item: Item, holder: Character 
   const list = holder === 'party' ? world.partyInventory : holder === 'home' ? homeStorage(world) : holder.inventory;
   const ownerTag = holder === 'party' ? OWNER_PARTY : holder === 'home' ? OWNER_HOME : holder.id;
   if (item.stackable && item.proto) {
-    const existing = list.map((id) => world.items[id]).find((i) => i && i.proto === item.proto && !i.broken);
+    // stolen goods never merge into clean stacks (and vice versa) —
+    // stacking must not launder the flag off hot property
+    const existing = list.map((id) => world.items[id]).find((i) => i && i.proto === item.proto && !i.broken && !!i.stolen === !!item.stolen);
     if (existing) {
       existing.qty = (existing.qty ?? 1) + (item.qty ?? 1);
       delete world.items[item.id];

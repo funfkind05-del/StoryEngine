@@ -154,6 +154,16 @@ Bard's Tale bones, Elder Scrolls texture:
 - **Rep-gated shop stock** — the good steel stays under the counter until the street knows you.
 - **Aging & birthdays** — everyone has a birthday on the 360-day calendar; party birthdays make the event log and the outline.
 
+## The corridor and the crawl (grognard round 2)
+
+- **Walk the picture** — the doorways in the first-person view are clickable; "crawler keys" mode makes ↑ walk forward and ←/→ turn in place, the way your hands remember it. Compass mode stays the default.
+- **The thing in the doorway** — hostile rooms show the creature's bestiary plate looming in the corridor. It reads "???" until you've killed five of its kind; veterans see the name.
+- **Battle lines** — front rank and back rank (Party panel toggle). Melee monsters can't reach the back rank while the front stands; melee from the back rank swings at −4; bows and spells don't care. Very Bard's Tale.
+- **Torchlight** — dungeons are dark. Torches burn 90 minutes each (`T` to light one); in the dark the view goes black and searching, disarming, and lockpicking suffer −3. The Dry Goods sells torches; the party starts with four.
+- **Camp underground** — ⛺ rest 8 hours in a cleared room: real recovery, and a real chance something finds the fire.
+- **Music** — three chip-tune loops (city / dungeon / combat) from a two-voice WebAudio sequencer, 🎵 toggle in the topbar. In Saves → Music: **✨ Compose** asks your local LLM to write new sheet music (JSON semitones/beats, validated, persisted), or **Upload** any audio file — including tracks generated with AI music tools — and the game loops that instead.
+- **Roll your own Kael** — the New Game card asks who Kael is: class (fighter/rogue/mage/priest/ranger) and 5 bonus attribute points, applied with real side effects (CON→HP, INT→mana, class abilities swap).
+
 ## Play mode & the old-school shell
 
 - **⚔ Play mode** (topbar) collapses the manuscript and gives the sim the screen; **✒ Write** brings it back.

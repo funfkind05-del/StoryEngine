@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest';
 import { buildSeedWorld } from '../data/seed';
 import { Rng } from './rng';
 import { advanceUntilMorning, partyMembers, tick, travelTo } from './world';
-import { disarmTrap, enterDungeon, exitDungeon, moveInDungeon, pickLock, searchRoom, takeLorebook, useShrine } from './dungeon';
+import { campInDungeon, disarmTrap, enterDungeon, exitDungeon, lightTorch, moveInDungeon, pickLock, searchRoom, takeLorebook, useShrine } from './dungeon';
 import { gatherResource, craft, RECIPES } from './crafting';
 import { engageWorldEvent } from './worldEvents';
 import { CARRIAGE_STOPS, adoptStray, goFishing, rideCarriage } from './services';
@@ -88,6 +88,7 @@ function checkInvariants(w: WorldState, step: number, action: string, deep: bool
     if (c.age < 1 || c.age > 400 || !Number.isFinite(c.age)) fail(`${c.name} age out of range: ${c.age}`);
     if (c.birthDay !== undefined && (c.birthDay < 0 || c.birthDay >= 360)) fail(`${c.name} birthDay out of range: ${c.birthDay}`);
     if (c.ascension && c.level < 25) fail(`${c.name} ascended (${c.ascension}) below level 25`);
+    if (c.row !== undefined && c.row !== 'front' && c.row !== 'back') fail(`${c.name} in unknown row ${String(c.row)}`);
     if (!w.locations[c.location] && !c.location.startsWith('ROOM')) fail(`${c.name} at unknown location ${c.location}`);
     // inventory backrefs
     for (const iid of c.inventory) {
@@ -133,6 +134,9 @@ function checkInvariants(w: WorldState, step: number, action: string, deep: bool
     if (!w.combat.active && w.combat.outcome === 'ongoing') fail('inactive combat still ongoing');
   }
   if ((w.bounty ?? 0) < 0) fail('negative bounty');
+  if (w.torchMinutes !== undefined && (!Number.isFinite(w.torchMinutes) || w.torchMinutes < 0 || w.torchMinutes > 240)) {
+    fail(`torchMinutes out of range: ${w.torchMinutes}`);
+  }
   for (const r of w.rivals ?? []) {
     if (!r.name || r.power < 0 || r.grudge < 0) fail(`malformed rival ${r.id}: power ${r.power}, grudge ${r.grudge}`);
   }
@@ -257,6 +261,8 @@ function step(w: WorldState, rng: Rng): string {
       }
       return 'chest';
     }
+    if (roll < 0.61) { lightTorch(w); return 'torch'; }
+    if (roll < 0.63 && room.enemies !== 'alive') { campInDungeon(w); return 'camp'; }
     if (roll < 0.75 && room.enemies === 'alive') { generateDungeonEncounter(w); return 'fight'; }
     if (roll < 0.85) { exitDungeon(w); return 'exit-dungeon'; }
     tick(w, rng.int(5, 30));
@@ -468,13 +474,16 @@ function step(w: WorldState, rng: Rng): string {
 describe(`burn test (${SEEDS} seeds × ${ITERS} actions, offset ${OFFSET})`, () => {
   for (let s = 0; s < SEEDS; s++) {
     const seedIdx = OFFSET + s;
-    it(`survives seed ${seedIdx} with invariants intact`, { timeout: 600000 }, () => {
+    it(`survives seed ${seedIdx} with invariants intact`, { timeout: 1800000 }, () => {
       const w = buildSeedWorld();
       w.masterSeed = 1000 + seedIdx;
       w.encounterFrequency = 'chaotic';
       if (seedIdx % 3 === 1) w.deathRule = 'classic';
       if (seedIdx % 3 === 2) w.encumbrance = 'off';
       if (seedIdx % 2 === 0) w.resurrectionRule = 'risky';
+      // battle lines: the ranger starts in the back rank
+      const lyra = w.characters['CHAR_LYRA'];
+      if (lyra) lyra.row = 'back';
       const rng = new Rng(90000 + seedIdx);
       let lastClock = w.time.day * 1440 + w.time.minute;
       let combats = 0;

@@ -451,7 +451,7 @@ table.stats td:first-child { color: var(--text-dim); }
 .app.play .sidebar { display: none; }
 .app.play .editor-wrap { display: none; }
 .app.play .main { grid-template-columns: 1fr; }
-.app.play .panels { border-left: none; max-width: 900px; width: 100%; margin: 0 auto; }
+.app.play .panels { border-left: none; max-width: 1440px; width: 100%; margin: 0 auto; }
 .app.play .dcell { min-height: 56px; font-size: 12px; }
 .app.play .fpv svg { max-height: 420px; }
 .banners { flex-shrink: 0; }
@@ -484,3 +484,35 @@ table.stats td:first-child { color: var(--text-dim); }
 .fpv svg { width: 100%; height: auto; display: block; border: 1px solid var(--border); border-radius: 4px; background: #050403; }
 .fpv-caption { margin-top: 4px; font-style: italic; }
 .keys-hint { text-align: center; letter-spacing: 0.5px; }
+
+
+/* ---------- Grognard round 2 ---------- */
+/* dungeon panel goes two-column when the game has the screen */
+.dungeon-cols { display: block; }
+.app.play .dungeon-cols { display: grid; grid-template-columns: 1.25fr 1fr; gap: 20px; align-items: start; }
+.app.play .dcol { min-width: 0; }
+
+/* clickable doorways in the corridor view */
+.fpv-door { cursor: pointer; }
+.fpv-door:hover { stroke-width: 3; filter: drop-shadow(0 0 3px var(--accent)); }
+.fpv-door-text { cursor: pointer; }
+.fpv-door-text:hover { fill: var(--accent); }
+
+/* the thing in the doorway */
+.fpv-monster {
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+  filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0.9));
+}
+.fpv-monster-name { font-size: 10px; color: var(--danger); letter-spacing: 1px; margin-top: 2px; text-transform: uppercase; }
+
+/* battle-line toggle */
+.row-toggle { font-size: 11px; padding: 2px 8px; }
+
+/* party strip: room for descenders */
+.party-strip { padding: 6px 12px; min-height: 30px; }
+.ps-name { line-height: 1.3; }

@@ -12,6 +12,9 @@ import { MiniMap } from './components/MiniMap';
 import { CompileModal } from './components/CompileModal';
 import { OutlineModal } from './components/OutlineModal';
 import type { EncounterFrequency } from './engine/types';
+import { BEHIND, LEFT_OF, RIGHT_OF, type Cardinal } from './components/FirstPersonView';
+import { loadCustomCompositions, setThemeAudio } from './sound';
+import { loadMusicFiles } from './engine/musicFiles';
 
 function ArrestBanner() {
   const world = useStore((s) => s.world);
@@ -120,6 +123,18 @@ export default function App() {
   const setPlayMode = useStore((s) => s.setPlayMode);
   const soundOn = useStore((s) => s.soundOn);
   const setSoundOn = useStore((s) => s.setSoundOn);
+  const musicOn = useStore((s) => s.musicOn);
+  const setMusicOn = useStore((s) => s.setMusicOn);
+
+  // stored AI compositions + uploaded audio themes load once at boot
+  useEffect(() => {
+    loadCustomCompositions();
+    void loadMusicFiles().then((files) => {
+      for (const [theme, blob] of Object.entries(files)) {
+        setThemeAudio(theme as 'city' | 'dungeon' | 'combat', URL.createObjectURL(blob));
+      }
+    });
+  }, []);
 
   // old-school keys: arrows walk the dungeon, S searches, C opens the
   // chest, F takes the fight. Inputs and modals keep their own keys.
@@ -135,14 +150,22 @@ export default function App() {
         return;
       }
       if (!w.currentDungeon || !w.currentRoom) return;
-      const dirByKey: Record<string, 'north' | 'south' | 'east' | 'west'> = {
-        ArrowUp: 'north', ArrowDown: 'south', ArrowLeft: 'west', ArrowRight: 'east',
-      };
-      const dir = dirByKey[e.key];
-      if (dir) {
-        e.preventDefault();
-        st.move(dir);
-        return;
+      if (st.moveScheme === 'relative') {
+        // dungeon-crawler hands: up walks forward, left/right turn in place
+        if (e.key === 'ArrowUp') { e.preventDefault(); st.move(st.facing); return; }
+        if (e.key === 'ArrowLeft') { e.preventDefault(); st.turnFacing(LEFT_OF[st.facing as Cardinal]); return; }
+        if (e.key === 'ArrowRight') { e.preventDefault(); st.turnFacing(RIGHT_OF[st.facing as Cardinal]); return; }
+        if (e.key === 'ArrowDown') { e.preventDefault(); st.turnFacing(BEHIND[st.facing as Cardinal]); return; }
+      } else {
+        const dirByKey: Record<string, 'north' | 'south' | 'east' | 'west'> = {
+          ArrowUp: 'north', ArrowDown: 'south', ArrowLeft: 'west', ArrowRight: 'east',
+        };
+        const dir = dirByKey[e.key];
+        if (dir) {
+          e.preventDefault();
+          st.move(dir);
+          return;
+        }
       }
       const room = w.dungeons[w.currentDungeon].rooms[w.currentRoom];
       if (e.key === 's' || e.key === 'S') st.search();
@@ -150,6 +173,7 @@ export default function App() {
       else if ((e.key === 'f' || e.key === 'F') && room.enemies === 'alive') st.fight();
       else if (e.key === '>' && room.connections.down) st.move('down');
       else if (e.key === '<' && room.connections.up) st.move('up');
+      else if (e.key === 't' || e.key === 'T') st.torchAct();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -195,10 +219,13 @@ export default function App() {
           onClick={() => setPlayMode(!playMode)}
           title={playMode ? 'Back to the manuscript — the sim keeps every consequence for you.' : 'Game-first layout: the manuscript steps aside, the dungeon and roster get the screen.'}
         >
-          {playMode ? '✒ Write' : '⚔ Play'}
+          {playMode ? '✒ Write' : '🗡 Play'}
         </button>
         <button onClick={() => setSoundOn(!soundOn)} title={soundOn ? 'Sound on — synthesized, period-correct beeps' : 'Sound off'}>
           {soundOn ? '🔊' : '🔇'}
+        </button>
+        <button onClick={() => setMusicOn(!musicOn)} title={musicOn ? 'Music on — chip-tune loops (AI-composable in Saves → Music)' : 'Music off'}>
+          {musicOn ? '🎵 on' : '🎵 off'}
         </button>
         <label>encounters</label>
         <select value={world.encounterFrequency} onChange={(e) => setFrequency(e.target.value as EncounterFrequency)}>

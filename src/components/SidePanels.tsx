@@ -41,6 +41,10 @@ import { RECIPES, canCraft } from '../engine/crafting';
 import { ascensionOptions } from '../engine/progression';
 import { COMPANION_ARCS } from '../engine/companions';
 import { FirstPersonView } from './FirstPersonView';
+import { isDark } from '../engine/dungeon';
+import { composeTheme } from '../engine/musicLlm';
+import { deleteMusicFile, saveMusicFile } from '../engine/musicFiles';
+import { setCustomComposition, setThemeAudio, themeSource, type MusicTheme } from '../sound';
 import { LOREBOOKS, loreById } from '../engine/codex';
 import { ACHIEVEMENTS } from '../engine/achievements';
 import {
@@ -159,16 +163,16 @@ function LocationPanel() {
       {here.map((c) => (
         <div key={c.id} className="card">
           <div className="row">
-            <span className="name grow">
-              {c.name}
-              {COMPANION_ARCS.some((a) => a.charId === c.id) && !c.inParty && (
-                <Tag tone="gold">✦ recruitable — has a story</Tag>
-              )}
-            </span>
+            <span className="name grow">{c.name}</span>
             {!world.combat && <button onClick={() => openTalk(c.id)}>🗨 Talk</button>}
             {!world.combat && <button title="Lift their purse — stealth against their wits. Getting caught has a price." onClick={() => crimePickpocket(c.id)}>🫳</button>}
           </div>
-          <div className="small dim">{c.occupation} — {c.activity}</div>
+          <div className="small dim">
+            {COMPANION_ARCS.some((a) => a.charId === c.id) && !c.inParty && (
+              <div><Tag tone="gold">✦ recruitable — has a story</Tag></div>
+            )}
+            {c.occupation} — {c.activity}
+          </div>
         </div>
       ))}
       {loc.shop && (
@@ -627,6 +631,7 @@ function PartyPanel() {
   const openTalk = useStore((s) => s.openTalk);
   const spendPoint = useStore((s) => s.spendPoint);
   const ascend = useStore((s) => s.ascend);
+  const setRow = useStore((s) => s.setRow);
   const party = Object.values(world.characters).filter((c) => c.inParty && c.alive);
   return (
     <div>
@@ -636,6 +641,13 @@ function PartyPanel() {
           <div className="row" style={{ flexWrap: 'nowrap' }}>
             <CharacterPortrait charId={c.id} size={40} world={world} />
             <span className="name grow">{c.name} <span className="dim small">{c.title ? `${c.title} · ` : ''}{CLASSES[c.charClass].label}</span></span>
+            <button
+              className="row-toggle"
+              onClick={() => setRow(c.id, (c.row ?? 'front') === 'front' ? 'back' : 'front')}
+              title="Battle line: melee only reaches the front rank — until the front rank is down. Bows and spells reach from anywhere; melee from the back swings at -4."
+            >
+              {(c.row ?? 'front') === 'front' ? '🛡 front' : '🏹 back'}
+            </button>
             <span className="mono dim">L{c.level} · {c.xp}/{xpForLevel(c.level)} xp</span>
             {!c.isMC && !world.combat && <button onClick={() => openTalk(c.id)}>🗨 Talk</button>}
           </div>
@@ -809,6 +821,10 @@ function DungeonPanel() {
   const shrineAct = useStore((s) => s.shrineAct);
   const lorebookAct = useStore((s) => s.lorebookAct);
   const gatherAct = useStore((s) => s.gatherAct);
+  const torchAct = useStore((s) => s.torchAct);
+  const campAct = useStore((s) => s.campAct);
+  const moveScheme = useStore((s) => s.moveScheme);
+  const setMoveScheme = useStore((s) => s.setMoveScheme);
   if (!world.currentDungeon || !world.currentRoom) {
     const entrances = Object.values(world.locations).filter((l) => l.dungeonId);
     return (
@@ -837,8 +853,22 @@ function DungeonPanel() {
     <div>
       <h3>{d.name}</h3>
       <p className="dim small">Floor {room.floor} of {d.floors} · {d.dungeonType} {d.bossDefeated && <Tag tone="green">boss defeated</Tag>}</p>
+      <div className="dungeon-cols">
+      <div className="dcol">
       <FirstPersonView />
-      <p className="dim small keys-hint">⌨ arrows walk · S search · C chest · F fight · &lt; &gt; stairs</p>
+      <p className="dim small keys-hint">⌨ arrows {moveScheme === 'relative' ? 'walk & turn' : 'walk'} · S search · C chest · F fight · T torch · &lt; &gt; stairs</p>
+      <div className="row small">
+        <span className="grow">
+          {(world.torchMinutes ?? 0) > 0
+            ? `🔥 torchlight: ${world.torchMinutes} min`
+            : isDark(world) ? '🌑 pitch dark — searching and lockwork suffer' : ''}
+        </span>
+        <button onClick={torchAct} title="Burn a torch from the packs: +90 minutes of light. (key: T)">🔥 Light torch</button>
+        <select value={moveScheme} onChange={(e) => setMoveScheme(e.target.value as 'compass' | 'relative')} title="Compass: arrows are absolute N/S/E/W. Crawler: up walks forward, left/right turn — the old way.">
+          <option value="compass">compass keys</option>
+          <option value="relative">crawler keys</option>
+        </select>
+      </div>
       <div className="card">
         <div className="name">{room.name} <span className="mono dim">{room.id}</span></div>
         <p className="small">{room.description}</p>
@@ -856,7 +886,7 @@ function DungeonPanel() {
       </div>
       {room.enemies === 'alive' && !world.pendingEncounter && !world.combat && (
         <button className="danger" style={{ width: '100%', marginBottom: 8 }} onClick={() => fight()}>
-          ⚔ ENCOUNTER AVAILABLE — Fight
+          🗡 ENCOUNTER AVAILABLE — Fight
         </button>
       )}
       <div className="compass">
@@ -880,8 +910,11 @@ function DungeonPanel() {
         {room.shrine && !room.shrine.used && <button onClick={shrineAct}>🕯 Pray at the shrine</button>}
         {room.lorebook && !room.lorebook.taken && <button onClick={lorebookAct}>📜 Take the writings</button>}
         {room.resource && !room.resource.gathered && <button onClick={gatherAct}>⛏ Gather {room.resource.proto.replace(/-/g, ' ')}</button>}
+        <button onClick={campAct} title="Rest 8 hours underground: real recovery, real chance something finds the fire.">⛺ Camp</button>
         <button onClick={leaveDungeon}>Exit dungeon</button>
       </div>
+      </div>
+      <div className="dcol">
       <h4>Floor map</h4>
       <div className="dmap" style={{ gridTemplateColumns: `repeat(${maxX}, 1fr)` }}>
         {grid.flatMap((row, y) =>
@@ -899,6 +932,8 @@ function DungeonPanel() {
         )}
       </div>
       <p className="dim small">! enemies · ▣ chest · ✕ trap · ☠ boss · ▼▲ stairs. Room state persists between visits.</p>
+      </div>
+      </div>
     </div>
   );
 }
@@ -1135,7 +1170,7 @@ function HouseholdPanel() {
       <h4>Use the house</h4>
       <div className="row">
         {hh.upgrades.includes('kitchen') && <button onClick={homeCook}>🍲 Cook{hh.upgrades.includes('garden') ? ' (garden: free)' : ''}</button>}
-        {hh.upgrades.includes('training-yard') && <button onClick={homeSpar}>⚔ Spar in the yard</button>}
+        {hh.upgrades.includes('training-yard') && <button onClick={homeSpar}>🗡 Spar in the yard</button>}
         {hh.upgrades.includes('alchemy-room') && <button onClick={homeBrew}>⚗ Brew{hh.upgrades.includes('enchanters-study') ? ' (study: greater)' : hh.upgrades.includes('library') ? ' (library: better)' : ''}</button>}
         {hh.upgrades.includes('shrine') && <button onClick={homePray}>🕯 Pray</button>}
         {hh.upgrades.includes('forge-annex') && <button onClick={homeFletch}>🏹 Fletch arrows</button>}
@@ -1374,6 +1409,70 @@ function MonsterArtSection() {
 }
 
 // ---------- Saves ----------
+function MusicSection() {
+  const setToast = useStore((st) => st.setToast);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [, bump] = useState(0);
+  const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const themes: Exclude<MusicTheme, 'off'>[] = ['city', 'dungeon', 'combat'];
+
+  const compose = async (theme: Exclude<MusicTheme, 'off'>) => {
+    setBusy(theme);
+    try {
+      const comp = await composeTheme(loadLlmConfig(), theme);
+      setCustomComposition(theme, comp);
+      setToast(`The model composed a new ${theme} theme — playing it next time that mood comes up.`);
+    } catch (e) {
+      setToast(`Composition failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+    setBusy(null);
+    bump((n) => n + 1);
+  };
+
+  const upload = async (theme: Exclude<MusicTheme, 'off'>, file: File) => {
+    await saveMusicFile(theme, file);
+    setThemeAudio(theme, URL.createObjectURL(file));
+    setToast(`${file.name} now plays as the ${theme} theme.`);
+    bump((n) => n + 1);
+  };
+
+  const reset = async (theme: Exclude<MusicTheme, 'off'>) => {
+    setCustomComposition(theme, null);
+    await deleteMusicFile(theme);
+    setThemeAudio(theme, null);
+    setToast(`${theme} theme back to the built-in tune.`);
+    bump((n) => n + 1);
+  };
+
+  return (
+    <>
+      <h4>Music</h4>
+      <p className="dim small">
+        Three loops: city, dungeon, combat. Built-ins are two-voice chiptunes. "Compose" asks your local
+        LLM to write new sheet music for the sequencer; "Upload" plays any audio file instead — including
+        tracks you generate with AI music tools.
+      </p>
+      {themes.map((theme) => (
+        <div key={theme} className="row small">
+          <span style={{ width: 70 }}>{theme}</span>
+          <Tag>{themeSource(theme)}</Tag>
+          <span className="grow" />
+          <button disabled={busy !== null} onClick={() => void compose(theme)}>{busy === theme ? 'composing…' : '✨ Compose'}</button>
+          <button onClick={() => fileRefs.current[theme]?.click()}>Upload…</button>
+          <input
+            ref={(el) => { fileRefs.current[theme] = el; }}
+            type="file"
+            accept="audio/*"
+            style={{ display: 'none' }}
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) void upload(theme, f); e.target.value = ''; }}
+          />
+          {themeSource(theme) !== 'built-in' && <button onClick={() => void reset(theme)}>Reset</button>}
+        </div>
+      ))}
+    </>
+  );
+}
+
 function SavesPanel() {
   const world = useStore((s) => s.world);
   const snapshots = useStore((s) => s.snapshots);
@@ -1385,6 +1484,10 @@ function SavesPanel() {
   const resetWorld = useStore((s) => s.resetWorld);
   const [newDeathRule, setNewDeathRule] = useState<'story' | 'classic' | 'permadeath'>('story');
   const [newResRule, setNewResRule] = useState<'safe' | 'risky'>('safe');
+  const [newClass, setNewClass] = useState<'fighter' | 'rogue' | 'mage' | 'priest' | 'ranger'>('fighter');
+  const [newBonus, setNewBonus] = useState<Record<string, number>>({});
+  const bonusSpent = Object.values(newBonus).reduce((a, b) => a + b, 0);
+  const CREATION_POINTS = 5;
   const [label, setLabel] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
   const setDeathRule = useStore((s) => s.setDeathRule);
@@ -1432,6 +1535,7 @@ function SavesPanel() {
         );
       })}
       <MonsterArtSection />
+      <MusicSection />
       <div className="row small">
         <label className="grow">The Circle's clock (the villain acts if the spine idles)</label>
         <select value={world.doomEnabled === false ? 'off' : 'on'} onChange={(e) => setDoomEnabled(e.target.value === 'on')}>
@@ -1476,10 +1580,30 @@ function SavesPanel() {
           <option value="risky">Risky — a CON gamble; ashes, then nothing</option>
         </select>
       </div>
+      <div className="row small">
+        <label className="grow">And who is Kael?</label>
+        <select value={newClass} onChange={(e) => setNewClass(e.target.value as typeof newClass)}>
+          <option value="fighter">Fighter — the sword remembers</option>
+          <option value="rogue">Rogue — locks are suggestions</option>
+          <option value="mage">Mage — the College will hear about this</option>
+          <option value="priest">Priest — somebody's god owes him</option>
+          <option value="ranger">Ranger — the road taught him</option>
+        </select>
+      </div>
+      <div className="row small" style={{ flexWrap: 'wrap' }}>
+        <span className="dim">Bonus points: {CREATION_POINTS - bonusSpent} left</span>
+        {(['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'] as const).map((a) => (
+          <span key={a} className="mono small" style={{ marginRight: 6 }}>
+            {a.slice(0, 3).toUpperCase()} +{newBonus[a] ?? 0}
+            <button style={{ padding: '0 6px' }} disabled={bonusSpent >= CREATION_POINTS} onClick={() => setNewBonus({ ...newBonus, [a]: (newBonus[a] ?? 0) + 1 })}>+</button>
+            <button style={{ padding: '0 6px' }} disabled={(newBonus[a] ?? 0) <= 0} onClick={() => setNewBonus({ ...newBonus, [a]: (newBonus[a] ?? 0) - 1 })}>−</button>
+          </span>
+        ))}
+      </div>
       <div className="row">
         <button
           className="danger"
-          onClick={() => { if (confirm(`Reset the entire world and manuscript (${newDeathRule} death, ${newResRule} resurrection)? Export first if you care about this one.`)) resetWorld({ deathRule: newDeathRule, resurrectionRule: newResRule }); }}
+          onClick={() => { if (confirm(`Reset the entire world and manuscript (${newClass} Kael, ${newDeathRule} death, ${newResRule} resurrection)? Export first if you care about this one.`)) resetWorld({ deathRule: newDeathRule, resurrectionRule: newResRule, mcClass: newClass, mcBonus: newBonus }); }}
         >
           Begin a new chronicle (reset world)
         </button>

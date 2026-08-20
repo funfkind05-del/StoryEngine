@@ -4,9 +4,10 @@
 // visits unless a simulation event changes it.
 
 import type { Dungeon, DungeonRoom, RoomId, SimEvent, WorldState } from './types';
-import { Rng } from './rng';
+import { Rng, randomSeed } from './rng';
 import { addMinutes, logEvent, nextId, partyMembers } from './world';
 import { trainSkill } from './progression';
+import { removeUnits } from './rules';
 
 const ROOM_NAMES = [
   'Collapsed Gallery', 'Bone Niche', 'Flooded Chamber', 'Ossuary', 'Broken Shrine',
@@ -220,6 +221,64 @@ export function moveInDungeon(world: WorldState, dir: MoveDir): { event: SimEven
   return { event, room: dest };
 }
 
+// ---------- Light ----------
+/** Underground with no burning torch: the oldest problem in the genre. */
+export function isDark(world: WorldState): boolean {
+  return !!world.currentDungeon && (world.torchMinutes ?? 0) <= 0;
+}
+
+function darkMod(world: WorldState): number {
+  return isDark(world) ? -3 : 0;
+}
+
+/** Burn a torch from anyone's pack: +90 minutes of light (cap 240). */
+export function lightTorch(world: WorldState): string | null {
+  if (!world.currentDungeon) return 'Torches are for the dark below.';
+  const holders = [...partyMembers(world).flatMap((c) => c.inventory), ...world.partyInventory];
+  const torch = holders.map((iid) => world.items[iid]).find((it) => it && it.proto === 'torch' && (it.qty ?? 1) > 0);
+  if (!torch) return 'No torches left. The dark is patient.';
+  removeUnits(world, torch, 1);
+  world.torchMinutes = Math.min(240, (world.torchMinutes ?? 0) + 90);
+  logEvent(world, 'dungeon.torch', { minutes: world.torchMinutes }, `A torch flared to life — the dark stepped back. (${world.torchMinutes} minutes of light)`, { witnesses: partyMembers(world).map((c) => c.id) });
+  return null;
+}
+
+// ---------- Camp ----------
+/** Rest 8 hours underground. Real rest — and a real chance something
+ *  finds the fire. (Wizardry let you camp; it also let you regret it.) */
+export function campInDungeon(world: WorldState): string | null {
+  if (!world.currentDungeon || !world.currentRoom) return 'Camp is for underground.';
+  if (world.combat?.active) return 'Not while steel is out.';
+  if (world.pendingEncounter) return 'Something is already circling.';
+  const d = world.dungeons[world.currentDungeon];
+  const room = d.rooms[world.currentRoom];
+  if (room.enemies === 'alive') return 'Camp here? The room disagrees.';
+  const rng = new Rng(randomSeed());
+  addMinutes(world, 480);
+  for (const c of partyMembers(world)) {
+    c.needs.fatigue = Math.max(20, c.needs.fatigue - 55);
+    c.hp.current = Math.min(c.hp.max, c.hp.current + Math.ceil(c.hp.max * 0.35));
+    c.mana.current = c.mana.max;
+    c.stamina.current = c.stamina.max;
+  }
+  const ambushChance = Math.min(0.6, 0.25 + room.floor * 0.05);
+  if (rng.chance(ambushChance)) {
+    const key = rng.pick(d.primaryEnemies);
+    const count = rng.int(1, 3);
+    world.pendingEncounter = {
+      seed: rng.fork(),
+      description: `${count} ${key.replace(/-/g, ' ')}${count > 1 ? 's' : ''}, drawn to the embers`,
+      monsters: [{ templateKey: key, count }],
+      source: 'dungeon',
+      locationId: d.entranceLocation,
+    };
+    logEvent(world, 'dungeon.camp', { room: room.id, ambush: true }, `The party camped in ${room.name}. Sometime before the watch changed, the dark sent visitors.`, { witnesses: partyMembers(world).map((c) => c.id) });
+    return null;
+  }
+  logEvent(world, 'dungeon.camp', { room: room.id, ambush: false }, `The party camped in ${room.name} — a fire in a dead place, and for once nothing came to look at it. Everyone woke closer to whole.`, { witnesses: partyMembers(world).map((c) => c.id) });
+  return null;
+}
+
 export function searchRoom(world: WorldState): SimEvent | { error: string } {
   if (!world.currentDungeon || !world.currentRoom) return { error: 'Not inside a dungeon.' };
   const d = world.dungeons[world.currentDungeon];
@@ -230,7 +289,7 @@ export function searchRoom(world: WorldState): SimEvent | { error: string } {
   if (room.secretDoor && !room.secretDoor.discovered) {
     const mc = world.characters[world.mcId];
     const rng = new Rng((d.generationSeed ^ room.id.length ^ world.time.minute) >>> 0);
-    if (rng.die(20) + mc.skills.tracking + Math.floor(mc.attributes.wisdom / 3) >= 14) {
+    if (rng.die(20) + mc.skills.tracking + Math.floor(mc.attributes.wisdom / 3) + darkMod(world) >= 14) {
       room.secretDoor.discovered = true;
       const to = d.rooms[room.secretDoor.to];
       // open the passage both ways
@@ -257,7 +316,7 @@ export function disarmTrap(world: WorldState): SimEvent | { error: string } {
   const rng = new Rng((d.generationSeed ^ world.time.day * 7919 + world.time.minute) >>> 0);
   addMinutes(world, 5);
   trainSkill(world, mc, 'lockpicking');
-  const roll = rng.die(20) + mc.skills.lockpicking + Math.floor(mc.attributes.dexterity / 3);
+  const roll = rng.die(20) + mc.skills.lockpicking + Math.floor(mc.attributes.dexterity / 3) + darkMod(world);
   if (roll >= 13) {
     room.trap.disarmed = true;
     return logEvent(world, 'dungeon.trap', { room: room.id, kind: room.trap.kind, result: 'disarmed', roll }, `${mc.name} disarmed the ${room.trap.kind} in ${room.name}. (roll ${roll})`, { witnesses: partyMembers(world).map((c) => c.id) });
@@ -280,7 +339,7 @@ export function pickLock(world: WorldState): SimEvent | { error: string } {
   addMinutes(world, 10);
   trainSkill(world, mc, 'lockpicking');
   const rng = new Rng((d.generationSeed ^ (world.time.day * 131 + world.time.minute)) >>> 0);
-  const roll = rng.die(20) + mc.skills.lockpicking + Math.floor((mc.attributes.dexterity - 10) / 2);
+  const roll = rng.die(20) + mc.skills.lockpicking + Math.floor((mc.attributes.dexterity - 10) / 2) + darkMod(world);
   if (roll >= room.lockedDoor.difficulty) {
     room.lockedDoor.opened = true;
     return logEvent(world, 'dungeon.lockpicked', { room: room.id, roll }, `${mc.name} worked the lock until it surrendered — the way ${room.lockedDoor.dir} stands open. (roll ${roll})`, { witnesses: partyMembers(world).map((c) => c.id) });

@@ -74,7 +74,7 @@ export function EncounterBanner() {
         </div>
       ) : (
         <div className="row">
-          <button className="primary" onClick={beginCombat}>⚔️ Fight</button>
+          <button className="primary" onClick={beginCombat}>🗡 Fight</button>
           {enc.source === 'dungeon' && <button onClick={() => fight(randomSeed())}>Resimulate (new seed)</button>}
           <button onClick={startEdit}>Override…</button>
           <button onClick={dismissEncounter} title="Set the encounter aside; in a dungeon the enemies remain in the room.">
@@ -186,7 +186,7 @@ export function CombatModal() {
     <div className="modal-backdrop">
       <div className="modal">
         <div className="modal-head">
-          ⚔ {combat.encounterDesc}
+          🗡 {combat.encounterDesc}
           <span className="dim small">round {combat.round} · seed {combat.seed}</span>
           <span className="grow" />
           {over && <Tag tone={combat.outcome === 'victory' ? 'green' : 'red'}>{combat.outcome.toUpperCase()}</Tag>}
@@ -198,7 +198,7 @@ export function CombatModal() {
               {party.map((c) => (
                 <div key={c.id} className="card">
                   <div className="row">
-                    <span className="name grow">{c.name} {c.hp.current === 0 && <Tag tone="red">down</Tag>}{c.statuses.filter((s) => s.key !== 'unconscious').map((s) => <Tag key={s.key} tone="red">{s.key}</Tag>)}</span>
+                    <span className="name grow">{c.name} <span className="dim small">{(c.row ?? 'front') === 'front' ? '🛡' : '🏹'}</span> {c.hp.current === 0 && <Tag tone="red">down</Tag>}{c.statuses.filter((s) => s.key !== 'unconscious').map((s) => <Tag key={s.key} tone="red">{s.key}</Tag>)}</span>
                     <span className="mono dim">HP {c.hp.current}/{c.hp.max} · MP {c.mana.current} · ST {c.stamina.current}</span>
                   </div>
                   <Bar value={c.hp.current} max={c.hp.max} color="var(--danger)" />

@@ -18,9 +18,12 @@ import {
   rollGearMods,
 } from './progression';
 import { buyFromShop, buyTempleService } from './services';
-import { autoResolve, startCombat } from './combat';
+import { autoResolve, resolveRound, startCombat } from './combat';
+import { campInDungeon, isDark, lightTorch } from './dungeon';
+import { remakeMc } from './world';
+import { addMinutes } from './world';
 import { birthDayFor, relationshipBetween, runBirthdays, travelTo } from './world';
-import { makeItem } from './rules';
+import { addToContainer, makeItem } from './rules';
 import { Rng } from './rng';
 import { generateStoryIdeas } from './muse';
 import { generateDungeonEncounter } from './encounter';
@@ -405,5 +408,150 @@ describe('aging & birthdays', () => {
     runBirthdays(w);
     expect(stranger.age).toBe(sAge + 1);
     expect(w.events.slice(eventsBefore).every((e) => !e.summary.includes(stranger.name) || e.kind !== 'birthday')).toBe(true);
+  });
+});
+
+
+describe('battle lines (grognard round 2)', () => {
+  function lineWorld(): WorldState {
+    const w = freshWorld();
+    const lyra = w.characters['CHAR_LYRA'];
+    lyra.row = 'back';
+    return w;
+  }
+
+  it('melee monsters cannot reach the back rank while the front stands', () => {
+    for (let seed = 0; seed < 25; seed++) {
+      const w = lineWorld();
+      const combat = startCombat(w, {
+        seed, description: 'rats', monsters: [{ templateKey: 'giant-rat', count: 3 }],
+        source: 'city', locationId: w.partyLocation,
+      });
+      for (let r = 0; r < 4 && combat.outcome === 'ongoing'; r++) {
+        resolveRound(w, [
+          { actor: w.mcId, type: 'defend' },
+          { actor: 'CHAR_LYRA', type: 'defend' },
+        ]);
+        const kael = w.characters[w.mcId];
+        if (kael.hp.current === 0) break; // front rank down → back is fair game
+        const hitsOnLyra = combat.log.filter((l) => l.result !== 'miss' && l.targetName === 'Lyra' && l.actorName.includes('Rat'));
+        expect(hitsOnLyra, `seed ${seed}`).toHaveLength(0);
+      }
+    }
+  });
+
+  it('melee from the back rank swings at -4; bows do not care', () => {
+    // same combat seed, same plan — only the row differs. Find seeds
+    // where the -4 flips a hit into a miss, and prove bows never flip.
+    let flipped = false;
+    for (let seed = 0; seed < 200 && !flipped; seed++) {
+      const outcomes: boolean[] = [];
+      for (const row of ['front', 'back'] as const) {
+        const w = freshWorld();
+        const kael = w.characters[w.mcId];
+        kael.row = row;
+        const combat = startCombat(w, {
+          seed, description: 'a rat', monsters: [{ templateKey: 'skeleton', count: 1 }],
+          source: 'city', locationId: w.partyLocation,
+        });
+        resolveRound(w, [
+          { actor: w.mcId, type: 'attack', target: combat.monsters[0].id },
+          { actor: 'CHAR_LYRA', type: 'defend' },
+        ]);
+        const swing = combat.log.find((l) => l.actorName === 'Kael' && l.action === 'attack');
+        outcomes.push(swing?.result !== 'miss');
+      }
+      if (outcomes[0] && !outcomes[1]) flipped = true;
+    }
+    expect(flipped).toBe(true);
+  });
+});
+
+describe('torchlight (grognard round 2)', () => {
+  it('torches burn while time passes underground, then the dark comes back', () => {
+    const w = freshWorld();
+    expect(lightTorch(w)).toMatch(/dark below/); // only underground
+    w.currentDungeon = 'DUN_OLDQUARTER_001';
+    enterDungeon(w, 'DUN_OLDQUARTER_001');
+    expect(isDark(w)).toBe(true);
+    expect(lightTorch(w)).toBeNull(); // party carries 4 torches
+    expect(w.torchMinutes).toBeGreaterThan(0);
+    expect(isDark(w)).toBe(false);
+    addMinutes(w, 200);
+    expect(w.torchMinutes).toBe(0);
+    expect(isDark(w)).toBe(true);
+    expect(w.events.some((e) => e.summary.includes('guttered out'))).toBe(true);
+    // burn the rest of the bundle
+    let lit = 0;
+    while (lightTorch(w) === null) lit++;
+    expect(lit).toBe(3);
+    expect(lightTorch(w)).toMatch(/No torches/);
+  });
+});
+
+describe('camping underground (grognard round 2)', () => {
+  it('camp restores the party, costs 8 hours, and sometimes the fire draws visitors', () => {
+    let sawAmbush = false;
+    let sawQuiet = false;
+    for (let i = 0; i < 40 && !(sawAmbush && sawQuiet); i++) {
+      const w = freshWorld();
+      enterDungeon(w, 'DUN_OLDQUARTER_001');
+      const room = w.dungeons['DUN_OLDQUARTER_001'].rooms[w.currentRoom!];
+      room.enemies = 'none';
+      const mc = w.characters[w.mcId];
+      mc.needs.fatigue = 90;
+      mc.hp.current = 1;
+      const before = w.time.day * 1440 + w.time.minute;
+      expect(campInDungeon(w)).toBeNull();
+      expect(w.time.day * 1440 + w.time.minute - before).toBeGreaterThanOrEqual(480);
+      expect(mc.needs.fatigue).toBeLessThanOrEqual(35);
+      expect(mc.hp.current).toBeGreaterThan(1);
+      if (w.pendingEncounter) sawAmbush = true;
+      else sawQuiet = true;
+    }
+    expect(sawAmbush).toBe(true);
+    expect(sawQuiet).toBe(true);
+    // no camping in a hostile room
+    const w2 = freshWorld();
+    enterDungeon(w2, 'DUN_OLDQUARTER_001');
+    w2.dungeons['DUN_OLDQUARTER_001'].rooms[w2.currentRoom!].enemies = 'alive';
+    expect(campInDungeon(w2)).toMatch(/disagrees/);
+  });
+});
+
+describe('stolen goods stay stolen', () => {
+  it('a stolen stackable never merges into a clean stack', () => {
+    const w = freshWorld();
+    const mc = w.characters[w.mcId];
+    const clean = makeItem(w, 'minor-healing-potion', 2);
+    addToContainer(w, clean, mc);
+    const hot = makeItem(w, 'minor-healing-potion', 1);
+    hot.stolen = true;
+    addToContainer(w, hot, mc);
+    expect(clean.stolen).toBeFalsy();
+    expect(w.items[hot.id]).toBeTruthy(); // kept as its own (stolen) stack
+    expect(w.items[hot.id].stolen).toBe(true);
+    // and stolen merges into stolen
+    const hot2 = makeItem(w, 'minor-healing-potion', 1);
+    hot2.stolen = true;
+    addToContainer(w, hot2, mc);
+    expect(w.items[hot.id].qty).toBe(2);
+    expect(w.items[hot2.id]).toBeFalsy();
+  });
+});
+
+describe('character creation (grognard round 2)', () => {
+  it('remaking Kael as a mage swaps abilities, grants mana, and applies bonus points', () => {
+    const w = freshWorld();
+    const mc = w.characters[w.mcId];
+    const hpBefore = mc.hp.max;
+    remakeMc(w, 'mage', { intelligence: 3, constitution: 2 });
+    expect(mc.charClass).toBe('mage');
+    expect(mc.abilities).toContain('firebolt');
+    expect(mc.abilities).not.toContain('shield-bash');
+    expect(mc.mana.max).toBeGreaterThanOrEqual(9 + 6); // 4+5/level, +2/INT point
+    expect(mc.attributes.intelligence).toBeGreaterThanOrEqual(13);
+    expect(mc.hp.max).toBe(hpBefore + 4); // +2 per CON point
+    expect(w.events.some((e) => e.kind === 'mc.created')).toBe(true);
   });
 });

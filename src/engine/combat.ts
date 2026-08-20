@@ -221,11 +221,15 @@ function monsterAI(combat: CombatState, world: WorldState, m: CombatantMonster, 
   if (t.ai === 'cowardly' && m.hp.current <= m.hp.max * 0.3 && rng.chance(0.6)) {
     return { actor: m.id, type: 'flee' };
   }
+  // battle lines: melee reaches the front rank; the back rank is safe
+  // until the front is down (Bard's Tale rules)
+  const frontRank = living.filter((c) => (c.row ?? 'front') === 'front');
+  const reachable = frontRank.length ? frontRank : living;
   // pack AI gangs up on the weakest; aggressive picks at random
   const target =
     t.ai === 'pack'
-      ? living.reduce((a, b) => (a.hp.current <= b.hp.current ? a : b))
-      : rng.pick(living);
+      ? reachable.reduce((a, b) => (a.hp.current <= b.hp.current ? a : b))
+      : rng.pick(reachable);
   return { actor: m.id, type: 'attack', target: target.id };
 }
 
@@ -457,11 +461,15 @@ function swingAt(
   }
   trainSkill(world, c, w0?.ranged ? 'archery' : 'swordsmanship');
   const weaponSkill = w0?.ranged ? Math.floor(c.skills.archery / 2) : Math.floor(c.skills.swordsmanship / 2);
+  // swinging steel from the back rank is a long reach; bows don't care
+  const backRankMod = (c.row ?? 'front') === 'back' && !w0?.ranged ? -4 : 0;
   const roll = rng.die(20);
   const toHit = roll + c.attack + c.accuracy + weaponSkill + (skill?.toHitMod ?? 0) + statusAttackMod(c)
-    + (world.needsEnabled ? needsAttackMod(c) : 0) + injuryAttackMod(c) + affixMod(world, c, 'attack');
+    + (world.needsEnabled ? needsAttackMod(c) : 0) + injuryAttackMod(c) + affixMod(world, c, 'attack') + backRankMod;
   const detail = skill ? skill.name : w0?.name ?? 'bare hands';
   const targetDefense = t.defense + (m.elite?.defenseBonus ?? 0);
+  const backNote = backRankMod ? ' (a long swing from the back rank)' : '';
+  void backNote;
   if (roll !== 20 && (roll === 1 || toHit < targetDefense)) {
     record({ round: combat.round, actor: c.id, actorName: c.name, action: skill ? 'skill' : 'attack', targetName: m.name, detail, roll, result: 'miss', text: `${c.name} ${skill ? `used ${skill.name} against` : 'attacked'} ${m.name} and missed. (roll ${roll})` });
     return;
