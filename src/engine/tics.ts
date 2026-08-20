@@ -13,8 +13,15 @@ import { DEFAULT_COMPILE, renderSceneText } from './compile';
 const WITHHELD_RE =
   /\b(?:did|does|do)\s*n[o'’]t\s+(?:look|glance|move|answer|reply|respond|ask|speak|say|turn|flinch|smile|reach|follow|stop|wait)\b/gi;
 
-// sentence-fragments beginning "Not …" — short, clipped, no verb clause
-const NOT_FRAG_RE = /(?:^|[.!?—]\s+|\n)Not\s+[^.!?\n]{1,45}[.]/g;
+// sentence-fragments beginning "Not …" — short, clipped sentences.
+// Counted by sentence-splitting rather than a consuming regex, so
+// back-to-back fragments ("Not there. Not yet.") each count.
+function countNotFragments(text: string): number {
+  return text
+    .split(/\n+|(?<=[.!?])\s+/)
+    .map((s) => s.trim())
+    .filter((s) => /^Not\s/.test(s) && s.length <= 48 && s.endsWith('.')).length;
+}
 
 export interface TicCounts {
   words: number;
@@ -27,7 +34,7 @@ export interface TicCounts {
 export function measureTics(text: string): TicCounts {
   const words = text.trim() ? text.trim().split(/\s+/).length : 0;
   const withheld = (text.match(WITHHELD_RE) ?? []).length;
-  const notFragments = (text.match(NOT_FRAG_RE) ?? []).length;
+  const notFragments = countNotFragments(text);
   const per1k = words > 0 ? ((withheld + notFragments) / words) * 1000 : 0;
   return { words, withheld, notFragments, per1k };
 }
