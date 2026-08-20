@@ -920,6 +920,34 @@ describe('the maze round (round 7)', () => {
     }
   });
 
+  it('no lock ever gates its own key: the key is always reachable with the door closed', () => {
+    for (let seed = 1; seed <= 25; seed++) {
+      const { d } = gen(seed);
+      const floors = new Map<number, string[]>();
+      for (const r of Object.values(d.rooms)) floors.set(r.floor, [...(floors.get(r.floor) ?? []), r.id]);
+      for (const [floor, ids] of floors) {
+        const lockRoom = ids.map((id) => d.rooms[id]).find((r) => r.lockedDoor && !r.lockedDoor.opened);
+        if (!lockRoom) continue;
+        const keyRoom = ids.map((id) => d.rooms[id]).find((r) => r.key);
+        const entry = ids.find((id) => d.rooms[id].isStairsUp) ?? ids[0];
+        // BFS from the floor entry with the locked passage closed
+        const seen = new Set([entry]);
+        const q = [entry];
+        while (q.length) {
+          const cur = q.pop()!;
+          for (const [dir, t] of Object.entries(d.rooms[cur].connections)) {
+            if (!t || !ids.includes(t) || seen.has(t)) continue;
+            if (cur === lockRoom.id && dir === lockRoom.lockedDoor!.dir) continue;
+            seen.add(t);
+            q.push(t);
+          }
+        }
+        expect(seen.has(lockRoom.id), `seed ${seed} floor ${floor}: the locked door itself is unreachable`).toBe(true);
+        if (keyRoom) expect(seen.has(keyRoom.id), `seed ${seed} floor ${floor}: key locked behind its own door`).toBe(true);
+      }
+    }
+  });
+
   it('a carried key opens its floor\'s lock without picking', () => {
     for (let seed = 1; seed <= 30; seed++) {
       const { w, d } = gen(seed);

@@ -42,31 +42,40 @@ function themeFor(dungeonType: string): WallTheme {
   return { line: '#c9a959', dim: '#5a4a28', wall: '#0d0b08', pattern: 'bricks' };
 }
 
-/** Far-wall texture when the way ahead is walled. */
-function FarPattern({ kind, dim }: { kind: PatternKind; dim: string }) {
+/** Tiny stable hash so every room dresses its walls differently. */
+function roomVariant(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+/** Far-wall texture; `v` shifts the dressing so no two rooms match. */
+function FarPattern({ kind, dim, v }: { kind: PatternKind; dim: string; v: number }) {
+  const j = (n: number, spread = 6) => ((v >> (n * 3)) % spread) - Math.floor(spread / 2); // per-slot jitter
   switch (kind) {
     case 'bones':
-      // burial niches, some still occupied
+      // burial niches, some still occupied — occupancy shifts room to room
       return (
         <g stroke={dim} strokeWidth="0.75" fill="none">
-          <rect x="132" y="76" width="20" height="26" rx="9" />
-          <rect x="160" y="76" width="20" height="26" rx="9" />
-          <rect x="188" y="76" width="20" height="26" rx="9" />
-          <rect x="132" y="112" width="20" height="26" rx="9" />
-          <rect x="188" y="112" width="20" height="26" rx="9" />
-          <circle cx="170" cy="87" r="3.2" fill={dim} opacity="0.7" />
-          <circle cx="142" cy="123" r="3.2" fill={dim} opacity="0.7" />
+          <rect x={132 + j(0, 4)} y={74 + j(1, 5)} width="20" height="26" rx="9" />
+          <rect x="160" y={76 + j(2, 5)} width="20" height="26" rx="9" />
+          <rect x={188 + j(3, 4)} y={74 + j(4, 5)} width="20" height="26" rx="9" />
+          {v % 3 !== 0 && <rect x="132" y="112" width="20" height="26" rx="9" />}
+          {v % 4 !== 1 && <rect x="188" y="112" width="20" height="26" rx="9" />}
+          {v % 2 === 0 && <circle cx={170 + j(5, 8)} cy="87" r="3.2" fill={dim} opacity="0.7" />}
+          {v % 3 === 1 && <circle cx="142" cy="123" r="3.2" fill={dim} opacity="0.7" />}
+          {v % 5 === 2 && <circle cx={198 + j(6, 6)} cy="123" r="3.2" fill={dim} opacity="0.7" />}
         </g>
       );
     case 'slime':
       return (
         <g stroke={dim} strokeWidth="0.9" fill="none">
-          <path d="M 122 70 q 10 14 2 30 q -4 12 4 24" />
-          <path d="M 150 66 q 8 20 0 36 q -6 14 3 26" />
-          <path d="M 186 68 q -6 18 2 34 q 6 12 -2 26" />
-          <path d="M 212 72 q 6 16 -2 30 q -5 12 3 22" />
-          <circle cx="140" cy="132" r="2" fill={dim} />
-          <circle cx="198" cy="120" r="2" fill={dim} />
+          <path d={`M ${122 + j(0, 5)} 70 q 10 14 2 30 q -4 12 4 24`} />
+          <path d={`M ${150 + j(1, 5)} 66 q ${8 + j(2, 4)} 20 0 36 q -6 14 3 26`} />
+          <path d={`M ${186 + j(3, 5)} 68 q -6 18 2 34 q 6 12 -2 26`} />
+          {v % 3 !== 1 && <path d={`M ${212 + j(4, 4)} 72 q 6 16 -2 30 q -5 12 3 22`} />}
+          <circle cx={138 + j(5, 10)} cy={126 + j(6, 10)} r="2" fill={dim} />
+          {v % 2 === 0 && <circle cx={196 + j(7, 8)} cy="120" r="2" fill={dim} />}
         </g>
       );
     case 'brands':
@@ -147,46 +156,84 @@ function FarPattern({ kind, dim }: { kind: PatternKind; dim: string }) {
   }
 }
 
-/** Side-wall accents so the theme reads even with the far wall open. */
-function SideAccents({ kind, dim }: { kind: PatternKind; dim: string }) {
+/** Side-wall dressing: the theme runs down BOTH perspective walls and
+ *  shifts with the room, so walking actually changes the picture. */
+function SideAccents({ kind, dim, v }: { kind: PatternKind; dim: string; v: number }) {
+  const j = (n: number, spread = 10) => ((v >> (n * 3)) % spread) - Math.floor(spread / 2);
   switch (kind) {
     case 'bones':
       return (
-        <g stroke={dim} strokeWidth="0.75" fill="none" opacity="0.8">
-          <rect x="16" y="70" width="12" height="24" rx="6" transform="skewY(14)" />
-          <rect x="308" y="-6" width="12" height="24" rx="6" transform="skewY(-14)" />
+        <g stroke={dim} strokeWidth="0.75" fill="none" opacity="0.85">
+          <rect x="16" y={62 + j(0)} width="12" height="24" rx="6" transform="skewY(14)" />
+          {v % 2 === 0 && <rect x="52" y={40 + j(1)} width="14" height="27" rx="7" transform="skewY(11)" />}
+          <rect x="308" y={-14 + j(2)} width="12" height="24" rx="6" transform="skewY(-14)" />
+          {v % 3 !== 0 && <rect x="272" y={16 + j(3)} width="14" height="27" rx="7" transform="skewY(-11)" />}
+          {v % 4 === 1 && <circle cx="59" cy={62 + j(4, 8)} r="2.6" fill={dim} opacity="0.7" />}
+          {v % 4 === 2 && <circle cx="279" cy={38 + j(5, 8)} r="2.6" fill={dim} opacity="0.7" />}
         </g>
       );
     case 'slime':
       return (
-        <g stroke={dim} strokeWidth="0.9" fill="none" opacity="0.8">
-          <path d="M 30 40 q 8 40 -2 80" />
-          <path d="M 310 40 q -8 40 2 80" />
+        <g stroke={dim} strokeWidth="0.9" fill="none" opacity="0.85">
+          <path d={`M ${28 + j(0, 6)} 36 q 8 40 -2 80`} />
+          {v % 2 === 0 && <path d={`M ${58 + j(1, 8)} 52 q 6 34 -1 62`} />}
+          <path d={`M ${312 + j(2, 6)} 36 q -8 40 2 80`} />
+          {v % 3 !== 1 && <path d={`M ${282 + j(3, 8)} 52 q -6 34 1 62`} />}
+          <circle cx={44 + j(4, 12)} cy={150 + j(5, 12)} r="1.8" fill={dim} />
+        </g>
+      );
+    case 'brands':
+      return (
+        <g stroke={dim} strokeWidth="0.9" fill="none" opacity="0.85">
+          <path d={`M 34 ${58 + j(0)} l 9 -13 l 9 15 z`} transform="skewY(12)" />
+          {v % 2 === 0 && <circle cx="60" cy={104 + j(1, 8)} r="7" transform="skewY(9)" />}
+          <path d={`M 306 ${20 + j(2)} l -9 -11 l -9 17 z`} transform="skewY(-12)" />
+          {v % 3 !== 0 && <circle cx="280" cy={70 + j(3, 8)} r="7" transform="skewY(-9)" />}
+        </g>
+      );
+    case 'flutes':
+      return (
+        <g stroke={dim} strokeWidth="0.75" fill="none" opacity="0.85">
+          {[26 + j(0, 4), 44, 62 + j(1, 4)].map((x, i) => (v + i) % 4 !== 3 ? <line key={`l${i}`} x1={x} y1={20 + x} y2={214 - x * 0.6} x2={x} /> : null)}
+          {[314 - j(2, 4), 296, 278 - j(3, 4)].map((x, i) => (v + i) % 3 !== 2 ? <line key={`r${i}`} x1={x} y1={20 + (340 - x)} y2={214 - (340 - x) * 0.6} x2={x} /> : null)}
         </g>
       );
     case 'cracks':
       return (
-        <g stroke={dim} strokeWidth="0.9" fill="none" opacity="0.8">
-          <path d="M 24 30 l 10 30 l -8 26 l 12 40" />
-          <path d="M 316 30 l -10 30 l 8 26 l -12 40" />
+        <g stroke={dim} strokeWidth="0.9" fill="none" opacity="0.85">
+          <path d={`M ${22 + j(0, 6)} 28 l 10 30 l -8 26 l 12 40`} />
+          {v % 2 === 0 && <path d={`M ${64 + j(1, 8)} 52 l 6 22 l -7 20 l 9 28`} />}
+          <path d={`M ${318 - j(2, 6)} 28 l -10 30 l 8 26 l -12 40`} />
+          {v % 3 !== 1 && <path d={`M ${276 - j(3, 8)} 52 l -6 22 l 7 20 l -9 28`} />}
         </g>
       );
     case 'rivets':
       return (
-        <g fill={dim} opacity="0.8">
-          {[46, 90, 134].map((y) => <circle key={y} cx="22" cy={y} r="1.4" />)}
-          {[46, 90, 134].map((y) => <circle key={`r${y}`} cx="318" cy={y} r="1.4" />)}
+        <g fill={dim} opacity="0.85">
+          {[40 + j(0, 6), 88, 136 + j(1, 6)].map((y) => <circle key={y} cx="22" cy={y} r="1.4" />)}
+          {[64, 112 + j(2, 6)].map((y) => <circle key={`m${y}`} cx="58" cy={y} r="1.2" />)}
+          {[40 + j(3, 6), 88, 136].map((y) => <circle key={`r${y}`} cx="318" cy={y} r="1.4" />)}
+          {[64 + j(4, 6), 112].map((y) => <circle key={`n${y}`} cx="282" cy={y} r="1.2" />)}
+          {v % 2 === 0 && <><line x1="14" y1="98" x2="104" y2="112" stroke={dim} strokeWidth="0.6" /><line x1="326" y1="98" x2="236" y2="112" stroke={dim} strokeWidth="0.6" /></>}
         </g>
       );
     case 'runes':
       return (
-        <g stroke={dim} strokeWidth="0.9" fill="none" opacity="0.8">
-          <path d="M 26 60 l 5 8 l -5 8 l -5 -8 z" />
-          <path d="M 314 60 l 5 8 l -5 8 l -5 -8 z" />
+        <g stroke={dim} strokeWidth="0.9" fill="none" opacity="0.85">
+          <path d={`M 26 ${52 + j(0)} l 5 8 l -5 8 l -5 -8 z`} />
+          {v % 2 === 0 && <path d={`M 56 ${96 + j(1)} v 14 m -5 -7 h 10`} />}
+          <path d={`M 314 ${52 + j(2)} l 5 8 l -5 8 l -5 -8 z`} />
+          {v % 3 !== 0 && <path d={`M 284 ${96 + j(3)} a 5 5 0 1 0 0.1 0`} />}
         </g>
       );
+    case 'bricks':
     default:
-      return null;
+      return (
+        <g stroke={dim} strokeWidth="0.6" fill="none" opacity="0.7">
+          {[54 + j(0, 8), 96, 138 + j(1, 8)].map((y, i) => (v + i) % 4 !== 3 ? <line key={`l${y}`} x1="0" y1={y} x2="104" y2={y * 0.55 + 42} /> : null)}
+          {[54, 96 + j(2, 8), 138].map((y, i) => (v + i) % 3 !== 2 ? <line key={`r${y}`} x1="340" y1={y} x2="236" y2={y * 0.55 + 42} /> : null)}
+        </g>
+      );
   }
 }
 
@@ -213,6 +260,7 @@ export function FirstPersonView() {
   const chest = room.chest && !room.chest.opened;
   const stairs = room.connections.down ? 'down' : room.connections.up ? 'up' : null;
   const dark = isDark(world);
+  const variant = roomVariant(room.id);
   const monsterKey = hostile && room.encounterKey && MONSTERS[room.encounterKey] ? room.encounterKey : null;
   const veteran = monsterKey ? (world.killCounts?.[monsterKey] ?? 0) >= 5 : false;
   const walk = (dir: Cardinal) => () => move(dir);
@@ -234,13 +282,14 @@ export function FirstPersonView() {
         <line x1="340" y1="0" x2="220" y2="64" stroke={line} strokeWidth="1.5" />
         <line x1="0" y1="214" x2="120" y2="150" stroke={line} strokeWidth="1.5" />
         <line x1="340" y1="214" x2="220" y2="150" stroke={line} strokeWidth="1.5" />
-        <SideAccents kind={theme.pattern} dim={dim} />
+        <SideAccents kind={theme.pattern} dim={dim} v={variant} />
         {/* waterline in the flooded places */}
         {theme.waterline && (
           <path d="M 0 200 q 20 -5 40 0 t 40 0 t 40 0 t 40 0 t 40 0 t 40 0 t 40 0 t 40 0" stroke={dim} strokeWidth="1.2" fill="none" opacity="0.9" />
         )}
 
-        {/* opening ahead, or the dungeon's own wallwork if walled */}
+        {/* the dungeon's own wallwork — the doorway (if any) opens through it */}
+        <FarPattern kind={theme.pattern} dim={dim} v={variant} />
         {open(ahead) ? (
           <>
             <rect className="fpv-door" x="146" y="82" width="48" height="68" fill={dk} stroke={line} strokeWidth="1.5" onClick={walk(ahead)}>
@@ -258,9 +307,7 @@ export function FirstPersonView() {
               </>
             )}
           </>
-        ) : (
-          <FarPattern kind={theme.pattern} dim={dim} />
-        )}
+        ) : null}
 
         {/* left wall doorway */}
         {open(left) && (

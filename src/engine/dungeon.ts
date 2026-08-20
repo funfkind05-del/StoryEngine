@@ -177,28 +177,46 @@ export function generateDungeon(world: WorldState, dungeonId: string): Dungeon {
       }
       if (!bridged) break; // cannot happen on a walk-connected cell set, but never loop forever
     }
-    // one locked door per floor: bar a random inter-room passage
-    const lockCandidates = roomsThisFloor.filter((rid) => {
-      const r = d.rooms[rid];
-      return Object.entries(r.connections).some(([dir]) => ['north', 'south', 'east', 'west'].includes(dir));
-    });
-    if (lockCandidates.length && rng.chance(0.7)) {
-      const rid = rng.pick(lockCandidates);
-      const r = d.rooms[rid];
-      const dirs = Object.keys(r.connections).filter((k) => ['north', 'south', 'east', 'west'].includes(k)) as ('north' | 'south' | 'east' | 'west')[];
-      if (dirs.length) {
-        const dir = rng.pick(dirs);
-        r.lockedDoor = { dir, to: r.connections[dir]!, difficulty: 12 + floor * 2, opened: false };
-        // its key lies as far across the floor as the walk allows
-        const others = roomsThisFloor.filter((o) => o !== rid);
-        if (others.length) {
-          const far = others.reduce((a, b) => {
-            const da = Math.abs(d.rooms[a].x - r.x) + Math.abs(d.rooms[a].y - r.y);
-            const db = Math.abs(d.rooms[b].x - r.x) + Math.abs(d.rooms[b].y - r.y);
-            return db > da ? b : a;
-          });
-          d.rooms[far].key = { taken: false, opensRoom: rid };
+    // one locked door per floor — but never a door that gates the whole
+    // floor at the entry, and never a key locked behind its own door.
+    // The key must sit in the region still reachable from the floor
+    // entry with the locked passage closed.
+    const floorEntry = roomsThisFloor[0];
+    if (rng.chance(0.7)) {
+      const reachableWithout = (lockRid: RoomId, lockDir: MoveDir): Set<RoomId> => {
+        const seen = new Set<RoomId>([floorEntry]);
+        const queue = [floorEntry];
+        const onFloor = new Set(roomsThisFloor);
+        while (queue.length) {
+          const cur = queue.pop()!;
+          for (const [cdir, t] of Object.entries(d.rooms[cur].connections)) {
+            if (!t || !onFloor.has(t) || seen.has(t)) continue;
+            if (cur === lockRid && cdir === lockDir) continue; // the barred passage
+            seen.add(t);
+            queue.push(t);
+          }
         }
+        return seen;
+      };
+      placeLock: for (let attempt = 0; attempt < 10; attempt++) {
+        const rid = rng.pick(roomsThisFloor);
+        const r = d.rooms[rid];
+        const dirs = Object.keys(r.connections).filter((k) => ['north', 'south', 'east', 'west'].includes(k)) as ('north' | 'south' | 'east' | 'west')[];
+        if (!dirs.length) continue;
+        const dir = rng.pick(dirs);
+        const region = reachableWithout(rid, dir);
+        // the lock room itself must stay reachable (you can reach the
+        // door) and there must be somewhere on the open side for a key
+        const keySpots = [...region].filter((o) => o !== rid);
+        if (!region.has(rid) || !keySpots.length) continue;
+        r.lockedDoor = { dir, to: r.connections[dir]!, difficulty: 12 + floor * 2, opened: false };
+        const far = keySpots.reduce((a, b) => {
+          const da = Math.abs(d.rooms[a].x - r.x) + Math.abs(d.rooms[a].y - r.y);
+          const db = Math.abs(d.rooms[b].x - r.x) + Math.abs(d.rooms[b].y - r.y);
+          return db > da ? b : a;
+        });
+        d.rooms[far].key = { taken: false, opensRoom: rid };
+        break placeLock;
       }
     }
     // a lorebook somewhere on the floor
