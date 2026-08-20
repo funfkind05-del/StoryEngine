@@ -42,12 +42,13 @@ function MomentBanner() {
   const m = world.pendingMoment;
   if (!m || world.combat) return null;
   const npc = world.characters[m.npcId];
+  const other = m.banterWith ? world.characters[m.banterWith] : null;
   return (
     <div className="encounter-banner" style={{ borderColor: 'var(--info)', background: '#16222a' }}>
       <div className="row">
-        <b style={{ color: 'var(--info)' }}>🗨 {npc.name} wants a word</b>
+        <b style={{ color: 'var(--info)' }}>🗨 {other ? `${npc.name} and ${other.name} are talking` : `${npc.name} wants a word`}</b>
         <span className="grow dim small">({m.teaser})</span>
-        <button className="primary" onClick={() => void hearMoment()}>Hear them out</button>
+        <button className="primary" onClick={() => void hearMoment()}>{other ? 'Listen in' : 'Hear them out'}</button>
         <button onClick={dismissMoment}>Not now</button>
       </div>
     </div>

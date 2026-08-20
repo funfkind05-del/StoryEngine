@@ -66,6 +66,8 @@ export function migrateWorld(world: WorldState): WorldState {
   world.achievements ??= [];
   world.doomEnabled ??= true;
   world.eventArchive ??= [];
+  world.rivals ??= [];
+  world.resurrectionRule ??= 'safe';
   world.writingStats ??= {};
   if (!world.quests) {
     world.quests = {};

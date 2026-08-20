@@ -7,6 +7,7 @@ import { MONSTERS } from './monsters';
 import { Rng, randomSeed } from './rng';
 import { generateBackgroundNpc } from './npc';
 import { logEvent, partyMembers } from './world';
+import { maybeElevateElite } from './rivals';
 
 /** Build a dungeon encounter for the current room. */
 export function generateDungeonEncounter(world: WorldState, seed?: number): PendingEncounter | { error: string } {
@@ -54,6 +55,7 @@ export function generateDungeonEncounter(world: WorldState, seed?: number): Pend
     locationId: d.entranceLocation,
     roomId: room.id,
   };
+  if (!room.isBossRoom) maybeElevateElite(world, enc, rng);
   world.pendingEncounter = enc;
   logEvent(world, 'encounter.generated', { seed: s, monsters, room: room.id }, `Encounter in ${room.name}: ${desc}. (seed ${s})`, { seed: s });
   return enc;
@@ -108,14 +110,16 @@ export function rollCityEncounter(world: WorldState): SimEvent | null {
       const pickEntry = rng.pick(table);
       const count = rng.int(1, pickEntry.countMax);
       const desc = `${count} ${MONSTERS[pickEntry.key].name}${count > 1 ? 's' : ''}`;
-      world.pendingEncounter = {
+      const cityEnc: PendingEncounter = {
         seed,
         description: desc,
         monsters: [{ templateKey: pickEntry.key, count }],
         source: 'city',
         locationId: loc.id,
       };
-      return logEvent(world, 'encounter.city', { seed, hostile: true, desc }, `Trouble near ${loc.name}: ${desc} moving in on the party. (seed ${seed})`, { seed, location: loc.id });
+      maybeElevateElite(world, cityEnc, rng);
+      world.pendingEncounter = cityEnc;
+      return logEvent(world, 'encounter.city', { seed, hostile: true, desc: cityEnc.description }, `Trouble near ${loc.name}: ${cityEnc.description} moving in on the party. (seed ${seed})`, { seed, location: loc.id });
     }
   }
   if (kind === 'social') {

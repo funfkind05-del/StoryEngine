@@ -9,6 +9,7 @@ import type { CharacterId, WorldState } from './types';
 import { Rng } from './rng';
 import { levelUpAvailable } from './rules';
 import { haremMomentHook } from './romance';
+import { banterTopic } from './banter';
 
 export interface CompanionMoment {
   npcId: CharacterId;
@@ -16,6 +17,8 @@ export interface CompanionMoment {
   hook: string;
   /** short teaser for the banner */
   teaser: string;
+  /** set when this is a two-companion banter the MC overhears */
+  banterWith?: CharacterId;
 }
 
 interface Candidate {
@@ -70,6 +73,15 @@ export function maybeCompanionMoment(world: WorldState): CompanionMoment | null 
   if (!companions.length) return null;
   const rng = new Rng((world.masterSeed ^ (world.time.day * 131071 + world.time.minute)) >>> 0);
   if (!rng.chance(0.25)) return null;
+  // sometimes it's two of them, and the MC just overhears
+  if (companions.length >= 2 && rng.chance(0.35)) {
+    const a = rng.pick(companions);
+    const b = rng.pick(companions.filter((x) => x.id !== a.id));
+    const t = banterTopic(world, a, b, rng);
+    world.lastMomentDay = world.time.day;
+    world.pendingMoment = { npcId: a.id, banterWith: b.id, hook: t.topic, teaser: t.teaser };
+    return world.pendingMoment;
+  }
   const c = rng.pick(companions);
   const cands = candidatesFor(world, c.id);
   const total = cands.reduce((s, x) => s + x.weight, 0);

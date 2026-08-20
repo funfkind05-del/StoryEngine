@@ -91,6 +91,7 @@ export function TalkModal() {
   if (!talk) return null;
   const npc = world.characters[talk.npcId];
   const pov = world.characters[talk.povId];
+  const other = talk.banterWith ? world.characters[talk.banterWith] : null;
 
   const send = () => {
     if (!input.trim() || talk.busy) return;
@@ -103,8 +104,9 @@ export function TalkModal() {
       <div className="modal" style={{ width: 'min(700px, 94vw)' }}>
         <div className="modal-head">
           <CharacterPortrait charId={npc.id} size={38} world={world} />
-          {npc.name}
-          <span className="dim small">{npc.occupation} · {npc.personality.join(', ')}</span>
+          {other && <CharacterPortrait charId={other.id} size={38} world={world} />}
+          {other ? `${npc.name} & ${other.name}` : npc.name}
+          <span className="dim small">{other ? 'a conversation you were meant to overhear' : `${npc.occupation} · ${npc.personality.join(', ')}`}</span>
           <span className="grow" />
           <button onClick={() => setShowSettings(!showSettings)}>⚙ LLM</button>
         </div>
@@ -113,18 +115,18 @@ export function TalkModal() {
           <div ref={logRef} className="chat-log">
             {talk.messages.length === 0 && (
               <p className="dim small">
-                You speak as {pov.name}. The model plays {npc.name}, primed only with what {npc.name}
-                {' '}knows, remembers, and feels — world truth stays hidden. Nothing becomes canon
-                unless you keep it.
+                {other
+                  ? `${npc.name} and ${other.name} are talking within earshot. The model plays both voices; anything you type is ${pov.name} joining in. Keep it and they both remember it.`
+                  : `You speak as ${pov.name}. The model plays ${npc.name}, primed only with what ${npc.name} knows, remembers, and feels — world truth stays hidden. Nothing becomes canon unless you keep it.`}
               </p>
             )}
             {talk.messages.map((m, i) => (
               <div key={i} className={`chat-line ${m.role === 'user' ? 'pov' : 'npc'}`}>
-                <div className="who">{m.role === 'user' ? pov.name : npc.name}</div>
+                <div className="who">{m.role === 'user' ? pov.name : other ? `${npc.name} & ${other.name}` : npc.name}</div>
                 <div>{m.content}</div>
               </div>
             ))}
-            {talk.busy && <div className="chat-line npc"><div className="who">{npc.name}</div><div className="dim">…</div></div>}
+            {talk.busy && <div className="chat-line npc"><div className="who">{other ? `${npc.name} & ${other.name}` : npc.name}</div><div className="dim">…</div></div>}
             {talk.error && <div className="warn">{talk.error}</div>}
           </div>
           <div className="row">

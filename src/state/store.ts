@@ -60,7 +60,8 @@ import { checkAchievements } from '../engine/achievements';
 import { giveGift, spendTimeWith } from '../engine/romance';
 import { autoResolve, autoRound } from '../engine/combat';
 import { compactEvents, recordWritingStats } from '../engine/compile';
-import { spendAttributePoint } from '../engine/progression';
+import { chooseAscension, identifyItem as identifyItemEngine, spendAttributePoint } from '../engine/progression';
+import { buildBanterPrompt, rememberBanter } from '../engine/banter';
 import { activeSlot, deleteBook, newBookSlot, renameBook, setActiveSlot, touchBook } from '../engine/books';
 import { draftScene } from '../engine/proseLlm';
 import { reorderScene } from '../engine/world';
@@ -103,6 +104,8 @@ interface AppState {
     error: string | null;
     /** companion-moment context appended to the system prompt */
     hook?: string;
+    /** second companion — a two-voice banter scene the MC overhears */
+    banterWith?: string;
   } | null;
 
   commit: (opts?: { autosave?: string }) => void;
@@ -182,6 +185,9 @@ interface AppState {
 
   // world rules & maintenance
   setDoomEnabled: (on: boolean) => void;
+  setResurrectionRule: (rule: 'safe' | 'risky') => void;
+  identifyItem: (itemId: string) => void;
+  ascend: (charId: string, pathKey: string) => void;
   compactLog: () => void;
 
   // companion moments
@@ -705,6 +711,27 @@ export const useStore = create<AppState>((set, get) => ({
     commit();
   },
 
+  setResurrectionRule: (rule) => {
+    const { world, commit } = get();
+    world.resurrectionRule = rule;
+    commit();
+  },
+
+  identifyItem: (itemId) => {
+    const { world, commit, setToast } = get();
+    const err = identifyItemEngine(world, itemId);
+    if (err) setToast(err);
+    else setToast(`Identified: ${world.items[itemId]?.name}`);
+    commit();
+  },
+
+  ascend: (charId, pathKey) => {
+    const { world, commit, setToast } = get();
+    const err = chooseAscension(world, charId, pathKey);
+    if (err) setToast(err);
+    commit({ autosave: err ? undefined : 'Ascension' });
+  },
+
   compactLog: () => {
     const { world, commit, setToast } = get();
     const res = compactEvents(world);
@@ -720,6 +747,23 @@ export const useStore = create<AppState>((set, get) => ({
     world.pendingMoment = null;
     const npc = world.characters[m.npcId];
     const pov = world.characters[world.mcId];
+    if (m.banterWith) {
+      // two-voice scene: the model plays both companions at once
+      set({ talk: { npcId: m.npcId, povId: world.mcId, messages: [], busy: true, error: null, hook: m.hook, banterWith: m.banterWith } });
+      commit();
+      try {
+        const prompt = buildBanterPrompt(world, m.npcId, m.banterWith, m.hook);
+        const reply = await chatWithNpc({ ...loadLlmConfig(), temperature: 0.9 }, prompt);
+        const cur = get().talk;
+        if (!cur || cur.npcId !== m.npcId) return;
+        set({ talk: { ...cur, messages: [{ role: 'assistant', content: reply }], busy: false } });
+      } catch {
+        const cur = get().talk;
+        const other = world.characters[m.banterWith];
+        if (cur) set({ talk: { ...cur, messages: [{ role: 'assistant', content: `*${npc.name} and ${other?.name} are talking in low voices nearby — you catch your own name in it.*` }], busy: false } });
+      }
+      return;
+    }
     set({ talk: { npcId: m.npcId, povId: world.mcId, messages: [], busy: true, error: null, hook: m.hook } });
     commit();
     try {
@@ -830,8 +874,10 @@ export const useStore = create<AppState>((set, get) => ({
     const messages: ChatMessage[] = [...talk.messages, { role: 'user', content: text.trim() }];
     set({ talk: { ...talk, messages, busy: true, error: null } });
     try {
-      const system = buildNpcSystemPrompt(world, talk.npcId, talk.povId)
-        + (talk.hook ? `\n\n=== RIGHT NOW ===\n${talk.hook}` : '');
+      const system = talk.banterWith
+        ? buildBanterPrompt(world, talk.npcId, talk.banterWith, talk.hook ?? '')[0].content
+        : buildNpcSystemPrompt(world, talk.npcId, talk.povId)
+          + (talk.hook ? `\n\n=== RIGHT NOW ===\n${talk.hook}` : '');
       const reply = await chatWithNpc(loadLlmConfig(), [{ role: 'system', content: system }, ...messages]);
       const cur = get().talk;
       if (!cur || cur.npcId !== talk.npcId) return; // conversation was closed meanwhile
@@ -864,6 +910,14 @@ export const useStore = create<AppState>((set, get) => ({
     if (!talk) return;
     set({ talk: null });
     if (!remember || talk.messages.length === 0) return;
+    if (talk.banterWith) {
+      // both companions remember the exchange; it happened in earshot of the MC
+      addMinutes(world, Math.max(10, talk.messages.length * 5));
+      const firstLine = talk.messages.find((m) => m.role === 'assistant')?.content.split('\n')[0] ?? 'an exchange on the road';
+      rememberBanter(world, talk.npcId, talk.banterWith, firstLine.slice(0, 140));
+      commit({ autosave: 'Banter kept' });
+      return;
+    }
     const npc = world.characters[talk.npcId];
     const pov = world.characters[talk.povId];
     // conversations take time: ~5 minutes per exchange
@@ -1056,10 +1110,14 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   equip: (itemId) => {
-    const { world, commit } = get();
+    const { world, commit, setToast } = get();
     const item = world.items[itemId];
     const owner = item?.owner ? world.characters[item.owner] : null;
     if (!item || !owner || item.slot === 'none') return;
+    if (item.unidentified) {
+      setToast('The enchantment is unread — identify it before trusting it on your body.');
+      return;
+    }
     const prev = owner.equipment[item.slot];
     if (prev) {
       const prevItem = world.items[prev];

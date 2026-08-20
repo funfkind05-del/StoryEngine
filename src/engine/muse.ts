@@ -11,6 +11,7 @@ import type { Character, Quest, WorldState } from './types';
 import { CLASSES, calendarLabel, fmtMoney, levelUpAvailable, seasonOf } from './rules';
 import { questProgress } from './quests';
 import { latestRevelation, mainQuests } from './campaign';
+import { livingRivals } from './rivals';
 import { chatWithNpc, type ChatMessage, type LlmConfig } from './npcChat';
 
 export interface StoryIdea {
@@ -347,6 +348,17 @@ function campaignIdeas(world: WorldState): StoryIdea[] {
   return ideas;
 }
 
+function rivalIdeas(world: WorldState): StoryIdea[] {
+  return livingRivals(world).slice(0, 1).map((r) => ({
+    kind: 'rival',
+    title: `${r.name} is still out there`,
+    pitch: `${r.name} escaped the party ${r.grudge > 1 ? `${r.grudge} times` : 'once'} and has grown stronger for it (power ${r.power}${r.scars.length ? `; carries ${r.scars[r.scars.length - 1]}` : ''}). Rivals are chapters that hunt you: a sighting, a message, an ambush at the worst hour — or the party hunting first.`,
+    grounding: [`Rival ${r.name} (${r.templateKey}), power ${r.power}, last seen Day ${r.lastSeenDay}`, ...r.scars.map((sc) => `Scar: ${sc}`)],
+    urgency: 6 + Math.min(3, r.power),
+    outline: `${r.name} resurfaces — on its terms or the party's. The scar you gave it is part of how it fights now.`,
+  }));
+}
+
 function giverName(world: WorldState, q: Quest): string {
   return q.giver === 'board' ? 'the notice board' : world.characters[q.giver]?.name ?? q.giver;
 }
@@ -355,6 +367,7 @@ function giverName(world: WorldState, q: Quest): string {
 export function generateStoryIdeas(world: WorldState): StoryIdea[] {
   const all = [
     ...campaignIdeas(world),
+    ...rivalIdeas(world),
     ...deadlineIdeas(world),
     ...factionIdeas(world),
     ...relationshipIdeas(world),

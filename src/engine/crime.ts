@@ -7,7 +7,7 @@
 
 import type { WorldState } from './types';
 import { Rng, randomSeed } from './rng';
-import { addMinutes, logEvent, partyMembers, relationshipBetween } from './world';
+import { addMinutes, logEvent, partyMembers, reactToAct, relationshipBetween } from './world';
 import { addToContainer, fmtMoney, makeItem } from './rules';
 import { trainSkill } from './progression';
 
@@ -30,6 +30,7 @@ export function pickpocket(world: WorldState, targetId: string): string | null {
     target.money -= take;
     mc.money += take;
     logEvent(world, 'crime.pickpocket', { target: target.id, take, roll }, `${mc.name} lifted ${fmtMoney(take)} from ${target.name}'s purse, clean. (roll ${roll})`, { location: world.partyLocation });
+    partyJudgesCrime(world, `${mc.name} picked ${target.name}'s pocket`);
     return null;
   }
   // caught
@@ -74,6 +75,7 @@ export function burgleShop(world: WorldState, locId: string): string | null {
     }
     mc.money += coin;
     logEvent(world, 'crime.burglary', { shop: locId, taken, coin }, `${mc.name} went through ${loc.name} in the dark: ${fmtMoney(coin)}${taken.length ? ` and ${taken.join(', ')}` : ''}. Nobody saw. Yet.`, { location: locId });
+    partyJudgesCrime(world, `${mc.name} burgled ${loc.name}`);
     return null;
   }
   const fine = 150 + watch * 20;
@@ -95,6 +97,16 @@ export function maybePatrolStop(world: WorldState): boolean {
   if (!rng.chance(Math.min(0.5, (bounty / 1000) + watch * 0.04))) return false;
   queueArrest(world, rng);
   return true;
+}
+
+/** The party has opinions about how you make your money. */
+function partyJudgesCrime(world: WorldState, description: string) {
+  const mc = world.characters[world.mcId];
+  for (const c of partyMembers(world)) {
+    if (c.id === mc.id) continue;
+    reactToAct(world, c.id, mc.id, { tags: ['cunning', 'freedom'], magnitude: 1, description });
+    reactToAct(world, c.id, mc.id, { tags: ['honesty', 'kindness', 'faith'], magnitude: -2, description });
+  }
 }
 
 function queueArrest(world: WorldState, rng: Rng) {

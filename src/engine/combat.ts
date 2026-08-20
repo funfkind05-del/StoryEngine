@@ -40,6 +40,8 @@ import { generateLoot } from './loot';
 import { checkQuests } from './quests';
 import { affixMod, trainSkill } from './progression';
 import { resolveWorldEventVictory } from './worldEvents';
+import { makeEliteCombatant, settleElites } from './rivals';
+import { driftCompanionBonds } from './banter';
 
 export interface SkillDef {
   name: string;
@@ -177,6 +179,8 @@ export function startCombat(world: WorldState, enc: PendingEncounter): CombatSta
       });
     }
   }
+  const eliteMon = makeEliteCombatant(world, enc, nextId(world, 'MON'));
+  if (eliteMon) monsters.push(eliteMon);
   const combat: CombatState = {
     active: true,
     round: 1,
@@ -457,7 +461,8 @@ function swingAt(
   const toHit = roll + c.attack + c.accuracy + weaponSkill + (skill?.toHitMod ?? 0) + statusAttackMod(c)
     + (world.needsEnabled ? needsAttackMod(c) : 0) + injuryAttackMod(c) + affixMod(world, c, 'attack');
   const detail = skill ? skill.name : w0?.name ?? 'bare hands';
-  if (roll !== 20 && (roll === 1 || toHit < t.defense)) {
+  const targetDefense = t.defense + (m.elite?.defenseBonus ?? 0);
+  if (roll !== 20 && (roll === 1 || toHit < targetDefense)) {
     record({ round: combat.round, actor: c.id, actorName: c.name, action: skill ? 'skill' : 'attack', targetName: m.name, detail, roll, result: 'miss', text: `${c.name} ${skill ? `used ${skill.name} against` : 'attacked'} ${m.name} and missed. (roll ${roll})` });
     return;
   }
@@ -558,12 +563,12 @@ function resolveMonsterAction(
   if (!target || target.hp.current <= 0) return;
   const roll = rng.die(20);
   const defBonus = combat.defending.includes(target.id) ? 4 : 0;
-  const toHit = roll + t.attack;
+  const toHit = roll + t.attack + (m.elite?.attackBonus ?? 0);
   if (roll !== 20 && (roll === 1 || toHit < charDefense(world, target) + defBonus)) {
     record({ round: combat.round, actor: m.id, actorName: m.name, action: 'attack', targetName: target.name, detail: 'attack', roll, result: 'miss', text: `${m.name} attacked ${target.name} and missed. (roll ${roll})` });
     return;
   }
-  let dmg = Math.max(1, rng.roll(t.damage) - target.armor);
+  let dmg = Math.max(1, rng.roll(t.damage) + Math.floor((m.elite?.attackBonus ?? 0) / 2) - target.armor);
   let heavyNote = '';
   if (m.charging) {
     m.charging = false;
@@ -577,9 +582,10 @@ function resolveMonsterAction(
   }
   target.hp.current = Math.max(0, target.hp.current - dmg);
   let inflictNote = '';
-  if (t.inflicts && target.hp.current > 0 && rng.chance(t.inflicts.chance) && !hasStatus(target, t.inflicts.status)) {
-    applyStatus(target, t.inflicts.status, undefined, m.name);
-    if (hasStatus(target, t.inflicts.status)) inflictNote = ` ${target.name} is ${t.inflicts.status}!`;
+  const inflicts = m.elite?.inflicts ?? t.inflicts;
+  if (inflicts && target.hp.current > 0 && rng.chance(inflicts.chance) && !hasStatus(target, inflicts.status)) {
+    applyStatus(target, inflicts.status, undefined, m.name);
+    if (hasStatus(target, inflicts.status)) inflictNote = ` ${target.name} is ${inflicts.status}!`;
   }
   record({ round: combat.round, actor: m.id, actorName: m.name, action: 'attack', targetName: target.name, detail: 'attack', roll, result: 'hit', damage: dmg, statusApplied: inflictNote ? t.inflicts!.status : undefined, text: `${m.name} hit ${target.name} for ${dmg} damage.${heavyNote}${inflictNote}` });
   downCheck(world, target, record, combat.round);
@@ -593,7 +599,7 @@ function checkOutcome(world: WorldState, combat: CombatState, rng: Rng, record: 
     combat.outcome = 'victory';
     combat.active = false;
     const killed = combat.monsters.filter((m) => !m.alive);
-    const xp = killed.reduce((s, m) => s + MONSTERS[m.templateKey].xp, 0);
+    const xp = killed.reduce((s, m) => s + MONSTERS[m.templateKey].xp * (m.elite ? 2 : 1), 0);
     combat.pendingLoot = generateLoot(world, killed.map((m) => m.templateKey), rng.fork(), xp);
     record({ round: combat.round, actor: 'SYSTEM', actorName: 'System', action: 'attack', detail: 'victory', result: 'info', text: `Victory. ${killed.length} enemies slain, ${combat.monsters.filter((m) => m.fled).length} fled. XP earned: ${xp} (full award to each participant).` });
     finishCombat(world, combat);
@@ -670,6 +676,8 @@ function finishCombat(world: WorldState, combat: CombatState) {
     }
     logEvent(world, 'faction.rep', { faction: fac, delta: -n, why: 'blood spilled' }, `${world.factions[fac]?.name ?? fac} will hear about their dead (reputation -${n}).`);
   }
+  settleElites(world, combat.monsters, combat.outcome, new Rng((combat.seed ^ 0x51ed) >>> 0));
+  if (combat.outcome === 'victory') driftCompanionBonds(world, combat.partyIds, new Rng((combat.seed ^ 0xb0bd) >>> 0));
   checkQuests(world);
   resolveWorldEventVictory(world, combat.outcome);
   logEvent(

@@ -84,6 +84,10 @@ function checkInvariants(w: WorldState, step: number, action: string, deep: bool
       fail(`${c.name} needs out of range: hunger ${c.needs.hunger}, fatigue ${c.needs.fatigue}`);
     }
     if (!c.alive && c.inParty && w.deathRule === 'story') fail(`dead ${c.name} still in party under story mode`);
+    if (c.remains && c.alive) fail(`${c.name} is alive but has remains='${c.remains}'`);
+    if (c.age < 1 || c.age > 400 || !Number.isFinite(c.age)) fail(`${c.name} age out of range: ${c.age}`);
+    if (c.birthDay !== undefined && (c.birthDay < 0 || c.birthDay >= 360)) fail(`${c.name} birthDay out of range: ${c.birthDay}`);
+    if (c.ascension && c.level < 25) fail(`${c.name} ascended (${c.ascension}) below level 25`);
     if (!w.locations[c.location] && !c.location.startsWith('ROOM')) fail(`${c.name} at unknown location ${c.location}`);
     // inventory backrefs
     for (const iid of c.inventory) {
@@ -129,6 +133,13 @@ function checkInvariants(w: WorldState, step: number, action: string, deep: bool
     if (!w.combat.active && w.combat.outcome === 'ongoing') fail('inactive combat still ongoing');
   }
   if ((w.bounty ?? 0) < 0) fail('negative bounty');
+  for (const r of w.rivals ?? []) {
+    if (!r.name || r.power < 0 || r.grudge < 0) fail(`malformed rival ${r.id}: power ${r.power}, grudge ${r.grudge}`);
+  }
+  for (const it of Object.values(w.items)) {
+    if (it.unidentified && it.equippedBy) fail(`${it.name} equipped by ${it.equippedBy} while unidentified`);
+    if (it.affix2 && !it.affix) fail(`${it.name} has affix2 without affix`);
+  }
   for (const id of w.codex ?? []) {
     if (!loreById(id)) fail(`codex holds unknown lore id ${id}`);
   }
@@ -463,6 +474,7 @@ describe(`burn test (${SEEDS} seeds × ${ITERS} actions, offset ${OFFSET})`, () 
       w.encounterFrequency = 'chaotic';
       if (seedIdx % 3 === 1) w.deathRule = 'classic';
       if (seedIdx % 3 === 2) w.encumbrance = 'off';
+      if (seedIdx % 2 === 0) w.resurrectionRule = 'risky';
       const rng = new Rng(90000 + seedIdx);
       let lastClock = w.time.day * 1440 + w.time.minute;
       let combats = 0;

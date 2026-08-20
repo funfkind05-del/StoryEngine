@@ -16,6 +16,7 @@ import {
   fmtMoney,
   hasRoomFor,
   levelUpAvailable,
+  dominantFaction,
   shopPriceMult,
   makeItem,
   performTempleService,
@@ -34,6 +35,11 @@ export function buyFromShop(world: WorldState, locId: LocationId, entryIdx: numb
   const entry = loc.shop?.stock[entryIdx];
   if (!loc.shop || !entry) return 'No such ware.';
   if (entry.qty <= 0) return 'Sold out.';
+  if (entry.minRep) {
+    const fac = dominantFaction(world, locId);
+    const rep = fac ? buyer.factionReputation[fac] ?? 0 : 0;
+    if (rep < entry.minRep) return `The shopkeep glances at the back room and shakes their head. "That piece is spoken for." (Needs standing ${entry.minRep}+ with whoever runs this street.)`;
+  }
   const mult = shopPriceMult(world, locId, buyer);
   if (mult === Infinity) return `They look at ${buyer.name} and shake their head. Your coin's no good here — not with the company you've crossed.`;
   const price = Math.round(entry.price * mult);
@@ -138,12 +144,31 @@ export function buyTempleService(world: WorldState, locId: LocationId, svcKey: s
   if (!svc || !target) return 'No such rite.';
   if (svc.needsDead && target.alive) return `${target.name} is not dead.`;
   if (!svc.needsDead && !target.alive) return `${target.name} is beyond this rite; only resurrection can help.`;
+  if (svc.key === 'resurrection' && target.remains === 'beyondRecall') return `The priests lay a hand on the urn and take it back. ${target.name} is beyond recall — no rite reaches that far.`;
   const templeFaction = Object.keys(loc.factionInfluence).sort((a, b) => loc.factionInfluence[b] - loc.factionInfluence[a])[0] ?? null;
-  const price = templePrice(world, svc, payer, templeFaction);
+  let price = templePrice(world, svc, payer, templeFaction);
   if (price === Infinity) return 'The priests will not serve you. Your name is known here, and not kindly.';
+  // raising ashes is delicate work
+  if (svc.key === 'resurrection' && target.remains === 'ashes') price = Math.round(price * 1.5);
   if (payer.money < price) return `Not enough coin (${fmtMoney(price)}).`;
   payer.money -= price;
   addMinutes(world, 30);
+  // under risky rules, resurrection is a CON gamble (the Wizardry clause)
+  if (svc.key === 'resurrection' && world.resurrectionRule === 'risky') {
+    const rng = new Rng(randomSeed());
+    const chance = Math.min(0.95, Math.max(0.2, 0.55 + (target.attributes.constitution - 10) * 0.04 - (target.remains === 'ashes' ? 0.15 : 0)));
+    if (!rng.chance(chance)) {
+      if (target.remains === 'ashes') {
+        target.remains = 'beyondRecall';
+        logEvent(world, 'temple.resurrection.lost', { target: target.id, price }, `The rite over the ashes failed. What was ${target.name} scattered on the altar wind — beyond recall now, and forever. The coin stays with the god.`, { location: locId, witnesses: partyMembers(world).map((c) => c.id) });
+        return null;
+      }
+      target.remains = 'ashes';
+      logEvent(world, 'temple.resurrection.failed', { target: target.id, price }, `The rite failed. ${target.name}'s body sank into grey ash on the slab. One rite remains — costlier, and crueler if it fails.`, { location: locId, witnesses: partyMembers(world).map((c) => c.id) });
+      return null;
+    }
+    target.remains = undefined;
+  }
   const line = performTempleService(svc.key, target);
   logEvent(world, 'temple.service', { service: svc.key, target: target.id, price }, `${svc.label} at ${loc.name} for ${fmtMoney(price)}: ${line}`, { location: locId, witnesses: partyMembers(world).map((c) => c.id) });
   return null;

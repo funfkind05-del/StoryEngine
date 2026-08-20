@@ -38,6 +38,7 @@ import { loadLlmConfig } from '../engine/npcChat';
 import { MONSTERS } from '../engine/monsters';
 import { CARRIAGE_STOPS } from '../engine/services';
 import { RECIPES, canCraft } from '../engine/crafting';
+import { ascensionOptions } from '../engine/progression';
 import { LOREBOOKS, loreById } from '../engine/codex';
 import { ACHIEVEMENTS } from '../engine/achievements';
 import {
@@ -174,6 +175,14 @@ function LocationPanel() {
             if (!proto) return null;
             const mult = shopPriceMult(world, loc.id, mc);
             const price = mult === Infinity ? entry.price : Math.round(entry.price * mult);
+            const fac = dominantFaction(world, loc.id);
+            const locked = !!entry.minRep && (fac ? mc.factionReputation[fac] ?? 0 : 0) < entry.minRep;
+            if (locked) return (
+              <div key={entry.proto} className="row small">
+                <span className="grow dim">{proto.name}</span>
+                <span className="dim small" title={`Under the counter — needs standing ${entry.minRep}+ with ${world.factions[fac ?? '']?.name ?? 'the street'}.`}>🔒 rep {entry.minRep}+</span>
+              </div>
+            );
             return (
               <div key={entry.proto} className="row small">
                 <span className="grow" style={{ color: tierColor(proto.tier) }}>
@@ -610,6 +619,7 @@ function PartyPanel() {
   const world = useStore((s) => s.world);
   const openTalk = useStore((s) => s.openTalk);
   const spendPoint = useStore((s) => s.spendPoint);
+  const ascend = useStore((s) => s.ascend);
   const party = Object.values(world.characters).filter((c) => c.inParty && c.alive);
   return (
     <div>
@@ -618,7 +628,7 @@ function PartyPanel() {
         <div key={c.id} className="card">
           <div className="row" style={{ flexWrap: 'nowrap' }}>
             <CharacterPortrait charId={c.id} size={40} world={world} />
-            <span className="name grow">{c.name} <span className="dim small">{CLASSES[c.charClass].label}</span></span>
+            <span className="name grow">{c.name} <span className="dim small">{c.title ? `${c.title} · ` : ''}{CLASSES[c.charClass].label}</span></span>
             <span className="mono dim">L{c.level} · {c.xp}/{xpForLevel(c.level)} xp</span>
             {!c.isMC && !world.combat && <button onClick={() => openTalk(c.id)}>🗨 Talk</button>}
           </div>
@@ -626,6 +636,14 @@ function PartyPanel() {
             <div>{c.injuries.filter((i) => !i.treated).map((i, idx) => <Tag key={idx} tone="red">{i.name} ({i.stat} {i.amount})</Tag>)}</div>
           )}
           {levelUpAvailable(c) && <Tag tone="gold">LEVEL AVAILABLE — trainer: {CLASSES[c.charClass].trainer}</Tag>}
+          {ascensionOptions(c).length > 0 && (
+            <div className="row small">
+              <Tag tone="gold">ASCENSION OPEN — the rite waits at the {CLASSES[c.charClass].trainer}</Tag>
+              {ascensionOptions(c).map((path) => (
+                <button key={path.key} onClick={() => ascend(c.id, path.key)} title={`${path.blurb} (${fmtMoney(2000)}, at the class hall)`}>{path.label}</button>
+              ))}
+            </div>
+          )}
           {(c.attributePoints ?? 0) > 0 && (
             <div className="row small">
               <Tag tone="gold">{c.attributePoints} attribute point{c.attributePoints === 1 ? '' : 's'}</Tag>
@@ -674,6 +692,7 @@ function ItemCard({ iid, ownerChar }: { iid: string; ownerChar?: string }) {
   const unpoolItem = useStore((s) => s.unpoolItem);
   const homeDeposit = useStore((s) => s.homeDeposit);
   const homeWithdraw = useStore((s) => s.homeWithdraw);
+  const identify = useStore((s) => s.identifyItem);
   const it = world.items[iid];
   if (!it) return null;
   const equipped = !!ownerChar && it.equippedBy === ownerChar;
@@ -685,7 +704,7 @@ function ItemCard({ iid, ownerChar }: { iid: string; ownerChar?: string }) {
     <div className="card">
       <div className="row">
         <span className="grow" style={{ color: tierColor(it.tier) }}>
-          {it.name}{it.stackable ? ` ×${it.qty ?? 1}` : ''} {it.broken && <Tag tone="red">broken</Tag>} {equipped && <Tag tone="green">equipped</Tag>} {it.tier && it.tier !== 'mundane' && <Tag>{it.tier}</Tag>}
+          {it.name}{it.stackable ? ` ×${it.qty ?? 1}` : ''} {it.broken && <Tag tone="red">broken</Tag>} {equipped && <Tag tone="green">equipped</Tag>} {it.tier && it.tier !== 'mundane' && <Tag>{it.tier}</Tag>} {it.unidentified && <Tag tone="gold">unidentified ✦</Tag>}
         </span>
         <span className="mono dim">{fmtMoney(it.value)}</span>
       </div>
@@ -693,9 +712,13 @@ function ItemCard({ iid, ownerChar }: { iid: string; ownerChar?: string }) {
         {it.kind}{it.damage ? ` · dmg ${it.damage}` : ''}{it.defense ? ` · def +${it.defense}` : ''}
         {it.healing ? ` · heals ${it.healing}` : ''}
         {it.durability ? ` · durability ${it.durability.current}/${it.durability.max}` : ''}
+        {!it.unidentified && it.affix ? ` · ${it.affix.name} (+${it.affix.amount} ${it.affix.stat})` : ''}
+        {!it.unidentified && it.affix2 ? ` · ${it.affix2.name} (+${it.affix2.amount} ${it.affix2.stat})` : ''}
       </div>
+      {it.lore && <p className="small dim" style={{ fontStyle: 'italic', margin: '4px 0 0' }}>{it.lore}</p>}
       <div className="row">
-        {ownerChar && it.slot !== 'none' && !equipped && <button onClick={() => equip(iid)}>Equip</button>}
+        {it.unidentified && <button onClick={() => identify(iid)} title="The Arcane College reads enchantments for a fee — or Kess will, once she trusts you with her past.">✦ Identify</button>}
+        {ownerChar && it.slot !== 'none' && !equipped && <button disabled={it.unidentified} title={it.unidentified ? 'Identify it first.' : undefined} onClick={() => equip(iid)}>Equip</button>}
         {equipped && <button onClick={() => unequip(iid)}>Unequip</button>}
         {(it.kind === 'potion' || it.effectKey?.startsWith('food-')) && !world.combat?.active && (inParty || ownerChar) && <button onClick={() => drinkPotion(iid)}>Use</button>}
         {ownerChar && !equipped && <button onClick={() => poolItem(iid)} title="Move to shared party supplies">→ party</button>}
@@ -1357,6 +1380,7 @@ function SavesPanel() {
   const setEncumbrance = useStore((s) => s.setEncumbrance);
   const setNeedsEnabled = useStore((s) => s.setNeedsEnabled);
   const setDoomEnabled = useStore((s) => s.setDoomEnabled);
+  const setResurrectionRule = useStore((s) => s.setResurrectionRule);
   const compactLog = useStore((s) => s.compactLog);
   return (
     <div>
@@ -1402,6 +1426,13 @@ function SavesPanel() {
         <select value={world.doomEnabled === false ? 'off' : 'on'} onChange={(e) => setDoomEnabled(e.target.value === 'on')}>
           <option value="on">Ticking{world.doom?.stage ? ` — stage ${world.doom.stage}/4` : ''}</option>
           <option value="off">Paused</option>
+        </select>
+      </div>
+      <div className="row small">
+        <label className="grow">Resurrection (temple rite for the dead)</label>
+        <select value={world.resurrectionRule ?? 'safe'} onChange={(e) => setResurrectionRule(e.target.value as 'safe' | 'risky')}>
+          <option value="safe">Safe — coin always brings them back</option>
+          <option value="risky">Risky — a CON gamble; failure leaves ashes, then nothing</option>
         </select>
       </div>
       <div className="row small">

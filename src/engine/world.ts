@@ -199,6 +199,7 @@ export function tick(world: WorldState, minutes: number): SimEvent[] {
     }
     // daily weather + world events + the Circle's clock
     if (!world.weather || world.weather.day !== world.time.day) {
+      runBirthdays(world);
       maybeSpawnWorldEvent(world);
       expireWorldEvents(world);
       doomTick(world);
@@ -299,6 +300,29 @@ export function advanceUntilMorning(world: WorldState, quality: 'bed' | 'rough' 
     }
   }
   return evts;
+}
+
+// ---------- Birthdays ----------
+/** Stable day-of-year for a character, hashed from the id. */
+export function birthDayFor(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return h % 360;
+}
+
+/** Age everyone whose day it is; party birthdays make the record. */
+export function runBirthdays(world: WorldState): void {
+  if (world.time.day === 0) return;
+  const dayOfYear = world.time.day % 360;
+  for (const c of Object.values(world.characters)) {
+    if (!c.alive) continue;
+    c.birthDay ??= birthDayFor(c.id);
+    if (c.birthDay !== dayOfYear) continue;
+    c.age += 1;
+    if (c.inParty || c.isMC) {
+      logEvent(world, 'birthday', { character: c.id, age: c.age }, `${c.name} turns ${c.age} today. ${c.isMC ? 'Another year on the ledger.' : 'The party knows, whether or not anyone admits to planning something.'}`, { witnesses: partyMembers(world).map((x) => x.id) });
+    }
+  }
 }
 
 // ---------- Relationships ----------

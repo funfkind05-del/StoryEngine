@@ -105,6 +105,8 @@ export interface ShopEntry {
   proto: string; // rules-engine prototype key
   qty: number;
   price: number; // copper
+  /** kept under the counter until your standing with the street reaches this */
+  minRep?: number;
 }
 
 export interface Shop {
@@ -152,6 +154,12 @@ export interface Item {
   quality?: 'fine' | 'superior' | 'exquisite';
   /** magical affix, e.g. "of the Fox" (+2 evasion) */
   affix?: { name: string; stat: 'attack' | 'defense' | 'critChance' | 'evasion' | 'initiative'; amount: number };
+  /** second affix — only on hot rolls; the dual-affix rares */
+  affix2?: { name: string; stat: 'attack' | 'defense' | 'critChance' | 'evasion' | 'initiative'; amount: number };
+  /** enchantment present but unread — can't be equipped until identified */
+  unidentified?: boolean;
+  /** named uniques carry a history worth putting in a book */
+  lore?: string;
   /** stackable items carry a quantity; unique items omit it */
   stackable?: boolean;
   qty?: number;
@@ -300,6 +308,12 @@ export interface Character {
   lastDateDay?: Record<CharacterId, number>;
   /** earned title, shown in stat blocks */
   title?: string;
+  /** ascension path chosen at level 25 (key into ASCENSIONS) */
+  ascension?: string;
+  /** day-of-year (0..359) this character was born; ages tick on it */
+  birthDay?: number;
+  /** what's left after a failed risky resurrection */
+  remains?: 'ashes' | 'beyondRecall';
   permanentBonuses: string[]; // human-readable, e.g. 'Blessing of the Flame: +1 WIS'
   abilities: string[]; // known skill/spell keys from the rules engine
 
@@ -365,6 +379,8 @@ export interface CombatantMonster {
   status: string[]; // 'stunned' etc.
   /** telegraphing a heavy blow next turn (interrupt with a stun, or defend) */
   charging?: boolean;
+  /** named elite data, when this one leads the pack */
+  elite?: { name: string; modifierKey: string; rivalId?: string; attackBonus: number; defenseBonus: number; inflicts?: { status: StatusKey; chance: number } };
   alive: boolean;
   fled: boolean;
 }
@@ -487,6 +503,8 @@ export interface PendingEncounter {
   seed: number;
   description: string;
   monsters: { templateKey: string; count: number }[];
+  /** a named elite leads this encounter (possibly a returning rival) */
+  elite?: { templateKey: string; name: string; modifierKey: string; rivalId?: string; power?: number };
   source: 'dungeon' | 'city';
   locationId: LocationId;
   roomId?: RoomId;
@@ -577,6 +595,8 @@ export type EncumbranceRule = 'off' | 'light' | 'full';
 
 export interface WorldState {
   deathRule: DeathRule;
+  /** 'risky' makes temple resurrection a CON gamble (Wizardry rules) */
+  resurrectionRule?: 'safe' | 'risky';
   encumbrance: EncumbranceRule;
   /** survival needs (hunger/fatigue) tracked against story time */
   needsEnabled: boolean;
@@ -601,8 +621,8 @@ export interface WorldState {
   quests: Record<string, Quest>;
   /** lifetime kill tallies per monster template (quest progress etc.) */
   killCounts: Record<string, number>;
-  /** a companion wants a word (banner → conversation) */
-  pendingMoment?: { npcId: CharacterId; hook: string; teaser: string } | null;
+  /** a companion wants a word (banner → conversation); banterWith = two-voice scene */
+  pendingMoment?: { npcId: CharacterId; hook: string; teaser: string; banterWith?: CharacterId } | null;
   lastMomentDay?: number;
   /** author-supplied art overrides per monster template (data URIs) */
   monsterArt?: Record<string, string>;
@@ -628,6 +648,8 @@ export interface WorldState {
   pendingWorldEventReward?: { id: string; reward: number; locationId: string } | null;
   /** earned achievement keys */
   achievements?: string[];
+  /** named enemies who escaped and remember (see rivals.ts) */
+  rivals?: import('./rivals').Rival[];
   /** the Ash Circle's counter-clock: advances when the spine idles */
   doom?: { stage: number; lastAdvanceDay: number };
   doomEnabled?: boolean;

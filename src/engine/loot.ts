@@ -5,7 +5,7 @@
 import type { Item, LootResult, WorldState } from './types';
 import { Rng } from './rng';
 import { nextId } from './world';
-import { rollGearMods } from './progression';
+import { maybeMakeUnique, rollGearMods } from './progression';
 import { MATERIAL_DROPS } from './crafting';
 import { makeItem as makeProtoItem } from './rules';
 
@@ -191,6 +191,7 @@ export function generateLoot(world: WorldState, monsterKeys: string[], seed: num
       if (rng.chance(entry.chance)) {
         const it = entry.make(world, rng);
         rollGearMods(rng, it, tableKey.startsWith('boss') ? 2.2 : 1);
+        if (tableKey.startsWith('boss')) maybeMakeUnique(world, rng, it);
         // avoid duplicate uniques from the same kill batch
         if (it.value > 300 && seen[it.name]) continue;
         seen[it.name] = true;
