@@ -2,6 +2,7 @@
 // state and returns warnings. It never rewrites the manuscript.
 
 import type { ContinuityWarning, Scene, WorldState } from './types';
+import { TIC_SEVERE_PER_1K, TIC_WARN_PER_1K, ticTrend } from './tics';
 
 const TOKEN_RE = /@\[([^\]]+)\]\(([A-Z]+_[A-Za-z0-9_]+)\)/g;
 
@@ -85,6 +86,26 @@ export function checkAllScenes(world: WorldState): ContinuityWarning[] {
   const warnings: ContinuityWarning[] = [];
   const ordered = [...world.scenes].sort((a, b) => a.order - b.order);
   for (const s of ordered) warnings.push(...checkScene(world, s));
+  // style audit: a per-chapter gate can't see a book-level property,
+  // so the whole-manuscript trend runs here with two thresholds
+  for (const t of ticTrend(world)) {
+    if (t.words < 200) continue;
+    const anchor = ordered.find((s) => s.chapter === t.chapter);
+    if (!anchor) continue;
+    if (t.per1k >= TIC_SEVERE_PER_1K) {
+      warnings.push({
+        sceneId: anchor.id,
+        severity: 'error',
+        message: `Chapter ${t.chapter} style: withheld-action/"Not"-fragment constructions at ${t.per1k.toFixed(2)}/1k words (${t.withheld} withheld, ${t.notFragments} "Not…") — this is the chapter's dominant move. Occupy the slot: write what IS there instead of what isn't.`,
+      });
+    } else if (t.per1k >= TIC_WARN_PER_1K) {
+      warnings.push({
+        sceneId: anchor.id,
+        severity: 'warning',
+        message: `Chapter ${t.chapter} style: restraint constructions trending at ${t.per1k.toFixed(2)}/1k words — they compound as later drafts imitate earlier prose. Worth thinning before it becomes the voice.`,
+      });
+    }
+  }
   // chronological ordering across the manuscript
   for (let i = 1; i < ordered.length; i++) {
     const prev = ordered[i - 1];

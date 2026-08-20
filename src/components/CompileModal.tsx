@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import { useStore } from '../state/store';
-import { TIC_WARN_PER_1K, ticTrend } from '../engine/tics';
+import { TIC_SEVERE_PER_1K, TIC_WARN_PER_1K, ticTrend } from '../engine/tics';
 import {
   DEFAULT_COMPILE,
   compileHtml,
@@ -21,7 +21,7 @@ function TicTrendSection() {
   return (
     <details open={worst >= TIC_WARN_PER_1K}>
       <summary>
-        Style tics (withheld action / "Not" fragments) — {worst >= TIC_WARN_PER_1K ? '⚠ trending' : 'healthy'}
+        Style tics (withheld action / "Not" fragments) — {worst >= TIC_SEVERE_PER_1K ? '✖ severe' : worst >= TIC_WARN_PER_1K ? '⚠ trending' : 'healthy'}
       </summary>
       <p className="dim small">
         Restraint constructions read as discipline in isolation and become the book's only move at

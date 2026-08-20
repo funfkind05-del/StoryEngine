@@ -384,6 +384,23 @@ describe('style-tic guard (cross-session finding from the Lotus Gate drafts)', (
     expect(ticTrend(w)[0].withheld).toBe(before);
   });
 
+  it('the continuity audit hard-flags severe chapters and warns on trending ones', async () => {
+    const { checkAllScenes } = await import('./continuity');
+    const w = freshWorld();
+    const filler = 'The lane ran crooked toward the water and the lamps were being lit one by one along it. ';
+    // trending: a few tics spread thin (≈2/1k — above warn, below severe)
+    w.scenes[0].text = filler.repeat(120) + 'He did not look at her. She did not answer. Not there. Not yet. ';
+    let found = checkAllScenes(w).filter((x) => x.message.includes('style'));
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('warning');
+    // severe: tic-saturated prose
+    w.scenes[0].text = (filler + 'He did not look at her. Not there. Not yet. She did not answer. ').repeat(12);
+    found = checkAllScenes(w).filter((x) => x.message.includes('style'));
+    expect(found).toHaveLength(1);
+    expect(found[0].severity).toBe('error');
+    expect(found[0].message).toContain('dominant move');
+  });
+
   it('every prose-producing prompt carries the occupy-the-slot budget', async () => {
     const { ANTI_TIC_PROMPT } = await import('./tics');
     const { buildDraftPrompt } = await import('./proseLlm');

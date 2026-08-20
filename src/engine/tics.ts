@@ -57,6 +57,10 @@ export function ticTrend(world: WorldState): ChapterTics[] {
 
 /** Above this combined rate a chapter is leaning on the mannerism. */
 export const TIC_WARN_PER_1K = 1.5;
+/** Above this it IS the chapter's voice — hard-flagged. Two thresholds
+ * because no single chapter looks alarming at the warn level; the peer
+ * session that used two caught the drift at chapter 2, not chapter 22. */
+export const TIC_SEVERE_PER_1K = 4.0;
 
 /**
  * The proven counter-measure for LLM drafting prompts: bans don't work;
