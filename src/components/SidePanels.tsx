@@ -2,7 +2,7 @@
 // manuscript: location, characters, party, inventory, timeline,
 // dungeon, events, relationships, continuity, household, saves.
 
-import { useRef, useState } from 'react';
+import { useRef, useState, useSyncExternalStore } from 'react';
 import { useStore, type PanelTab } from '../state/store';
 import type { Character, DungeonRoom } from '../engine/types';
 import { charactersAt, fmtTime, fmtWhen, locPath, xpForLevel } from '../engine/world';
@@ -47,6 +47,7 @@ import { deleteMusicFile, saveMusicFile } from '../engine/musicFiles';
 import { setCustomComposition, setThemeAudio, themeSource, type MusicTheme } from '../sound';
 import { festivalToday } from '../engine/festivals';
 import { AUCTION_LOCATION, getAuctionLots, isAuctionDay } from '../engine/auction';
+import { artSnapshot, getCharacterArtCached, getMonsterArtCached, subscribeArt } from '../engine/artFiles';
 import { PIT_LOCATION, isPitTrialsDay } from '../engine/tournament';
 import { LOREBOOKS, loreById } from '../engine/codex';
 import { ACHIEVEMENTS } from '../engine/achievements';
@@ -582,19 +583,20 @@ function QuestsPanel() {
 }
 
 function PortraitUpload({ charId }: { charId: string }) {
+  useSyncExternalStore(subscribeArt, artSnapshot);
   const world = useStore((s) => s.world);
   const setCharacterArt = useStore((s) => s.setCharacterArt);
   const setToast = useStore((s) => s.setToast);
   const ref = useRef<HTMLInputElement>(null);
   return (
     <>
-      <button title="Upload a portrait for this character (stored in the save)" onClick={() => ref.current?.click()}>🖼</button>
-      {world.characterArt?.[charId] && <button title="Revert to the drawn portrait" onClick={() => setCharacterArt(charId, null)}>↺</button>}
+      <button title="Upload a portrait for this character (kept in browser storage, not the save)" onClick={() => ref.current?.click()}>🖼</button>
+      {(getCharacterArtCached(charId) ?? world.characterArt?.[charId]) && <button title="Revert to the drawn portrait" onClick={() => setCharacterArt(charId, null)}>↺</button>}
       <input ref={ref} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => {
         const f = e.target.files?.[0];
         e.target.value = '';
         if (!f) return;
-        if (f.size > 400_000) { setToast('Keep portraits under 400 KB — they live inside the save file.'); return; }
+        if (f.size > 4_000_000) { setToast('Keep portraits under 4 MB per image.'); return; }
         const reader = new FileReader();
         reader.onload = () => setCharacterArt(charId, String(reader.result));
         reader.readAsDataURL(f);
@@ -1450,14 +1452,15 @@ function DiskBackupSection() {
 
 // ---------- Monster art ----------
 function MonsterArtSection() {
+  useSyncExternalStore(subscribeArt, artSnapshot);
   const world = useStore((s) => s.world);
   const setMonsterArt = useStore((s) => s.setMonsterArt);
   const setToast = useStore((s) => s.setToast);
   const [key, setKey] = useState('giant-rat');
   const fileRef = useRef<HTMLInputElement>(null);
   const onFile = (f: File) => {
-    if (f.size > 400_000) {
-      setToast('Keep monster art under 400 KB — it lives inside the save file.');
+    if (f.size > 4_000_000) {
+      setToast('Keep monster art under 4 MB per image.');
       return;
     }
     const reader = new FileReader();
@@ -1467,14 +1470,14 @@ function MonsterArtSection() {
   return (
     <>
       <h4>Monster art</h4>
-      <p className="dim small">Every monster ships with a drawn bestiary plate. Replace any of them with your own image (AI-generated or otherwise) — it's stored in the save.</p>
+      <p className="dim small">Every monster ships with a drawn bestiary plate. Replace any of them with your own image (AI-generated or otherwise). Art lives in browser storage (IndexedDB), not the save file — no size squeeze, and project exports bundle it automatically.</p>
       <div className="row">
         <MonsterPortrait templateKey={key} size={44} world={world} />
         <select value={key} onChange={(e) => setKey(e.target.value)}>
           {Object.keys(MONSTERS).map((k) => <option key={k} value={k}>{MONSTERS[k].name}</option>)}
         </select>
         <button onClick={() => fileRef.current?.click()}>Upload…</button>
-        {world.monsterArt?.[key] && <button className="danger" onClick={() => setMonsterArt(key, null)}>Use drawn plate</button>}
+        {(getMonsterArtCached(key) ?? world.monsterArt?.[key]) && <button className="danger" onClick={() => setMonsterArt(key, null)}>Use drawn plate</button>}
         <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = ''; }} />
       </div>
     </>

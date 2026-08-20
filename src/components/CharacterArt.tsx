@@ -3,6 +3,8 @@
 // accent — plus author-uploaded overrides stored in the save, same
 // pattern as monster art.
 
+import { useSyncExternalStore } from 'react';
+import { artSnapshot, getCharacterArtCached, subscribeArt } from '../engine/artFiles';
 import type { Character, WorldState } from '../engine/types';
 
 const INK = '#0e0c09';
@@ -100,7 +102,8 @@ export function CharacterPortrait({
 }) {
   const c = world.characters[charId];
   if (!c) return null;
-  const custom = world.characterArt?.[charId];
+  useSyncExternalStore(subscribeArt, artSnapshot); // re-render on art changes
+  const custom = getCharacterArtCached(charId) ?? world.characterArt?.[charId];
   if (custom) return <img src={custom} width={size} height={size} className="monster-portrait" alt={c.name} />;
   return (
     <svg viewBox="0 0 100 100" width={size} height={size} className="monster-portrait" role="img" aria-label={c.name}>

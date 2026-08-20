@@ -3,6 +3,8 @@
 // override any plate with their own image (stored in the save as a
 // data URI), so generated or commissioned art drops straight in.
 
+import { useSyncExternalStore } from 'react';
+import { artSnapshot, getMonsterArtCached, subscribeArt } from '../engine/artFiles';
 import type { WorldState } from '../engine/types';
 import { MONSTERS } from '../engine/monsters';
 
@@ -333,7 +335,8 @@ export function MonsterPortrait({
   size?: number;
   world?: WorldState;
 }) {
-  const custom = world?.monsterArt?.[templateKey];
+  useSyncExternalStore(subscribeArt, artSnapshot); // re-render on art changes
+  const custom = getMonsterArtCached(templateKey) ?? world?.monsterArt?.[templateKey];
   if (custom) {
     return <img src={custom} width={size} height={size} className="monster-portrait" alt={templateKey} />;
   }

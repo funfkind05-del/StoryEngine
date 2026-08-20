@@ -68,6 +68,7 @@ import { reorderScene } from '../engine/world';
 import { createScenesFromBeats, markOutlined, type OutlineBeat } from '../engine/outline';
 import { maybeCompanionMoment } from '../engine/moments';
 import { placeBid } from '../engine/auction';
+import { allCachedArt, collectWorldArt, deleteArt, importArtPack, initArtCache, saveArt } from '../engine/artFiles';
 import { contestArchery, contestSong, enterPitTrials } from '../engine/tournament';
 import { boardQuests, describeRoom, generateRumor, letterCandidates, rewordEncounter, rewordQuest, rumorGrounds, writeLetter } from '../engine/flavorLlm';
 import { brewAtHome, buyFirstHome, cookAtHome, fletchArrows, hostFeast, prayAtShrine, repairAtHome, sparAtHome } from '../engine/household';
@@ -154,6 +155,9 @@ interface AppState {
   eatMeal: () => void;
   setMonsterArt: (templateKey: string, dataUri: string | null) => void;
   setCharacterArt: (charId: string, dataUri: string | null) => void;
+  /** bumps whenever custom art changes so portraits re-render */
+  artVersion: number;
+  initArt: () => Promise<void>;
 
   // scenes extras
   outlineCreateScenes: (beats: OutlineBeat[], chapter: number) => number;
@@ -319,9 +323,10 @@ export const useStore = create<AppState>((set, get) => ({
   playMode: localStorage.getItem('storyengine.playmode') === '1',
   soundOn: localStorage.getItem('storyengine.sound') !== '0',
   musicOn: localStorage.getItem('storyengine.music') !== '0',
-  moveScheme: (localStorage.getItem('storyengine.movescheme') === 'relative' ? 'relative' : 'compass') as 'compass' | 'relative',
+  moveScheme: (localStorage.getItem('storyengine.movescheme') === 'compass' ? 'compass' : 'relative') as 'compass' | 'relative',
   facing: 'north',
   aiBusy: null,
+  artVersion: 0,
   talk: null,
 
   commit: (opts) => {
@@ -513,19 +518,34 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   setMonsterArt: (templateKey, dataUri) => {
-    const { world, commit } = get();
-    world.monsterArt ??= {};
-    if (dataUri) world.monsterArt[templateKey] = dataUri;
-    else delete world.monsterArt[templateKey];
-    commit();
+    // art lives in IndexedDB, not the save — localStorage stays lean
+    if (dataUri) void saveArt('monster', templateKey, dataUri);
+    else void deleteArt('monster', templateKey);
+    set({ artVersion: get().artVersion + 1 });
   },
 
   setCharacterArt: (charId, dataUri) => {
-    const { world, commit } = get();
-    world.characterArt ??= {};
-    if (dataUri) world.characterArt[charId] = dataUri;
-    else delete world.characterArt[charId];
-    commit();
+    if (dataUri) void saveArt('char', charId, dataUri);
+    else void deleteArt('char', charId);
+    set({ artVersion: get().artVersion + 1 });
+  },
+
+  initArt: async () => {
+    await initArtCache();
+    // legacy saves carried art inside the world (and every snapshot);
+    // sweep it into IndexedDB once and shrink the save for good
+    const { world, snapshots, commit } = get();
+    const legacy = collectWorldArt(world, snapshots);
+    const moved = Object.keys(legacy).length;
+    if (moved) {
+      for (const [key, uri] of Object.entries(legacy)) {
+        const [kind, ...rest] = key.split(':');
+        await saveArt(kind as 'monster' | 'char', rest.join(':'), uri);
+      }
+      commit();
+      get().setToast(`${moved} custom portrait${moved === 1 ? '' : 's'} moved out of the save into browser storage — saves are lighter now.`);
+    }
+    set({ artVersion: get().artVersion + 1 });
   },
 
   outlineCreateScenes: (beats, chapter) => {
@@ -1477,7 +1497,7 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   doExport: () => {
-    exportProject(get().world, get().snapshots);
+    exportProject(get().world, get().snapshots, allCachedArt());
   },
 
   doImport: async (file) => {
@@ -1486,8 +1506,15 @@ export const useStore = create<AppState>((set, get) => ({
       set({ toast: 'Import failed: not a valid project file.' });
       return;
     }
+    if (data.artPack) await importArtPack(data.artPack);
+    // older exports carried art inside the world itself
+    const legacy = collectWorldArt(data.world, data.snapshots);
+    for (const [key, uri] of Object.entries(legacy)) {
+      const [kind, ...rest] = key.split(':');
+      await saveArt(kind as 'monster' | 'char', rest.join(':'), uri);
+    }
     persistProject(data.world, data.snapshots);
-    set({ world: data.world, snapshots: data.snapshots, selectedSceneId: data.world.scenes[0]?.id ?? null, toast: 'Project imported.' });
+    set({ world: data.world, snapshots: data.snapshots, selectedSceneId: data.world.scenes[0]?.id ?? null, toast: 'Project imported.', artVersion: get().artVersion + 1 });
   },
 
   resetWorld: (opts) => {

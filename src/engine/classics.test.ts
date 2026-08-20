@@ -31,6 +31,7 @@ import { MONSTERS } from './monsters';
 import { getAuctionLots, isAuctionDay, placeBid } from './auction';
 import { enterPitTrials, settleTournament } from './tournament';
 import { boardQuests, letterCandidates, roomFacts, rumorGrounds } from './flavorLlm';
+import { collectWorldArt } from './artFiles';
 import { remakeMc } from './world';
 import { addMinutes } from './world';
 import { birthDayFor, relationshipBetween, runBirthdays, travelTo } from './world';
@@ -807,5 +808,29 @@ describe('AI flavor stays grounded (round 5)', () => {
       expect(q.guild).toBeFalsy();
       expect(q.status).toBe('offered');
     }
+  });
+});
+
+
+describe('art moves out of the save (round 6)', () => {
+  it('collectWorldArt sweeps world and snapshot art into a pack and strips the payloads', () => {
+    const w = freshWorld();
+    w.monsterArt = { 'giant-rat': 'data:image/png;base64,AAA' };
+    w.characterArt = { CHAR_LYRA: 'data:image/png;base64,BBB' };
+    const snapWorld = JSON.parse(JSON.stringify(w));
+    const snapshots = [
+      { id: 'S1', kind: 'manual' as const, label: 'x', day: 1, minute: 0, createdAt: 0, world: JSON.stringify(snapWorld) },
+      { id: 'S2', kind: 'auto' as const, label: 'y', day: 1, minute: 0, createdAt: 0, world: JSON.stringify({ ...snapWorld, monsterArt: {}, characterArt: {} }) },
+    ];
+    const before2 = snapshots[1].world;
+    const pack = collectWorldArt(w, snapshots);
+    expect(pack['monster:giant-rat']).toBe('data:image/png;base64,AAA');
+    expect(pack['char:CHAR_LYRA']).toBe('data:image/png;base64,BBB');
+    expect(Object.keys(w.monsterArt ?? {})).toHaveLength(0);
+    expect(Object.keys(w.characterArt ?? {})).toHaveLength(0);
+    expect(snapshots[0].world).not.toContain('data:image');
+    expect(snapshots[1].world).toBe(before2); // untouched: no art inside
+    // idempotent: second sweep finds nothing
+    expect(Object.keys(collectWorldArt(w, snapshots))).toHaveLength(0);
   });
 });

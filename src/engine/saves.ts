@@ -136,8 +136,8 @@ export function clearProject() {
   localStorage.removeItem(keys.snapshots);
 }
 
-export function exportProject(world: WorldState, snapshots: Snapshot[]) {
-  const blob = new Blob([JSON.stringify({ version: 1, world, snapshots }, null, 2)], { type: 'application/json' });
+export function exportProject(world: WorldState, snapshots: Snapshot[], artPack?: Record<string, string>) {
+  const blob = new Blob([JSON.stringify({ version: 1, world, snapshots, artPack: artPack && Object.keys(artPack).length ? artPack : undefined }, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -146,11 +146,15 @@ export function exportProject(world: WorldState, snapshots: Snapshot[]) {
   URL.revokeObjectURL(url);
 }
 
-export async function importProject(file: File): Promise<{ world: WorldState; snapshots: Snapshot[] } | null> {
+export async function importProject(file: File): Promise<{ world: WorldState; snapshots: Snapshot[]; artPack?: Record<string, string> } | null> {
   try {
     const data = JSON.parse(await file.text());
     if (!data.world) return null;
-    return { world: migrateWorld(data.world as WorldState), snapshots: (data.snapshots ?? []) as Snapshot[] };
+    return {
+      world: migrateWorld(data.world as WorldState),
+      snapshots: (data.snapshots ?? []) as Snapshot[],
+      artPack: data.artPack as Record<string, string> | undefined,
+    };
   } catch {
     return null;
   }

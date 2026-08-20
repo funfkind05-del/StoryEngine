@@ -70,7 +70,7 @@ Five features, all optional, all with the same rule: the simulation decides what
 
 ## The 2026 polish pass
 
-CRT treatment on the corridor view (scanlines, phosphor glow, vignette), step transitions when you walk, animated HP bars, a party strip that pulses red below a third, weighted primary buttons with amber hover everywhere, illuminated-plate modal chrome — and **district tinting**: the UI's accent color follows the party (Dock Ward green, Ironmarket amber, Old Quarter bone, Highcourt steel-blue, Cemetery pale jade).
+Step transitions when you walk, animated HP bars, a party strip that pulses red below a third, weighted primary buttons with amber hover everywhere, illuminated-plate modal chrome — and **district tinting**: the UI's accent color follows the party (Dock Ward green, Ironmarket amber, Old Quarter bone, Highcourt steel-blue, Cemetery pale jade).
 
 ## LLM features (optional)
 
@@ -95,6 +95,10 @@ conversation window.
   paragraph, on demand or on a timer (off / 1 / 5 / 10 min). Always shown
   side-by-side as a suggestion — accept or dismiss; tokens and facts are
   preserved.
+
+## Custom art storage
+
+Uploaded monster plates and character portraits live in **IndexedDB** (browser storage with a disk-sized quota), not the save file — localStorage's ~5MB cap no longer limits art, and snapshots stopped cloning image payloads. Legacy saves migrate automatically on boot (a toast reports how many pieces moved). Project exports bundle the art (`artPack`) so a `.json` still moves machines whole; imports restore it.
 
 ## Minimap
 
@@ -183,7 +187,7 @@ Bard's Tale bones, Elder Scrolls texture:
 - **⚔ Play mode** (topbar) collapses the manuscript and gives the sim the screen; **✒ Write** brings it back.
 - **First-person dungeon view** — a single-point-perspective wireframe of the room you're standing in: doorways, locked doors, stairs, chests, shrines, and red eyes in the dark when something lives there. It faces the way you last walked.
 - **Persistent party strip** — the roster with HP/MP bars never leaves the top of the screen.
-- **Keyboard**: arrows walk the dungeon, `S` search, `C` open chest, `F` pick/accept a fight, `<`/`>` stairs. In combat: `Enter` resolves the round, `A` auto-round, `L` let them fight, `T` take all loot, `1-9` point every blade at the Nth enemy.
+- **Keyboard**: crawler keys by default — ↑ walks forward, ←/→ turn in place, ↓ turns around (switch to absolute compass keys in the Dungeon panel); `S` search, `C` open chest, `F` pick/accept a fight, `<`/`>` stairs. In combat: `Enter` resolves the round, `A` auto-round, `L` let them fight, `T` take all loot, `1-9` point every blade at the Nth enemy.
 - **Veterancy** — kill five of a kind and their AC/ATK show in the target list and enemy cards.
 - **Sound** — synthesized, period-correct beeps (🔊 in the topbar): hit thunks, coin clinks, a level-up sting, stairs. No assets, just WebAudio.
 - **Encounter balance** — dungeon group sizes are capped by party strength; a level-1 duo meets three bodies, not eight.

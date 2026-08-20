@@ -520,35 +520,9 @@ table.stats td:first-child { color: var(--text-dim); }
 
 /* ================= 2026 polish pass ================= */
 
-/* ---------- CRT: scanlines, phosphor glow, vignette ---------- */
+/* CRT overlay retired: the vignette and scanlines dimmed the
+   per-dungeon wall art and door graphics — the themes ARE the look. */
 .fpv { position: relative; }
-.fpv svg {
-  filter: drop-shadow(0 0 2px rgba(255, 200, 90, 0.28));
-}
-.fpv::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: repeating-linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0) 0px,
-    rgba(0, 0, 0, 0) 2px,
-    rgba(0, 0, 0, 0.16) 3px
-  );
-  border-radius: 4px;
-}
-.fpv::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-  background: radial-gradient(ellipse at center, transparent 58%, rgba(0, 0, 0, 0.42) 100%);
-  border-radius: 4px;
-}
-.fpv .fpv-caption { position: relative; z-index: 2; }
-.fpv .fpv-monster { z-index: 2; }
 
 /* ---------- motion ---------- */
 .fpv-frame { animation: fpv-step 140ms ease-out; }

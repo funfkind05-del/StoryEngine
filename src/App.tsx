@@ -127,8 +127,10 @@ export default function App() {
   const musicOn = useStore((s) => s.musicOn);
   const setMusicOn = useStore((s) => s.setMusicOn);
 
-  // stored AI compositions + uploaded audio themes load once at boot
+  const initArt = useStore((s) => s.initArt);
+  // stored AI compositions + uploaded audio themes + custom art load once at boot
   useEffect(() => {
+    void initArt();
     loadCustomCompositions();
     void loadMusicFiles().then((files) => {
       for (const [theme, blob] of Object.entries(files)) {
