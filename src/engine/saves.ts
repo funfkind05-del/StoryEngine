@@ -105,11 +105,20 @@ export function migrateWorld(world: WorldState): WorldState {
     }
     if (!world.dungeons['DUN_TIDE_001'] && fresh.dungeons['DUN_TIDE_001']) world.dungeons['DUN_TIDE_001'] = fresh.dungeons['DUN_TIDE_001'];
     if (!world.dungeons['DUN_WILD_001'] && fresh.dungeons['DUN_WILD_001']) world.dungeons['DUN_WILD_001'] = fresh.dungeons['DUN_WILD_001'];
+    if (!world.dungeons['DUN_DEEP_002'] && fresh.dungeons['DUN_DEEP_002']) world.dungeons['DUN_DEEP_002'] = fresh.dungeons['DUN_DEEP_002'];
     // and the road back in for old saves that gained the Land Gate
     if (world.locations['LOC_GRAVEROW'] && !world.locations['LOC_GRAVEROW'].connections.includes('LOC_LANDGATE') && world.locations['LOC_LANDGATE']) {
       world.locations['LOC_GRAVEROW'].connections.push('LOC_LANDGATE');
     }
   }
+  if (!world.dungeons['DUN_DEEP_002']) {
+    const freshDeep = buildSeedWorld();
+    world.dungeons['DUN_DEEP_002'] = freshDeep.dungeons['DUN_DEEP_002'];
+  }
+  // the newer trades hung their signs on existing halls
+  if (world.locations['LOC_FIGHTPIT']) world.locations['LOC_FIGHTPIT'].trainerFor ??= 'berserker';
+  if (world.locations['LOC_LAMPHALL']) world.locations['LOC_LAMPHALL'].trainerFor ??= 'paladin';
+  if (world.locations['LOC_GRAVEROW']) world.locations['LOC_GRAVEROW'].trainerFor ??= 'necromancer';
   ensurePersonalArcs(world);
   for (const c of Object.values(world.characters)) {
     c.needs ??= { hunger: 25, fatigue: 30 };

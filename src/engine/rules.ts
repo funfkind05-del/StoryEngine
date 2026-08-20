@@ -33,7 +33,9 @@ export function fmtMoney(copper: number): string {
 }
 
 // ---------- XP & levels ----------
-export const MAX_LEVEL = 50;
+// a 20-book series climbs a long time: the mortal ceiling was 50,
+// and the books after it are about what lives past ceilings
+export const MAX_LEVEL = 100;
 
 export function xpForLevel(level: number): number {
   return level * level * 100;
@@ -76,47 +78,62 @@ export const CLASSES: Record<CharClass, ClassDef> = {
   fighter: {
     key: 'fighter', label: 'Fighter', trainer: 'Fighters Guild',
     hpPerLevel: 6, manaPerLevel: 0, staminaPerLevel: 3, attackEvery: 1, defenseEvery: 2,
-    unlocks: { 2: 'shield-bash', 3: 'power-strike', 5: 'cleave', 8: 'whirlwind', 12: 'crushing-blow', 16: 'execute', 20: 'twin-cleave', 25: 'titanic-strike', 32: 'avatar-of-war', 40: 'worldbreaker' },
+    unlocks: { 2: 'shield-bash', 3: 'power-strike', 5: 'cleave', 6: 'guard-break', 8: 'whirlwind', 12: 'crushing-blow', 16: 'execute', 20: 'twin-cleave', 25: 'titanic-strike', 28: 'iron-tide', 32: 'avatar-of-war', 40: 'worldbreaker' , 50: 'warmaster', 65: 'the-standing-army' },
   },
   rogue: {
     key: 'rogue', label: 'Rogue', trainer: 'Thieves Guild',
     hpPerLevel: 4, manaPerLevel: 0, staminaPerLevel: 3, attackEvery: 1, defenseEvery: 2,
-    unlocks: { 2: 'backstab', 4: 'dirty-fighting', 8: 'hamstring', 12: 'shadow-strike', 16: 'twin-fangs', 20: 'garrote', 25: 'death-mark', 32: 'thousand-cuts', 40: 'kingslayer' },
+    unlocks: { 2: 'backstab', 4: 'dirty-fighting', 6: 'feint', 8: 'hamstring', 12: 'shadow-strike', 16: 'twin-fangs', 20: 'garrote', 25: 'death-mark', 28: 'smoke-step', 32: 'thousand-cuts', 40: 'kingslayer' , 50: 'ghostblade', 65: 'the-unseen-hour' },
   },
   mage: {
     key: 'mage', label: 'Mage', trainer: 'Arcane College',
     hpPerLevel: 3, manaPerLevel: 5, staminaPerLevel: 1, attackEvery: 3, defenseEvery: 3,
-    unlocks: { 1: 'firebolt', 3: 'frost-grasp', 5: 'fireball', 8: 'lightning-lance', 12: 'ice-storm', 16: 'immolate', 20: 'chain-lightning', 25: 'meteor', 32: 'cataclysm', 40: 'unmaking' },
+    unlocks: { 1: 'firebolt', 3: 'frost-grasp', 5: 'fireball', 7: 'arc-spark', 8: 'lightning-lance', 12: 'ice-storm', 16: 'immolate', 20: 'chain-lightning', 25: 'meteor', 28: 'sunder-ward', 32: 'cataclysm', 40: 'unmaking' , 50: 'star-pull', 65: 'the-first-word' },
   },
   priest: {
     key: 'priest', label: 'Priest', trainer: 'Temple',
     hpPerLevel: 4, manaPerLevel: 4, staminaPerLevel: 2, attackEvery: 2, defenseEvery: 2,
-    unlocks: { 1: 'mend-wounds', 3: 'purify', 5: 'sanctuary', 8: 'greater-mending', 12: 'smite', 16: 'circle-of-renewal', 20: 'holy-fire', 25: 'aegis', 32: 'mass-renewal', 40: 'divine-wrath' },
+    unlocks: { 1: 'mend-wounds', 3: 'purify', 5: 'sanctuary', 7: 'radiance', 8: 'greater-mending', 12: 'smite', 16: 'circle-of-renewal', 20: 'holy-fire', 25: 'aegis', 28: 'benediction', 32: 'mass-renewal', 40: 'divine-wrath' , 50: 'intercession', 65: 'the-open-gate' },
   },
   ranger: {
     key: 'ranger', label: 'Ranger', trainer: "Hunter's Lodge",
     hpPerLevel: 5, manaPerLevel: 1, staminaPerLevel: 3, attackEvery: 1, defenseEvery: 2,
-    unlocks: { 2: 'aimed-shot', 4: 'twin-strike', 8: 'pinning-shot', 12: 'volley', 16: 'piercing-arrow', 20: 'double-volley', 25: 'heartseeker', 32: 'storm-of-arrows', 40: 'wind-that-kills' },
+    unlocks: { 2: 'aimed-shot', 4: 'twin-strike', 6: 'snare-shot', 8: 'pinning-shot', 12: 'volley', 16: 'piercing-arrow', 20: 'double-volley', 25: 'heartseeker', 28: 'rain-of-points', 32: 'storm-of-arrows', 40: 'wind-that-kills' , 50: 'horizon-shot', 65: 'the-white-stag' },
   },
   bard: {
     key: 'bard', label: 'Bard', trainer: 'The Broken Crown',
     hpPerLevel: 4, manaPerLevel: 3, staminaPerLevel: 2, attackEvery: 2, defenseEvery: 2,
-    unlocks: { 1: 'sharp-word', 3: 'rallying-chorus', 5: 'cutting-jest', 8: 'discordant-note', 12: 'march-of-old-kings', 16: 'siren-strain', 20: 'battle-hymn', 25: 'song-of-the-broken-crown', 32: 'requiem', 40: 'the-last-song' },
+    unlocks: { 1: 'sharp-word', 3: 'rallying-chorus', 5: 'cutting-jest', 7: 'lullaby', 8: 'discordant-note', 12: 'march-of-old-kings', 16: 'siren-strain', 20: 'battle-hymn', 25: 'song-of-the-broken-crown', 28: 'chorus-of-blades', 32: 'requiem', 40: 'the-last-song' , 50: 'the-uncrowned-song', 65: 'the-ninth-chorus' },
   },
   monk: {
     key: 'monk', label: 'Monk', trainer: 'House of the Open Hand',
     hpPerLevel: 5, manaPerLevel: 0, staminaPerLevel: 4, attackEvery: 1, defenseEvery: 2,
-    unlocks: { 2: 'palm-strike', 4: 'flowing-fists', 8: 'iron-knuckle', 12: 'whirling-crane', 16: 'pressure-point', 20: 'hundred-hands', 25: 'dragon-fist', 32: 'empty-body', 40: 'fist-of-the-void' },
+    unlocks: { 2: 'palm-strike', 4: 'flowing-fists', 6: 'crane-sweep', 8: 'iron-knuckle', 12: 'whirling-crane', 16: 'pressure-point', 20: 'hundred-hands', 25: 'dragon-fist', 28: 'mountain-palm', 32: 'empty-body', 40: 'fist-of-the-void' , 50: 'stillness-between', 65: 'the-tenth-form' },
   },
   spellblade: {
     key: 'spellblade', label: 'Spellblade', trainer: 'The Edged Hall',
     hpPerLevel: 5, manaPerLevel: 3, staminaPerLevel: 2, attackEvery: 1, defenseEvery: 2,
-    unlocks: { 1: 'spark-edge', 3: 'riposte', 5: 'flame-brand', 8: 'frost-guard', 12: 'storm-brand', 16: 'mirror-parry', 20: 'runic-burst', 25: 'runed-cleave', 32: 'blade-tempest', 40: 'edge-of-dawn' },
+    unlocks: { 1: 'spark-edge', 3: 'riposte', 5: 'flame-brand', 7: 'ember-riposte', 8: 'frost-guard', 12: 'storm-brand', 16: 'mirror-parry', 20: 'runic-burst', 25: 'runed-cleave', 28: 'glyph-of-ruin', 32: 'blade-tempest', 40: 'edge-of-dawn' , 50: 'oath-of-edges', 65: 'the-written-blade' },
   },
   warlock: {
     key: 'warlock', label: 'Warlock', trainer: 'The Nameless Chapel',
     hpPerLevel: 4, manaPerLevel: 4, staminaPerLevel: 1, attackEvery: 3, defenseEvery: 3,
-    unlocks: { 1: 'wither', 3: 'gnawing-dark', 5: 'hex', 8: 'soul-lash', 12: 'black-tide', 16: 'unravel', 20: 'pact-flame', 25: 'devouring-sign', 32: 'the-hungry-door', 40: 'name-eater' },
+    unlocks: { 1: 'wither', 3: 'gnawing-dark', 5: 'hex', 7: 'creeping-doubt', 8: 'soul-lash', 12: 'black-tide', 16: 'unravel', 20: 'pact-flame', 25: 'devouring-sign', 28: 'tithe-of-flesh', 32: 'the-hungry-door', 40: 'name-eater' , 50: 'the-second-pact', 65: 'the-doorless-dark' },
+  },
+  paladin: {
+    key: 'paladin', label: 'Paladin', trainer: "Lamplighters' Hall",
+    hpPerLevel: 6, manaPerLevel: 2, staminaPerLevel: 2, attackEvery: 1, defenseEvery: 2,
+    unlocks: { 2: 'lamp-oath', 3: 'censure', 5: 'lay-on-hands', 8: 'radiant-smite', 12: 'bulwark-of-dawn', 16: 'judgement', 20: 'beacon', 25: 'crusaders-wrath', 32: 'last-vigil', 40: 'daybreak' , 50: 'saint-errant', 65: 'the-unburnt-lamp' },
+  },
+  necromancer: {
+    key: 'necromancer', label: 'Necromancer', trainer: 'the Graverow bonehouses',
+    hpPerLevel: 3, manaPerLevel: 5, staminaPerLevel: 1, attackEvery: 3, defenseEvery: 3,
+    unlocks: { 1: 'bone-dart', 3: 'chill-touch', 5: 'corpse-burst', 8: 'marrow-drain', 12: 'grave-chill', 16: 'wither-limb', 20: 'bone-storm', 25: 'entomb', 32: 'legion-of-the-dead', 40: 'the-grey-court' , 50: 'the-pale-census', 65: 'the-last-winter' },
+  },
+  berserker: {
+    key: 'berserker', label: 'Berserker', trainer: 'The Pit of Honest Work',
+    hpPerLevel: 7, manaPerLevel: 0, staminaPerLevel: 4, attackEvery: 1, defenseEvery: 3,
+    unlocks: { 2: 'reckless-swing', 4: 'pit-roar', 6: 'blood-frenzy', 8: 'skull-splitter', 12: 'rampage', 16: 'bone-breaker', 20: 'red-mist', 25: 'giant-feller', 32: 'the-long-madness', 40: 'the-last-red-day' , 50: 'the-red-crown', 65: 'the-worlds-ending' },
   },
   commoner: {
     key: 'commoner', label: 'Commoner', trainer: 'nowhere',

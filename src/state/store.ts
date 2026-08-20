@@ -55,12 +55,13 @@ import { joinGuild } from '../engine/guilds';
 import { craft, craftSetPiece, enchantItem, gatherResource } from '../engine/crafting';
 import { pickLock, takeLorebook, useShrine } from '../engine/dungeon';
 import { engageWorldEvent } from '../engine/worldEvents';
+import { hearthTime, inviteToLive } from '../engine/hearth';
 import { adoptStray, buyMount, fulfillWrit, goFishing, rideCarriage } from '../engine/services';
 import { checkAchievements } from '../engine/achievements';
 import { giveGift, spendTimeWith } from '../engine/romance';
 import { autoResolve, autoRound } from '../engine/combat';
 import { compactEvents, recordWritingStats } from '../engine/compile';
-import { chooseAscension, identifyItem as identifyItemEngine, spendAttributePoint } from '../engine/progression';
+import { chooseAscension, chooseCalling, chooseTranscendence, identifyItem as identifyItemEngine, spendAttributePoint } from '../engine/progression';
 import { buildBanterPrompt, rememberBanter } from '../engine/banter';
 import { activeSlot, deleteBook, newBookSlot, renameBook, setActiveSlot, touchBook } from '../engine/books';
 import { draftScene } from '../engine/proseLlm';
@@ -241,6 +242,8 @@ interface AppState {
   aiBusy: string | null;
   identifyItem: (itemId: string) => void;
   ascend: (charId: string, pathKey: string) => void;
+  answerCalling: (charId: string, pathKey: string) => void;
+  transcend: (charId: string, pathKey: string) => void;
   compactLog: () => void;
 
   // companion moments
@@ -256,6 +259,8 @@ interface AppState {
   homePray: () => void;
   homeFletch: () => void;
   homeFeast: (factionId: string) => void;
+  inviteIn: (npcId: string) => void;
+  hearthAct: (npcId: string, actKey: string) => void;
 
   // prose → sim sync (author-approved)
   applyProposals: (proposals: SyncProposal[]) => string[];
@@ -1056,6 +1061,22 @@ export const useStore = create<AppState>((set, get) => ({
     commit({ autosave: err ? undefined : 'Ascension' });
   },
 
+  answerCalling: (charId, pathKey) => {
+    const { world, commit, setToast } = get();
+    const err = chooseCalling(world, charId, pathKey);
+    if (err) setToast(err);
+    else sfx('levelup');
+    commit({ autosave: err ? undefined : 'Calling' });
+  },
+
+  transcend: (charId, pathKey) => {
+    const { world, commit, setToast } = get();
+    const err = chooseTranscendence(world, charId, pathKey);
+    if (err) setToast(err);
+    else sfx('levelup');
+    commit({ autosave: err ? undefined : 'Transcendence' });
+  },
+
   compactLog: () => {
     const { world, commit, setToast } = get();
     const res = compactEvents(world);
@@ -1170,6 +1191,24 @@ export const useStore = create<AppState>((set, get) => ({
     const err = hostFeast(world, factionId);
     if (err) setToast(err);
     commit({ autosave: 'Feast' });
+  },
+
+  inviteIn: (npcId) => {
+    const { world, commit, setToast } = get();
+    const err = inviteToLive(world, npcId);
+    if (err) setToast(err);
+    else {
+      sfx('levelup');
+      logEvent(world, 'hearth.movein', { npc: npcId }, `${world.characters[npcId].name} moved her things in. Not many things. All of them hers, under a roof that is now also hers.`, { location: world.partyLocation, witnesses: [world.mcId, npcId] });
+    }
+    commit({ autosave: err ? undefined : 'Move-in' });
+  },
+
+  hearthAct: (npcId, actKey) => {
+    const { world, commit, setToast } = get();
+    const err = hearthTime(world, npcId, actKey);
+    if (err) setToast(err);
+    commit();
   },
 
   setMuseOutline: (outline) => set({ museOutline: outline }),

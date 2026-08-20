@@ -97,7 +97,9 @@ export function dailyFamilyTick(world: WorldState): void {
   const mc = world.characters[world.mcId];
   // conception
   for (const wife of eligibleSpouses(world)) {
-    if (!rng.chance(DAILY_CONCEPTION_CHANCE)) continue;
+    // a night shared at the hearth weights the dice threefold
+    const sharedNight = world.nightTogether && world.nightTogether.npcId === wife.id && world.time.day - world.nightTogether.day <= 1;
+    if (!rng.chance(DAILY_CONCEPTION_CHANCE * (sharedNight ? 3 : 1))) continue;
     wife.pregnantSince = day;
     logEvent(world, 'pregnancy', { character: wife.id, day }, `${wife.name} is sure now, and told ${mc.name} in her own way: there will be a child. The city outside kept selling fish like the world hadn't just changed size.`, { witnesses: [world.mcId, wife.id] });
   }

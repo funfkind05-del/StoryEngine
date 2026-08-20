@@ -6,6 +6,7 @@
 // answer it through their own values, not a script.
 
 import type { Character, Item, RelationshipValues, WorldState } from './types';
+import { noteAttention } from './hearth';
 import { festivalToday } from './festivals';
 import { Rng, randomSeed } from './rng';
 import { addMinutes, logEvent, relationshipBetween } from './world';
@@ -63,6 +64,7 @@ export function giveGift(world: WorldState, npcId: string, itemId: string): stri
   mc.lastGiftDay ??= {};
   if (mc.lastGiftDay[npcId] === world.time.day) return `${npc.name} already accepted a gift today. Pace yourself.`;
   mc.lastGiftDay[npcId] = world.time.day;
+  noteAttention(world, npcId);
   // festival air: hearts open a little easier
   const fest = festivalToday(world);
   const festivalWarmth = fest?.heartsOpen ? 1 : 0;
@@ -166,6 +168,7 @@ export function spendTimeWith(world: WorldState, npcId: string, activityKey: str
   for (const [k, v] of Object.entries(act.dials)) nudge(rel, k as keyof RelationshipValues, (v ?? 0) + (k === 'affection' ? dateWarmth : 0));
   const line = act.line(npc, mc);
   npc.memories.push({ subject: mc.id, event: line, importance: 4, emotionalValue: 4, day: world.time.day });
+  noteAttention(world, npc.id);
   logEvent(world, 'date', { npc: npc.id, activity: act.key }, line, { location: world.partyLocation, witnesses: [mc.id, npc.id] });
   return null;
 }

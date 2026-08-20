@@ -173,7 +173,7 @@ export interface Item {
 // ---------- Characters ----------
 export type Sex = 'male' | 'female';
 
-export type CharClass = 'fighter' | 'rogue' | 'mage' | 'priest' | 'ranger' | 'bard' | 'monk' | 'spellblade' | 'warlock' | 'commoner';
+export type CharClass = 'fighter' | 'rogue' | 'mage' | 'priest' | 'ranger' | 'bard' | 'monk' | 'spellblade' | 'warlock' | 'paladin' | 'necromancer' | 'berserker' | 'commoner';
 
 export type StatusKey =
   | 'poisoned'
@@ -314,6 +314,9 @@ export interface Character {
   title?: string;
   /** ascension path chosen at level 25 (key into ASCENSIONS) */
   ascension?: string;
+  /** first evolution (L10) and last (L40) — see progression.ts */
+  calling?: string;
+  transcendence?: string;
   /** day-of-year (0..359) this character was born; ages tick on it */
   birthDay?: number;
   /** what's left after a failed risky resurrection */
@@ -660,6 +663,12 @@ export interface WorldState {
   /** the party's horse, if they keep one */
   mount?: { name: string; boughtDay: number } | null;
   /** crafting writs fulfilled, as `${day}:${locId}` */
+  /** hearth bookkeeping: last day each heart got real attention */
+  lastAttentionDay?: Record<string, number>;
+  /** one shared evening per person per day: `${day}:${npcId}` -> act */
+  hearthDays?: Record<string, string>;
+  /** last shared night (weights spouse conception in family.ts) */
+  nightTogether?: { npcId: string; day: number };
   writsDone?: string[];
   encumbrance: EncumbranceRule;
   /** survival needs (hunger/fatigue) tracked against story time */

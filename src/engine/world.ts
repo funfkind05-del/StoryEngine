@@ -20,6 +20,7 @@ import { expireWorldEvents, maybeSpawnWorldEvent } from './worldEvents';
 import { CITY_LORE_AT, loreById } from './codex';
 import { festivalToday } from './festivals';
 import { dailyFamilyTick } from './family';
+import { dailyHearthTick } from './hearth';
 import { doomTick } from './campaign';
 
 // ---------- IDs ----------
@@ -228,6 +229,7 @@ export function tick(world: WorldState, minutes: number): SimEvent[] {
       }
       runBirthdays(world);
       dailyFamilyTick(world);
+      dailyHearthTick(world);
       maybeSpawnWorldEvent(world);
       expireWorldEvents(world);
       doomTick(world);

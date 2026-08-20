@@ -200,7 +200,7 @@ function avgPartyLevel(world: WorldState): number {
 }
 
 /** Procedural jobs drift onto the boards every few days. */
-const JOB_TEMPLATES: ((world: WorldState, rng: Rng) => Omit<Quest, 'id' | 'status' | 'offeredDay'> | null)[] = [
+export const JOB_TEMPLATES: ((world: WorldState, rng: Rng) => Omit<Quest, 'id' | 'status' | 'offeredDay'> | null)[] = [
   (world, rng) => ({
     title: rng.pick(['Rats in the cellar', 'Vermin pay', 'The catch-quota']),
     giver: 'board',
@@ -226,6 +226,122 @@ const JOB_TEMPLATES: ((world: WorldState, rng: Rng) => Omit<Quest, 'id' | 'statu
     description: 'Captain Dorn pays honest coin for dishonest men taken off his streets.',
     objectives: [{ kind: 'kill', templateKey: rng.chance(0.6) ? 'street-thug' : 'red-knife-cutter', count: rng.int(2, 4), baseline: 0 }],
     reward: { money: Math.round(rng.int(12, 22) * 10 * veterancyPayMult(avgPartyLevel(world))), xp: 60, factionRep: { FAC_WATCH: 1, FAC_REDKNIVES: -1 } },
+  }),
+  (world, rng) => ({
+    title: rng.pick(['Bones out of the ground', 'The graves won\u2019t keep', 'Warden\u2019s bounty']),
+    giver: 'board',
+    giverLocation: 'LOC_GRAVEROW',
+    description: 'The Bonewardens pay per skull returned to rest. The crypts are giving them up faster than the shovels can keep pace.',
+    objectives: [{ kind: 'kill', templateKey: rng.chance(0.5) ? 'skeleton' : 'ghoul', count: rng.int(3, 6), baseline: 0 }],
+    reward: { money: Math.round(rng.int(14, 26) * 10 * veterancyPayMult(avgPartyLevel(world))), xp: 70, factionRep: { FAC_BONEWARDENS: 1 } },
+    deadlineDay: world.time.day + rng.int(5, 9),
+  }),
+  (world, rng) => ({
+    title: rng.pick(['Goblins in the walls', 'The under-toll', 'Tunnel trouble']),
+    giver: 'board',
+    giverLocation: 'LOC_IRONMARKET_SQ',
+    description: 'Something small and organized has been robbing cellars along the market row. The merchants pooled a purse.',
+    objectives: [{ kind: 'kill', templateKey: 'tunnel-goblin', count: rng.int(3, 5), baseline: 0 }],
+    reward: { money: Math.round(rng.int(12, 20) * 10 * veterancyPayMult(avgPartyLevel(world))), xp: 60, factionRep: { FAC_COINGUILD: 1 } },
+    deadlineDay: world.time.day + rng.int(4, 8),
+  }),
+  (world, rng) => ({
+    title: rng.pick(['The lamp route', 'Oil for the dark streets', 'A lamplighter short']),
+    giver: 'board',
+    giverLocation: 'LOC_LAMPHALL',
+    description: 'A lamplighter is down with the shakes and the union will not leave a route dark. Walk the oil out and come back whole.',
+    objectives: [{ kind: 'deliver', itemProto: 'sealed-package', locationId: rng.pick(['LOC_GRAVEROW', 'LOC_WHARVES', 'LOC_NIGHTMARKET']), done: false }],
+    reward: { money: Math.round(rng.int(10, 18) * 10 * veterancyPayMult(avgPartyLevel(world))), xp: 40, factionRep: { FAC_LAMPLIGHTERS: 1 } },
+    deadlineDay: world.time.day + rng.int(2, 4),
+  }),
+  (world, rng) => ({
+    title: rng.pick(['Serpents under the street', 'The drowned toll', 'Sewer bounty']),
+    giver: 'board',
+    giverLocation: 'LOC_RATCATCHER',
+    description: 'The sewer gate crews won\u2019t go down while things with too many ribs are swimming the outfalls.',
+    objectives: [{ kind: 'kill', templateKey: rng.chance(0.6) ? 'sewer-serpent' : 'giant-rat', count: rng.int(3, 6), baseline: 0 }],
+    reward: { money: Math.round(rng.int(10, 18) * 10 * veterancyPayMult(avgPartyLevel(world))), xp: 55 },
+    deadlineDay: world.time.day + rng.int(4, 7),
+  }),
+  (world, rng) => ({
+    title: rng.pick(['Eyes on the Land Gate', 'Count the carts', 'The long walk east']),
+    giver: 'board',
+    giverLocation: 'LOC_IRONMARKET_SQ',
+    description: 'The Guild of Coin wants fresh eyes on the eastern road: walk out to the waystations, note what moves, come back.',
+    objectives: [
+      { kind: 'visit', locationId: 'LOC_WAYREST', done: false },
+      { kind: 'visit', locationId: 'LOC_SALTMERE', done: false },
+    ],
+    reward: { money: Math.round(rng.int(16, 28) * 10 * veterancyPayMult(avgPartyLevel(world))), xp: 60, factionRep: { FAC_COINGUILD: 1 } },
+    deadlineDay: world.time.day + rng.int(6, 10),
+  }),
+  (world, rng) => ({
+    title: rng.pick(['A letter for the hermit', 'Salt-road post', 'Carried past the walls']),
+    giver: 'board',
+    giverLocation: 'LOC_TEMPLE',
+    description: 'The temple keeps a correspondence with the Hermitage. The road between is not what it was.',
+    objectives: [{ kind: 'deliver', itemProto: 'sealed-package', locationId: 'LOC_HERMITAGE', done: false }],
+    reward: { money: Math.round(rng.int(18, 30) * 10 * veterancyPayMult(avgPartyLevel(world))), xp: 60, factionRep: { FAC_VEILEDFLAME: 1 } },
+    deadlineDay: world.time.day + rng.int(5, 8),
+  }),
+  (world, rng) => ({
+    title: rng.pick(['Grave-robbers again', 'The mausoleum watch', 'Shovels at midnight']),
+    giver: 'CHAR_DORN',
+    giverLocation: 'LOC_IRONMARKET_SQ',
+    description: 'Somebody is opening graves before the Bonewardens close them. The Watch pays for the shovels\u2019 owners.',
+    objectives: [{ kind: 'kill', templateKey: 'grave-robber', count: rng.int(2, 4), baseline: 0 }],
+    reward: { money: Math.round(rng.int(14, 24) * 10 * veterancyPayMult(avgPartyLevel(world))), xp: 65, factionRep: { FAC_WATCH: 1 } },
+    deadlineDay: world.time.day + rng.int(4, 7),
+  }),
+  (world, rng) => ({
+    title: rng.pick(['The smugglers\u2019 tithe', 'Cellar clearance', 'What the tide brought']),
+    giver: 'CHAR_VARGA',
+    giverLocation: 'LOC_SALTWAREHOUSE',
+    description: 'Varga\u2019s cellar has competition in it. She would like the competition to stop being alive in her cellar.',
+    objectives: [{ kind: 'kill', templateKey: 'smuggler', count: rng.int(2, 4), baseline: 0 }],
+    reward: { money: Math.round(rng.int(16, 26) * 10 * veterancyPayMult(avgPartyLevel(world))), xp: 60, factionRep: { FAC_REDKNIVES: 1, FAC_WATCH: -1 } },
+    deadlineDay: world.time.day + rng.int(3, 6),
+  }),
+  (world, rng) => ({
+    title: rng.pick(['Prove the crypt is quiet', 'A widow\u2019s peace', 'Walk the deep row']),
+    giver: 'board',
+    giverLocation: 'LOC_GRAVEROW',
+    description: 'A dowager pays to have the family mausoleum walked end to end and pronounced quiet. It will not be quiet.',
+    objectives: [{ kind: 'visit', locationId: 'LOC_MAUSOLEUM', done: false }],
+    reward: { money: Math.round(rng.int(8, 14) * 10 * veterancyPayMult(avgPartyLevel(world))), xp: 35 },
+    deadlineDay: world.time.day + rng.int(3, 5),
+  }),
+  (world, rng) => {
+    // put a bounty on whichever early warden still stands
+    const open = Object.values(world.dungeons).filter((d) => !d.bossDefeated && (parseInt(d.recommendedLevel, 10) || 1) <= avgPartyLevel(world) + 3);
+    if (!open.length) return null;
+    const target = rng.pick(open);
+    return {
+      title: `The warden of ${target.name}`,
+      giver: 'board',
+      giverLocation: 'LOC_IRONMARKET_SQ',
+      description: `A standing purse, half the city\u2019s coin and half its nerves: whoever puts down whatever rules ${target.name} drinks free for a season.`,
+      objectives: [{ kind: 'clear-boss', dungeonId: target.id, done: false }],
+      reward: { money: Math.round(rng.int(40, 60) * 10 * veterancyPayMult(avgPartyLevel(world))), xp: 200 },
+    };
+  },
+  (world, rng) => ({
+    title: rng.pick(['The fight they bet on', 'Pit meat wanted', 'Three rounds, honest work']),
+    giver: 'board',
+    giverLocation: 'LOC_FIGHTPIT',
+    description: 'The bookmaker wants bodies the crowd hasn\u2019t seen before. Beat what the streets send and the house pays out.',
+    objectives: [{ kind: 'kill', templateKey: rng.chance(0.5) ? 'street-thug' : 'pit-bruiser', count: rng.int(2, 3), baseline: 0 }],
+    reward: { money: Math.round(rng.int(14, 22) * 10 * veterancyPayMult(avgPartyLevel(world))), xp: 55, factionRep: { FAC_TIDECOURT: 1 } },
+    deadlineDay: world.time.day + rng.int(3, 6),
+  }),
+  (world, rng) => ({
+    title: rng.pick(['The night market wants quiet', 'Wisp trouble', 'Lamps going strange']),
+    giver: 'board',
+    giverLocation: 'LOC_NIGHTMARKET',
+    description: 'Lamp-wisps have been leading customers into the canal. Bad for trade. Worse for the customers.',
+    objectives: [{ kind: 'kill', templateKey: 'lamp-wisp', count: rng.int(2, 4), baseline: 0 }],
+    reward: { money: Math.round(rng.int(16, 26) * 10 * veterancyPayMult(avgPartyLevel(world))), xp: 70, factionRep: { FAC_LAMPLIGHTERS: 1 } },
+    deadlineDay: world.time.day + rng.int(4, 7),
   }),
 ];
 

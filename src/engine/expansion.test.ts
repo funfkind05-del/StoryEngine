@@ -30,10 +30,10 @@ describe('ability trees to level 50', () => {
     }
   });
 
-  it('training a fighter to 50 grants the whole tree and then stops', () => {
+  it('training a fighter to the cap grants the whole tree and then stops', () => {
     const w = freshWorld();
     const kael = w.characters[w.mcId];
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < MAX_LEVEL + 10; i++) {
       kael.xp = 10_000_000;
       if (!levelUpAvailable(kael)) break;
       applyTraining(kael);

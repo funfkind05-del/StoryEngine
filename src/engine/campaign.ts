@@ -16,7 +16,9 @@ interface CampaignStage {
   title: string;
   giver: Quest['giver'];
   giverLocation: string;
-  dungeonId: string;
+  dungeonId?: string;
+  /** overrides the default clear-boss objective when set */
+  objectives?: Quest['objectives'];
   description: string;
   offerText: string; // logged when the stage opens
   revelation: string;
@@ -136,6 +138,112 @@ export const CAMPAIGN: CampaignStage[] = [
   },
 ];
 
+
+// ---------- the second spine: THE VOICELESS (stages 9–16) ----------
+// The crown is taken; the thing below has no herald. Arc 2 is the
+// vacancy: what a god-sized want does without a voice, and who
+// auditions to become one. It ends with the party deciding what
+// fills the silence — possibly themselves.
+export const CAMPAIGN2: CampaignStage[] = [
+  {
+    stage: 9,
+    title: 'The Quiet After',
+    giver: 'CHAR_SELLA',
+    giverLocation: 'LOC_TEMPLE',
+    objectives: [{ kind: 'visit', locationId: 'LOC_HOLLOWGATE', done: false }],
+    description: 'The crown sits in whatever keeping you left it, and the city sleeps better than it has in three hundred years. Sella does not. The gate is cool, the under-river runs quiet — and every sensitive in the temple is dreaming of roots. She wants your eyes on the Hollow Gate before she trusts the quiet.',
+    offerText: 'Sister Sella found sleeping draughts in the novices’ cells. All of them. She asks you to walk down and LOOK at the gate.',
+    revelation: 'The quiet is not peace. The gate has grown a lip of new stone — worked stone, grown not built — and it runs DOWNWARD, out of the palace, like roots leaving a pot. The thing below has stopped waiting for a voice. It is growing toward everything, slowly, instead.',
+    reward: { money: 5000, xp: 4000, factionRep: { FAC_VEILEDFLAME: 2 } },
+  },
+  {
+    stage: 10,
+    title: 'What the Salt Keeps',
+    giver: 'CHAR_VARGA',
+    giverLocation: 'LOC_SALTWAREHOUSE',
+    dungeonId: 'DUN_TIDE_001',
+    description: 'The Tidecourt’s deed to the Saltworks predates the Tidecourt. Varga finally read the small print: the works were built to CURE things — to keep them, unrotting, indefinitely. Something down there has been held in brine for centuries, and the roots are growing toward it with intent. Get to the Salt Queen’s pans first.',
+    offerText: 'Varga bought a drink and paid for it. Then she showed you the Saltworks deed, and the word underlined in it: PRESERVATIF.',
+    revelation: 'The Saltworks were the founders’ pantry: what could not be killed and could not be buried was SALTED. The Queen kept the inventory. The roots want the inventory. The inventory, gods help everyone, is wakeable.',
+    reward: { money: 40000, xp: 15000, factionRep: { FAC_TIDECOURT: 2 } },
+  },
+  {
+    stage: 11,
+    title: 'The Watch That Knew',
+    giver: 'CHAR_DORN',
+    giverLocation: 'LOC_IRONMARKET_SQ',
+    dungeonId: 'DUN_WILD_001',
+    description: 'Dorn pulled the oldest maps the Watch owns. The Broken Watch on the eastern hills was not built against raiders: its arrow-slits face INWARD and DOWNWARD. The kingdom nobody remembers built it over a root — and garrisoned it until the pay-chits stopped. He wants to know what its revenant warden was still standing watch OVER.',
+    offerText: 'Captain Dorn spread a map older than the city across his desk and put his finger on the Broken Watch. "Explain this to me."',
+    revelation: 'The dead kingdom knew about the roots a thousand years before Blackwall was founded. The Broken Watch was one fort in a RING — a perimeter around the buried thing, wide as the whole hinterland. Blackwall was built inside the cordon. The founders knew. They built anyway. The harbor was too good.',
+    reward: { money: 45000, xp: 18000, factionRep: { FAC_WATCH: 2 } },
+  },
+  {
+    stage: 12,
+    title: 'The Choir Below',
+    giver: 'CHAR_SELLA',
+    giverLocation: 'LOC_TEMPLE',
+    objectives: [{ kind: 'kill', templateKey: 'void-choir', count: 2, baseline: 0 }],
+    description: 'The dreams have words now. The temple sensitives wake singing — the same held note, the same question. Something in the Rootways is teaching the city to sing in its sleep, one dreamer at a time, and Sella can name the tune: it is a CALL FOR CANDIDATES. Go down into the roots and silence the choirs.',
+    offerText: 'A novice sang in her sleep last night in a pitch no human throat should hold. Sella stopped writing letters and started sharpening things.',
+    revelation: 'The choirs sing with the god’s stolen voice — scraps of it, hoarded since the crown fell. They are not worshipping. They are ADVERTISING: broadcasting the vacancy into every sleeping mind in reach, auditioning the city itself for a new herald.',
+    reward: { money: 60000, xp: 25000, factionRep: { FAC_VEILEDFLAME: 2 } },
+  },
+  {
+    stage: 13,
+    title: 'The Standing Applicant',
+    giver: 'board',
+    giverLocation: 'LOC_GRAVEROW',
+    objectives: [{ kind: 'kill', templateKey: 'ossuary-colossus', count: 1, baseline: 0 }],
+    description: 'The Bonewardens post it plainly, because they are past pride: every ossuary in the district emptied in one night, and the bones walked DOWN. Something in the Rootways is building itself a body big enough for a god to wear, one borrowed skeleton at a time.',
+    offerText: 'The Bonewardens’ notice is four words and a purse: "OUR DEAD WALKED DOWN."',
+    revelation: 'The colossus was not attacking anything. It was STANDING — in the deepest root-chamber, where the throne could see it, wearing ten thousand of Blackwall’s dead like a fitted suit. An applicant, dressing for the interview. It will not be the last, and the next ones will not stand still.',
+    reward: { money: 70000, xp: 30000, factionRep: { FAC_BONEWARDENS: 3 } },
+  },
+  {
+    stage: 14,
+    title: 'The Ash Regent',
+    giver: 'CHAR_DORN',
+    giverLocation: 'LOC_IRONMARKET_SQ',
+    objectives: [{ kind: 'kill', templateKey: 'ash-seraph', count: 1, baseline: 0 }],
+    description: 'The Ash Circle should have died with its Hierophant. Instead its remnant found the Rootways and BURNED ITS WAY IN — and what walked out of the fire calls itself the Regent of Ash, keeping the throne warm for a king it means to become. Dorn is done watching. So, privately, is the Circle’s own surviving membership.',
+    offerText: 'A cult remnant nailed a proclamation to the Watch-house door: the vacancy below is FILLED, pending coronation. Dorn is hiring everyone.',
+    revelation: 'The seraph was a founder — the dissenting one, the name struck from the minutes, kept in ash and grudge for three hundred years by the Circle he built. He voted against the sealing because he wanted the throne OPEN. Everything since — the digging, the doors opened in order — was one long application, and the thing below still has not said yes to anyone. It is holding the vacancy. As if it is waiting for someone specific.',
+    reward: { money: 90000, xp: 40000, factionRep: { FAC_WATCH: 3, FAC_ASHCIRCLE: -5 } },
+    choice: {
+      prompt: 'The Regent’s ashes are still warm, and the question he died auditioning for now hangs in the air, addressed — the choirs were always addressing — to you.',
+      options: [
+        { key: 'refuse', label: 'Refuse it, aloud, at the gate', description: 'Say no to a god. See if no is a word it keeps.', knowledge: 'The party stood at the Hollow Gate and refused the vacancy aloud. The held note stopped for nine heartbeats. Then it resumed, patient, a half-step lower.' },
+        { key: 'silent', label: 'Say nothing. Keep the question open', description: 'An unanswered question is leverage on a god.', knowledge: 'The party left the god’s question unanswered. The vacancy stays open, and whoever holds their silence holds the only bargaining chip the thing below respects.' },
+      ],
+    },
+  },
+  {
+    stage: 15,
+    title: 'The Gilded Claim',
+    giver: 'CHAR_VARGA',
+    giverLocation: 'LOC_SALTWAREHOUSE',
+    objectives: [{ kind: 'kill', templateKey: 'gilded-lich', count: 1, baseline: 0 }],
+    description: 'The Coin Guild’s answer to a divine vacancy was always going to be a BID. Their forty-years-dead founding treasurer has been down in the vaults the whole time, gilded and patient, and he has moved into the Rootways with the Guild’s deep ledger — proposing to BUY the throne with three centuries of compounded interest on the whole city’s debt. Varga would like the ledger. Everyone else would like him stopped.',
+    offerText: 'Varga slid a Guild obituary across the table, forty years old. "He’s been accruing," she said. "He’s gone below to collect."',
+    revelation: 'The lich’s deep ledger names what Blackwall owes the thing below — every founder’s bargain, every drowned sailor the harbor kept, every good year the city did not earn — and the sum is real, and the thing below keeps ACCOUNTS. The debt cannot be paid in coin. The lich knew that. His bid was the city itself, signed over as collateral.',
+    reward: { money: 120000, xp: 50000, factionRep: { FAC_COINGUILD: -2, FAC_REDKNIVES: 2 } },
+  },
+  {
+    stage: 16,
+    title: 'The Second Silence',
+    giver: 'CHAR_SELLA',
+    giverLocation: 'LOC_TEMPLE',
+    dungeonId: 'DUN_DEEP_002',
+    description: 'The failed applicants are dead and the roots have stopped growing — not in defeat, in ATTENTION. At the bottom of the Rootways something has finally stood up wearing the office all of them wanted: a Herald of the Hollow, grown by the thing below from three hundred years of held breath, coming up to deliver, in person, the offer it has been holding for you since the crown came off. Go down and answer it — whatever your answer is.',
+    offerText: 'Every dreamer in Blackwall woke at the same hour, calm, and said the same sentence to whoever was nearest: "IT IS SENDING SOMEONE UP."',
+    revelation: 'The Herald spoke one sentence before the end, and it was an offer of terms: the thing below does not want OUT. It wants to be KNOWN — held, named, remembered, the way the wyrm was bound by memory — and it will accept the party as its wardens, its namers, its second silence. The founders sealed it with stone and forgetting. It proposes to be sealed, instead, with witnesses. (End of the second spine — the terms are the author’s to write.)',
+    reward: { money: 400000, xp: 120000, factionRep: { FAC_VEILEDFLAME: 3, FAC_WATCH: 3, FAC_BONEWARDENS: 3 } },
+  },
+];
+
+const SPINE: CampaignStage[] = [...CAMPAIGN, ...CAMPAIGN2];
+
 function questId(world: WorldState): string {
   const n = (world.counters['QST'] ?? 0) + 1;
   world.counters['QST'] = n;
@@ -149,7 +257,7 @@ function stageToQuest(world: WorldState, s: CampaignStage): Quest {
     giver: s.giver,
     giverLocation: s.giverLocation,
     description: s.description,
-    objectives: [{ kind: 'clear-boss', dungeonId: s.dungeonId, done: false }],
+    objectives: s.objectives ? s.objectives.map((o) => ({ ...o })) : [{ kind: 'clear-boss', dungeonId: s.dungeonId!, done: false }],
     reward: s.reward,
     status: 'offered',
     offeredDay: world.time.day,
@@ -191,7 +299,7 @@ export function ensureCampaign(world: WorldState) {
   const main = mainQuests(world);
   if (main.some((q) => q.status === 'offered' || q.status === 'active' || q.status === 'ready')) return;
   const completedStages = new Set(main.filter((q) => q.status === 'completed').map((q) => q.stage));
-  const next = CAMPAIGN.find((s) => !completedStages.has(s.stage) && !main.some((q) => q.stage === s.stage && q.status !== 'declined'));
+  const next = SPINE.find((s) => !completedStages.has(s.stage) && !main.some((q) => q.stage === s.stage && q.status !== 'declined'));
   if (!next) return;
   const q = stageToQuest(world, next);
   world.quests[q.id] = q;
@@ -255,15 +363,19 @@ export function advanceCampaign(world: WorldState, completed: Quest) {
     logEvent(world, 'campaign.revelation', { stage: completed.stage, quest: completed.id }, `REVELATION (stage ${completed.stage}): ${completed.revelation}`, { witnesses: partyMembers(world).map((c) => c.id) });
   }
   if (world.doom) world.doom.lastAdvanceDay = world.time.day; // progress resets the clock
-  const next = CAMPAIGN.find((s) => s.stage === (completed.stage ?? 0) + 1);
+  const next = SPINE.find((s) => s.stage === (completed.stage ?? 0) + 1);
   if (next) {
     const q = stageToQuest(world, next);
     world.quests[q.id] = q;
     logEvent(world, 'campaign.offered', { stage: next.stage, quest: q.id }, next.offerText, { witnesses: partyMembers(world).map((c) => c.id) });
   } else {
     world.campaignComplete = true;
-    logEvent(world, 'campaign.complete', {}, 'The recorded spine of the campaign is complete. What Blackwall does with an unsealed, voiceless god below it is the author’s to write.');
+    logEvent(world, 'campaign.complete', {}, 'Both recorded spines are complete. What Blackwall does with a god that asked to be REMEMBERED is the author’s to write.');
     logEvent(world, 'epilogue', {}, generateEpilogueText(world), { witnesses: partyMembers(world).map((c) => c.id) });
+  }
+  // the first arc closing is its own book-end moment
+  if (completed.stage === 8) {
+    logEvent(world, 'campaign.complete', {}, 'The first spine is complete: the crown is taken and the buried thing has no voice. The city exhales. Below it, something begins — patiently — to grow.', { witnesses: partyMembers(world).map((c) => c.id) });
   }
 }
 

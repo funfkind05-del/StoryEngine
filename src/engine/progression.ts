@@ -266,10 +266,158 @@ export const ASCENSIONS: AscensionPath[] = [
   { key: 'stormblade', charClass: 'spellblade', label: 'Stormblade', blurb: 'The sword is the wand. Always was.', attrs: { dexterity: 2 }, critChance: 6, ability: 'edge-of-dawn' },
   { key: 'voidcaller', charClass: 'warlock', label: 'Voidcaller', blurb: 'What answers has no name, and it likes you.', attrs: { intelligence: 2 }, mana: 12, ability: 'the-hungry-door' },
   { key: 'pactlord', charClass: 'warlock', label: 'Pactlord', blurb: 'You read the fine print. You wrote some of it.', attrs: { intelligence: 1, wisdom: 1 }, mana: 8, critChance: 4, ability: 'name-eater' },
+  { key: 'lamplord', charClass: 'paladin', label: 'Lamplord', blurb: 'Where you stand, the dark files a grievance.', attrs: { constitution: 2 }, hp: 10, defense: 1, ability: 'last-vigil' },
+  { key: 'dawnbreaker', charClass: 'paladin', label: 'Dawnbreaker', blurb: 'Some vows are weapons. Yours is a sunrise.', attrs: { strength: 1, wisdom: 1 }, hp: 6, critChance: 4, ability: 'daybreak' },
+  { key: 'gravelord', charClass: 'necromancer', label: 'Gravelord', blurb: 'The dead take a knee. It is a long ceremony.', attrs: { intelligence: 2 }, mana: 12, ability: 'legion-of-the-dead' },
+  { key: 'pale-shepherd', charClass: 'necromancer', label: 'Pale Shepherd', blurb: 'Every flock comes home eventually. You keep the gate.', attrs: { intelligence: 1, wisdom: 1 }, mana: 8, critChance: 4, ability: 'the-grey-court' },
+  { key: 'pit-king', charClass: 'berserker', label: 'Pit-King', blurb: 'The crowd crowned you. The crowd is not wrong.', attrs: { strength: 2 }, hp: 12, ability: 'the-long-madness' },
+  { key: 'red-saint', charClass: 'berserker', label: 'Red Saint', blurb: 'They pray to you the way you pray to nothing.', attrs: { constitution: 2 }, hp: 10, critChance: 6, ability: 'the-last-red-day' },
 ];
 
 export const ASCENSION_LEVEL = 25;
 export const ASCENSION_FEE = 2000; // copper
+
+// ---------- the three evolutions of a career ----------
+// L10 CALLING: the trade notices you. Small, early, shapes the middle game.
+// L25 ASCENSION: the rite (above). L40 TRANSCENDENCE: what lives past titles.
+
+export interface CallingPath {
+  key: string;
+  charClass: CharClass;
+  label: string;
+  blurb: string;
+  attrs: Partial<Attributes>;
+  hp?: number;
+  mana?: number;
+  defense?: number;
+  evasion?: number;
+  initiative?: number;
+  critChance?: number;
+}
+
+export const CALLING_LEVEL = 10;
+export const CALLING_FEE = 500;
+export const CALLINGS: CallingPath[] = [
+  { key: 'vanguard', charClass: 'fighter', label: 'Vanguard', blurb: 'First through every door.', attrs: { strength: 1 }, hp: 4 },
+  { key: 'bulwark', charClass: 'fighter', label: 'Bulwark', blurb: 'The door, when the door is needed.', attrs: { constitution: 1 }, defense: 1 },
+  { key: 'knife-artist', charClass: 'rogue', label: 'Knife Artist', blurb: 'It is called work because it pays.', attrs: { dexterity: 1 }, critChance: 3 },
+  { key: 'second-story', charClass: 'rogue', label: 'Second-Story', blurb: 'Locks are a suggestion. Walls, an opinion.', attrs: { dexterity: 1 }, evasion: 2 },
+  { key: 'pyromant', charClass: 'mage', label: 'Pyromant', blurb: 'The College teaches restraint. Later.', attrs: { intelligence: 1 }, mana: 6 },
+  { key: 'scholar-of-frost', charClass: 'mage', label: 'Scholar of Frost', blurb: 'Cold keeps. Cold waits.', attrs: { wisdom: 1 }, mana: 4, defense: 1 },
+  { key: 'almoner', charClass: 'priest', label: 'Almoner', blurb: 'The god counts what you give away.', attrs: { wisdom: 1 }, mana: 5 },
+  { key: 'flame-warden', charClass: 'priest', label: 'Flame Warden', blurb: 'Some prayers are said with a mace.', attrs: { strength: 1 }, hp: 4 },
+  { key: 'pathfinder', charClass: 'ranger', label: 'Pathfinder', blurb: 'You have been lost exactly once. It bothered you.', attrs: { wisdom: 1 }, initiative: 2 },
+  { key: 'deadeye', charClass: 'ranger', label: 'Deadeye', blurb: 'Distance is a rumor.', attrs: { dexterity: 1 }, critChance: 3 },
+  { key: 'crowd-favorite', charClass: 'bard', label: 'Crowd Favorite', blurb: 'They came for the ale. They stayed.', attrs: { charisma: 1 }, mana: 4 },
+  { key: 'chronicler', charClass: 'bard', label: 'Chronicler', blurb: 'Every song is testimony.', attrs: { intelligence: 1 }, mana: 4 },
+  { key: 'iron-palm', charClass: 'monk', label: 'Iron Palm', blurb: 'The board did not break itself.', attrs: { strength: 1 }, hp: 4 },
+  { key: 'leaf-on-water', charClass: 'monk', label: 'Leaf on Water', blurb: 'Struck at, not struck.', attrs: { dexterity: 1 }, evasion: 2 },
+  { key: 'edge-scribe', charClass: 'spellblade', label: 'Edge-Scribe', blurb: 'The sigils get smaller. The cuts do not.', attrs: { intelligence: 1 }, mana: 4 },
+  { key: 'duelist', charClass: 'spellblade', label: 'Duelist', blurb: 'One opponent at a time, as a courtesy.', attrs: { dexterity: 1 }, critChance: 3 },
+  { key: 'bound-scholar', charClass: 'warlock', label: 'Bound Scholar', blurb: 'You take notes. Something reads them.', attrs: { intelligence: 1 }, mana: 6 },
+  { key: 'midnight-clerk', charClass: 'warlock', label: 'Midnight Clerk', blurb: 'The pact has paperwork. You are the paperwork.', attrs: { wisdom: 1 }, mana: 4, defense: 1 },
+  { key: 'lantern-squire', charClass: 'paladin', label: 'Lantern Squire', blurb: 'Carry the light. Mind the oil.', attrs: { constitution: 1 }, hp: 4 },
+  { key: 'oath-sworn', charClass: 'paladin', label: 'Oath-Sworn', blurb: 'The words were simple. Keeping them is not.', attrs: { wisdom: 1 }, mana: 4 },
+  { key: 'bone-picker', charClass: 'necromancer', label: 'Bone-Picker', blurb: 'Everything the graves keep, they keep badly.', attrs: { intelligence: 1 }, mana: 6 },
+  { key: 'quiet-student', charClass: 'necromancer', label: 'Quiet Student', blurb: 'The dead are patient teachers.', attrs: { wisdom: 1 }, mana: 4, defense: 1 },
+  { key: 'pit-dog', charClass: 'berserker', label: 'Pit Dog', blurb: 'Get up. That is the whole lesson.', attrs: { constitution: 1 }, hp: 5 },
+  { key: 'red-handed', charClass: 'berserker', label: 'Red-Handed', blurb: 'The first swing settles most arguments.', attrs: { strength: 1 }, critChance: 3 },
+];
+
+export const TRANSCENDENCE_LEVEL = 40;
+export const TRANSCENDENCE_FEE = 8000;
+export const TRANSCENDENCES: CallingPath[] = [
+  { key: 'the-mountain', charClass: 'fighter', label: 'The Mountain That Walks', blurb: 'Armies plan around you now.', attrs: { strength: 2, constitution: 2 }, hp: 20, defense: 2 },
+  { key: 'the-banner', charClass: 'fighter', label: 'The Living Banner', blurb: 'Where you stand becomes the line.', attrs: { strength: 1, charisma: 2 }, hp: 12, initiative: 3 },
+  { key: 'the-rumor', charClass: 'rogue', label: 'The Rumor', blurb: 'Half the city swears you do not exist. The right half.', attrs: { dexterity: 3 }, evasion: 5, critChance: 8 },
+  { key: 'the-reckoning', charClass: 'rogue', label: 'The Quiet Reckoning', blurb: 'Debts remember you fondly.', attrs: { dexterity: 2, wisdom: 1 }, critChance: 12 },
+  { key: 'the-tower', charClass: 'mage', label: 'The Walking Tower', blurb: 'The College named a chair after you to feel safer.', attrs: { intelligence: 3 }, mana: 25 },
+  { key: 'the-theorem', charClass: 'mage', label: 'The Final Theorem', blurb: 'Reality checks its work against you.', attrs: { intelligence: 2, wisdom: 2 }, mana: 18, critChance: 6 },
+  { key: 'the-vessel', charClass: 'priest', label: 'The Vessel', blurb: 'The god stopped asking and started trusting.', attrs: { wisdom: 3 }, mana: 20, hp: 8 },
+  { key: 'the-judgement', charClass: 'priest', label: 'The Judgement', blurb: 'Mercy, delivered at speed.', attrs: { wisdom: 2, strength: 2 }, hp: 12, critChance: 6 },
+  { key: 'the-wind', charClass: 'ranger', label: 'The Wind Itself', blurb: 'Nothing you hunt dies surprised. They saw nothing at all.', attrs: { dexterity: 3 }, initiative: 5, critChance: 8 },
+  { key: 'the-warden', charClass: 'ranger', label: 'Warden of the Waste', blurb: 'The wild country calls you neighbor.', attrs: { dexterity: 2, constitution: 2 }, hp: 12, evasion: 3 },
+  { key: 'the-voice', charClass: 'bard', label: 'The Voice of the City', blurb: 'Blackwall hums your verses in its sleep.', attrs: { charisma: 3 }, mana: 18, initiative: 3 },
+  { key: 'the-ballad', charClass: 'bard', label: 'The Unfinished Ballad', blurb: 'You are the story. The rest is chorus.', attrs: { charisma: 2, intelligence: 2 }, mana: 14, critChance: 6 },
+  { key: 'the-empty-seat', charClass: 'monk', label: 'The Empty Seat', blurb: 'The masters bow first now.', attrs: { dexterity: 2, wisdom: 2 }, evasion: 5, hp: 10 },
+  { key: 'the-mountain-stream', charClass: 'monk', label: 'The Mountain Stream', blurb: 'Soft as water. Patient as water. Exactly as stoppable.', attrs: { strength: 2, constitution: 2 }, hp: 15, defense: 1 },
+  { key: 'the-signed-blade', charClass: 'spellblade', label: 'The Signed Blade', blurb: 'Your name is a rune now. It cuts.', attrs: { intelligence: 2, dexterity: 2 }, mana: 12, critChance: 8 },
+  { key: 'the-treaty', charClass: 'spellblade', label: 'The Broken Treaty', blurb: 'Steel and spell stopped arguing in you.', attrs: { strength: 2, intelligence: 2 }, hp: 12, defense: 2 },
+  { key: 'the-creditor', charClass: 'warlock', label: 'The Creditor', blurb: 'What you owe came due. It paid YOU.', attrs: { intelligence: 3 }, mana: 25 },
+  { key: 'the-threshold', charClass: 'warlock', label: 'The Threshold', blurb: 'Doors ask your permission now.', attrs: { intelligence: 2, constitution: 2 }, mana: 15, hp: 10 },
+  { key: 'the-dawn-that-stays', charClass: 'paladin', label: 'The Dawn That Stays', blurb: 'The dark keeps a map of where you are not.', attrs: { constitution: 2, wisdom: 2 }, hp: 18, defense: 2 },
+  { key: 'the-last-lamp', charClass: 'paladin', label: 'The Last Lamp', blurb: 'When every light fails, there is still you.', attrs: { strength: 2, charisma: 2 }, hp: 12, critChance: 6 },
+  { key: 'the-grey-king', charClass: 'necromancer', label: 'The Grey King', blurb: 'Death forwards you its correspondence.', attrs: { intelligence: 3 }, mana: 25 },
+  { key: 'the-kind-winter', charClass: 'necromancer', label: 'The Kind Winter', blurb: 'You close every eye gently. Almost every.', attrs: { intelligence: 2, wisdom: 2 }, mana: 15, hp: 10 },
+  { key: 'the-red-legend', charClass: 'berserker', label: 'The Red Legend', blurb: 'Mothers name storms after you.', attrs: { strength: 3 }, hp: 20, critChance: 8 },
+  { key: 'the-unkillable', charClass: 'berserker', label: 'The Unkillable', blurb: 'You have died twice. It did not take.', attrs: { constitution: 3 }, hp: 30, defense: 2 },
+];
+
+function applyPathPackage(c: Character, path: CallingPath): void {
+  for (const [attr, amt] of Object.entries(path.attrs)) c.attributes[attr as keyof Attributes] += amt ?? 0;
+  if (path.hp) { c.hp.max += path.hp; c.hp.current = c.hp.max; }
+  if (path.mana) { c.mana.max += path.mana; c.mana.current = c.mana.max; }
+  if (path.defense) c.defense += path.defense;
+  if (path.evasion) c.evasion += path.evasion;
+  if (path.initiative) c.initiative += path.initiative;
+  if (path.critChance) c.critChance += path.critChance;
+}
+
+export function callingOptions(c: Character): CallingPath[] {
+  if (c.calling || c.level < CALLING_LEVEL) return [];
+  return CALLINGS.filter((a) => a.charClass === c.charClass);
+}
+
+/** The trade notices you: a small package taken at the class hall. */
+export function chooseCalling(world: WorldState, charId: string, pathKey: string): string | null {
+  const c = world.characters[charId];
+  if (!c) return 'Who?';
+  const path = CALLINGS.find((a) => a.key === pathKey);
+  if (!path || path.charClass !== c.charClass) return 'That calling is not open to this class.';
+  if (c.calling) return `${c.name} already answered a calling.`;
+  if (c.level < CALLING_LEVEL) return `A calling asks for level ${CALLING_LEVEL}.`;
+  const loc = world.locations[world.partyLocation];
+  const atTrainer = loc?.trainerFor === c.charClass || (loc?.temple && c.charClass === 'priest');
+  if (!atTrainer) return 'Callings are answered at the class hall.';
+  const payer = world.characters[world.mcId];
+  if (payer.money < CALLING_FEE) return `The masters ask ${fmtMoney(CALLING_FEE)} for the naming.`;
+  payer.money -= CALLING_FEE;
+  addMinutes(world, 240);
+  c.calling = path.key;
+  applyPathPackage(c, path);
+  c.permanentBonuses.push(`Calling — ${path.label}: ${path.blurb}`);
+  logEvent(world, 'calling', { character: c.id, path: path.key }, `${c.name} answered a calling: ${path.label}. ${path.blurb}`, { location: world.partyLocation, witnesses: partyMembers(world).map((x) => x.id) });
+  return null;
+}
+
+export function transcendenceOptions(c: Character): CallingPath[] {
+  if (c.transcendence || !c.ascension || c.level < TRANSCENDENCE_LEVEL) return [];
+  return TRANSCENDENCES.filter((a) => a.charClass === c.charClass);
+}
+
+/** Past titles: the third evolution, open only to the ascended. */
+export function chooseTranscendence(world: WorldState, charId: string, pathKey: string): string | null {
+  const c = world.characters[charId];
+  if (!c) return 'Who?';
+  const path = TRANSCENDENCES.find((a) => a.key === pathKey);
+  if (!path || path.charClass !== c.charClass) return 'That path is not open to this class.';
+  if (c.transcendence) return `${c.name} has already gone past the ceiling.`;
+  if (!c.ascension) return 'Transcendence builds on an ascension — take the rite at 25 first.';
+  if (c.level < TRANSCENDENCE_LEVEL) return `Transcendence asks for level ${TRANSCENDENCE_LEVEL}.`;
+  const loc = world.locations[world.partyLocation];
+  const atTrainer = loc?.trainerFor === c.charClass || (loc?.temple && c.charClass === 'priest');
+  if (!atTrainer) return 'The masters must witness it, at the class hall.';
+  const payer = world.characters[world.mcId];
+  if (payer.money < TRANSCENDENCE_FEE) return `The vigil costs ${fmtMoney(TRANSCENDENCE_FEE)}.`;
+  payer.money -= TRANSCENDENCE_FEE;
+  addMinutes(world, 720);
+  c.transcendence = path.key;
+  c.title = path.label;
+  applyPathPackage(c, path);
+  c.permanentBonuses.push(`Transcendence — ${path.label}: ${path.blurb}`);
+  logEvent(world, 'transcendence', { character: c.id, path: path.key }, `${c.name} went past the ceiling and became ${path.label}. ${path.blurb}`, { location: world.partyLocation, witnesses: partyMembers(world).map((x) => x.id) });
+  return null;
+}
 
 export function ascensionOptions(c: Character): AscensionPath[] {
   if (c.ascension || c.level < ASCENSION_LEVEL) return [];

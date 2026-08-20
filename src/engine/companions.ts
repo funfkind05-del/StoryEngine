@@ -1,8 +1,10 @@
 // Recruitable companions and their personal arcs. Each woman has a
-// three-stage personal questline: stage one ends with her joining the
+// four-stage personal questline: stage one ends with her joining the
 // party; later stages unlock as trust grows and her history catches
-// up with her. Completing stages moves the relationship dials hard —
-// these are the subplot chapters of the book.
+// up with her. Stage four is the HEARTH stage — the arc that only
+// opens once there is something like a home and something like an
+// us. Completing stages moves the relationship dials hard — these
+// are the subplot chapters of the book.
 
 import type { Quest, RelationshipValues, WorldState } from './types';
 import { logEvent, partyMembers, relationshipBetween } from './world';
@@ -68,6 +70,18 @@ export const COMPANION_ARCS: CompanionArc[] = [
         needsTrust: 6,
         needsLevel: 4,
       },
+      {
+        stage: 4,
+        title: 'Mara: The Key She Never Had',
+        description: 'Mara has slept in nineteen rented rooms and two boats, and never once behind a door she owned a key to. She will not ask. But there is one last knot: the Knives keep a copy of every lock their old informants live behind — professional courtesy, Varga calls it. Mara wants the copies of YOUR locks off their board, and then she wants to be handed a key like it is nothing, like she always had one.',
+        giverLocation: 'LOC_DOCK_0042',
+        objectives: [{ kind: 'visit', locationId: 'LOC_THIEFGUILD', done: false }, ...K('red-knife-cutter', 2)],
+        reward: { money: 0, xp: 4000 },
+        bond: { trust: 3, affection: 3, commitment: 4 },
+        memory: 'They put a key in my hand and went back to stirring the pot like nothing happened. I stood in the doorway a long time. My door. I checked the Knives\u2019 board myself: no copy. Just mine.',
+        needsTrust: 8,
+        needsLevel: 10,
+      },
     ],
   },
   {
@@ -113,6 +127,18 @@ export const COMPANION_ARCS: CompanionArc[] = [
           ],
         },
       },
+      {
+        stage: 4,
+        title: 'Yvenne: A Table That Feeds People',
+        description: 'Yvenne has healed this city out of doorways and borrowed sickrooms her whole vocation. Now there is a hearth she half-lives at, and she wants it to mean something: one week of open-table mercy, fed and guarded, for the Graverow paupers her old temple turned away — and the grave-things that follow the weak like gulls kept OFF them while they eat.',
+        giverLocation: 'LOC_GRAVEROW',
+        objectives: [...K('ghoul', 3), { kind: 'visit', locationId: 'LOC_GRAVEROW', done: false }],
+        reward: { money: 0, xp: 4000, factionRep: { FAC_VEILEDFLAME: 2 } },
+        bond: { trust: 3, affection: 4, commitment: 3 },
+        memory: 'Forty people ate at our table this week. OUR table. I said the word out loud when the last of them left, and nobody corrected me.',
+        needsTrust: 8,
+        needsLevel: 10,
+      },
     ],
   },
   {
@@ -150,6 +176,18 @@ export const COMPANION_ARCS: CompanionArc[] = [
         memory: 'It held. Eleven seconds, but it HELD, and the only person I wanted looking at me when it did — was.',
         needsTrust: 6,
         needsLevel: 6,
+      },
+      {
+        stage: 4,
+        title: 'Kess: Load-Bearing',
+        description: 'Kess has redesigned the home\u2019s wards eleven times. This is not about the wards. She has finally worked out what she is FOR, and the proof requires components the College confiscated from her: her original thesis materials, boxed and spite-labeled in their tower stores. Get them back, and she will build the two of you something no house in Blackwall has: a hearth that is, in her words, structurally incapable of falling down while she is in it.',
+        giverLocation: 'LOC_COLLEGE',
+        objectives: [{ kind: 'visit', locationId: 'LOC_COLLEGE', done: false }, ...K('animated-armor', 2)],
+        reward: { money: 0, xp: 4000 },
+        bond: { trust: 3, affection: 3, attraction: 2, commitment: 3 },
+        memory: 'The ward-lattice took my whole thesis and their names to anchor. It will outlast the College. I documented that carefully, in the margins, where they\u2019ll find it eventually.',
+        needsTrust: 8,
+        needsLevel: 12,
       },
     ],
   },
@@ -189,6 +227,18 @@ export const COMPANION_ARCS: CompanionArc[] = [
         needsTrust: 6,
         needsLevel: 5,
       },
+      {
+        stage: 4,
+        title: 'Isha: The Form With No Name',
+        description: 'The House of the Open Hand teaches nine forms, and Isha has mastered all of them for other people\u2019s reasons. There is a tenth, taught only to monks who have something they would break the world to keep — the House refuses her, saying she has no such thing. She wants to walk up the hill with you, stand in the courtyard, and let the masters look at what she has now. Then she wants them to teach her the form, or fight her over it.',
+        giverLocation: 'LOC_OPENHAND',
+        objectives: [{ kind: 'visit', locationId: 'LOC_OPENHAND', done: false }, ...K('pit-champion', 1)],
+        reward: { money: 0, xp: 4000 },
+        bond: { trust: 3, respect: 3, affection: 3, commitment: 3 },
+        memory: 'The eldest master looked at them, then at me, for a long time. Then she bowed \u2014 to THEM \u2014 and began the tenth form without a word. I have something I would break the world to keep. It is on record now.',
+        needsTrust: 8,
+        needsLevel: 12,
+      },
     ],
   },
   {
@@ -226,6 +276,18 @@ export const COMPANION_ARCS: CompanionArc[] = [
         memory: 'The premiere ran long. I changed the last verse while looking straight at them, and the whole taproom knew who the song was for.',
         needsTrust: 6,
         needsLevel: 5,
+      },
+      {
+        stage: 4,
+        title: 'Corva: The Song She Doesn\u2019t Sell',
+        description: 'Corva has written songs for coin, for unions, for funerals, and once, under duress, for a wedding she disapproved of. There is one song she has never performed: the one with your name in it. She wants to premiere it \u2014 once, at home, audience of one \u2014 but the Night Market djinn that trades in unsung songs has heard rumor of it and sent collectors. Keep her song HERS until she gives it away herself.',
+        giverLocation: 'LOC_NIGHTMARKET',
+        objectives: [...K('night-market-djinn', 1), { kind: 'visit', locationId: 'LOC_NIGHTMARKET', done: false }],
+        reward: { money: 0, xp: 4000, factionRep: { FAC_LAMPLIGHTERS: 1 } },
+        bond: { trust: 3, affection: 4, attraction: 2, commitment: 3 },
+        memory: 'I sang it once, by our own fire, and then never again, because some songs are finished the moment the right person hears them. They heard it. I watched.',
+        needsTrust: 8,
+        needsLevel: 10,
       },
     ],
   },

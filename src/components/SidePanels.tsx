@@ -27,7 +27,7 @@ import {
 } from '../engine/rules';
 import { Bar, RelBar, Tag } from './common';
 import { activeQuests, describeReward, objectiveDone, objectiveLabel, offeredQuestsAt, questProgress } from '../engine/quests';
-import { CAMPAIGN, campaignStageNumber, latestRevelation, mainQuests } from '../engine/campaign';
+import { CAMPAIGN, CAMPAIGN2, campaignStageNumber, latestRevelation, mainQuests } from '../engine/campaign';
 import { GUILDS, guildRank, guildTitle } from '../engine/guilds';
 import { DATE_ACTIVITIES, STAGE_LABELS, relationshipStage } from '../engine/romance';
 import { MonsterPortrait } from './MonsterArt';
@@ -38,7 +38,8 @@ import { loadLlmConfig } from '../engine/npcChat';
 import { MONSTERS } from '../engine/monsters';
 import { CARRIAGE_STOPS } from '../engine/services';
 import { RECIPES, canCraft } from '../engine/crafting';
-import { AFFIXES, ascensionOptions } from '../engine/progression';
+import { AFFIXES, ascensionOptions, callingOptions, transcendenceOptions } from '../engine/progression';
+import { HEARTH_ACTIVITIES } from '../engine/hearth';
 import { COMPANION_ARCS } from '../engine/companions';
 import { FirstPersonView } from './FirstPersonView';
 import { isDark } from '../engine/dungeon';
@@ -587,7 +588,7 @@ function QuestsPanel() {
       <div className="card" style={{ borderColor: 'var(--accent)' }}>
         <div className="row">
           <span className="name grow">⚜ What Lies Beneath Blackwall</span>
-          <Tag tone="gold">stage {Math.min(stage, CAMPAIGN.length)}/{CAMPAIGN.length}</Tag>
+          <Tag tone="gold">{stage > CAMPAIGN.length ? `arc II · stage ${Math.min(stage, CAMPAIGN.length + CAMPAIGN2.length)}/${CAMPAIGN.length + CAMPAIGN2.length}` : `stage ${Math.min(stage, CAMPAIGN.length)}/${CAMPAIGN.length}`}</Tag>
         </div>
         {spineOpen ? (
           <p className="small">Current: <b>{spineOpen.title}</b> — {spineOpen.status === 'offered' ? `on offer from ${giverName(spineOpen)} at ${world.locations[spineOpen.giverLocation]?.name}` : spineOpen.status === 'ready' ? 'done — collect and learn what it means' : 'in progress'}.</p>
@@ -793,6 +794,8 @@ function PartyPanel() {
   const openTalk = useStore((s) => s.openTalk);
   const spendPoint = useStore((s) => s.spendPoint);
   const ascend = useStore((s) => s.ascend);
+  const answerCalling = useStore((s) => s.answerCalling);
+  const transcend = useStore((s) => s.transcend);
   const setRow = useStore((s) => s.setRow);
   const party = Object.values(world.characters).filter((c) => c.inParty && c.alive);
   return (
@@ -817,11 +820,27 @@ function PartyPanel() {
             <div>{c.injuries.filter((i) => !i.treated).map((i, idx) => <Tag key={idx} tone="red">{i.name} ({i.stat} {i.amount})</Tag>)}</div>
           )}
           {levelUpAvailable(c) && <Tag tone="gold">LEVEL AVAILABLE — trainer: {CLASSES[c.charClass].trainer}</Tag>}
+          {callingOptions(c).length > 0 && (
+            <div className="row small">
+              <Tag tone="gold">A CALLING WAITS — at the {CLASSES[c.charClass].trainer}</Tag>
+              {callingOptions(c).map((path) => (
+                <button key={path.key} onClick={() => answerCalling(c.id, path.key)} title={`${path.blurb} (${fmtMoney(500)}, at the class hall)`}>{path.label}</button>
+              ))}
+            </div>
+          )}
           {ascensionOptions(c).length > 0 && (
             <div className="row small">
               <Tag tone="gold">ASCENSION OPEN — the rite waits at the {CLASSES[c.charClass].trainer}</Tag>
               {ascensionOptions(c).map((path) => (
                 <button key={path.key} onClick={() => ascend(c.id, path.key)} title={`${path.blurb} (${fmtMoney(2000)}, at the class hall)`}>{path.label}</button>
+              ))}
+            </div>
+          )}
+          {transcendenceOptions(c).length > 0 && (
+            <div className="row small">
+              <Tag tone="gold">PAST THE CEILING — the vigil waits at the {CLASSES[c.charClass].trainer}</Tag>
+              {transcendenceOptions(c).map((path) => (
+                <button key={path.key} onClick={() => transcend(c.id, path.key)} title={`${path.blurb} (${fmtMoney(8000)}, at the class hall)`}>{path.label}</button>
               ))}
             </div>
           )}
@@ -1327,6 +1346,8 @@ function HouseholdPanel() {
   const craftAct = useStore((s) => s.craftAct);
   const enchantAct = useStore((s) => s.enchantAct);
   const adoptPet = useStore((s) => s.adoptPet);
+  const inviteIn = useStore((s) => s.inviteIn);
+  const hearthAct = useStore((s) => s.hearthAct);
   const homeId = findHome(world);
   const home = homeId ? world.locations[homeId] : null;
   const mc = world.characters[world.mcId];
@@ -1447,8 +1468,39 @@ function HouseholdPanel() {
           {world.items[iid]?.name}{world.items[iid]?.stackable ? ` ×${world.items[iid]?.qty ?? 1}` : ''}
         </p>
       ))}
-      <h4>Residents</h4>
-      {hh.residents.map((r) => <p key={r} className="small">{world.characters[r]?.name ?? r}</p>)}
+      <h4>The hearth</h4>
+      {(() => {
+        const atHome = world.partyLocation === homeId;
+        const lovers = Object.values(world.characters).filter((c) => c.persistent && c.alive && !c.isMC && ['lover', 'partner', 'spouse'].includes(relationshipStage(c.relationships[world.mcId])));
+        const inviteable = lovers.filter((c) => !hh.residents.includes(c.id));
+        const evenable = Object.values(world.characters).filter((c) => c.persistent && c.alive && !c.isMC && (c.inParty || hh.residents.includes(c.id)) && ['close', 'smitten', 'lover', 'partner', 'spouse'].includes(relationshipStage(c.relationships[world.mcId])));
+        return (
+          <>
+            {hh.residents.length === 0 && <p className="dim small">Nobody else keeps things here. Yet. Lovers and beyond can be asked to move in.</p>}
+            {hh.residents.map((r) => (
+              <p key={r} className="small">🕯 {world.characters[r]?.name ?? r} <span className="dim">· {STAGE_LABELS[relationshipStage(world.characters[r]?.relationships[world.mcId])]}</span></p>
+            ))}
+            {atHome && inviteable.map((c) => (
+              <div key={c.id} className="row small"><button onClick={() => inviteIn(c.id)} title="Give her a key. This is not a small thing.">🗝 Ask {c.name} to move in</button></div>
+            ))}
+            {atHome && evenable.map((c) => {
+              const stage = relationshipStage(c.relationships[world.mcId]);
+              const RANK = ['stranger', 'acquaintance', 'friend', 'close', 'smitten', 'lover', 'partner', 'spouse'];
+              const acts = HEARTH_ACTIVITIES.filter((a) => RANK.indexOf(stage) >= RANK.indexOf(a.minStage));
+              const spent = world.hearthDays?.[`${world.time.day}:${c.id}`];
+              return (
+                <div key={c.id} className="row small">
+                  <span className="dim">{c.name}:</span>
+                  {spent ? <Tag>the evening is spent</Tag> : acts.map((a) => (
+                    <button key={a.key} onClick={() => hearthAct(c.id, a.key)} title={`${a.minutes} minutes of the day`}>{a.label}</button>
+                  ))}
+                </div>
+              );
+            })}
+            {!atHome && (hh.residents.length > 0 || inviteable.length > 0) && <p className="dim small">The hearth keeps its evenings for when the party is home.</p>}
+          </>
+        );
+      })()}
     </div>
   );
 }

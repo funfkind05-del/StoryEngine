@@ -89,6 +89,71 @@ export const MONSTERS: Record<string, MonsterTemplate> = {
     key: 'hollow-herald', name: 'Herald of the Hollow King', level: 44, hp: 420, attack: 35, defense: 31,
     damage: '6d10+14', initiative: 9, xp: 8200, lootTable: 'demonkin', ai: 'aggressive', art: { archetype: 'demon' },
   },
+  // ---------- past the ceiling: L48–100, the villains of the later books ----------
+  'root-wight': {
+    key: 'root-wight', name: 'Root-Wight', level: 48, hp: 380, attack: 34, defense: 30,
+    damage: '5d10+14', initiative: 8, xp: 8000, lootTable: 'greater-undead', ai: 'pack', art: { archetype: 'undead' },
+  },
+  'chorister-of-want': {
+    key: 'chorister-of-want', name: 'Chorister of Want', level: 52, hp: 400, attack: 36, defense: 32,
+    damage: '6d8+16', initiative: 11, xp: 10000, lootTable: 'demonkin', ai: 'aggressive', art: { archetype: 'spirit' },
+  },
+  'salt-kraken': {
+    key: 'salt-kraken', name: 'Salt-Kraken', level: 55, hp: 620, attack: 36, defense: 30,
+    damage: '6d10+14', initiative: 5, xp: 12000, lootTable: 'dragonkin', ai: 'aggressive', art: { archetype: 'horror' }, inflicts: { status: 'bleeding', chance: 0.3 },
+  },
+  'unlamped-dark': {
+    key: 'unlamped-dark', name: 'The Unlamped Dark', level: 58, hp: 450, attack: 40, defense: 34,
+    damage: '7d8+16', initiative: 12, xp: 14000, lootTable: 'demonkin', ai: 'cowardly', art: { archetype: 'spirit' },
+  },
+  'warden-of-nine-forts': {
+    key: 'warden-of-nine-forts', name: 'Warden of the Nine Forts', level: 62, hp: 700, attack: 42, defense: 36,
+    damage: '7d10+18', initiative: 8, xp: 18000, lootTable: 'greater-undead', ai: 'aggressive', art: { archetype: 'undead' },
+  },
+  'grief-golem': {
+    key: 'grief-golem', name: 'Grief-Golem', level: 65, hp: 800, attack: 42, defense: 38,
+    damage: '8d8+18', initiative: 4, xp: 20000, lootTable: 'construct', ai: 'aggressive', art: { archetype: 'construct' },
+  },
+  'the-auditor': {
+    key: 'the-auditor', name: 'The Auditor of Debts', level: 68, hp: 620, attack: 46, defense: 38,
+    damage: '8d8+20', initiative: 12, xp: 24000, lootTable: 'greater-undead', ai: 'aggressive', art: { archetype: 'undead' },
+  },
+  'tide-empress': {
+    key: 'tide-empress', name: 'The Tide Empress', level: 72, hp: 900, attack: 46, defense: 40,
+    damage: '8d10+20', initiative: 9, xp: 30000, lootTable: 'dragonkin', ai: 'aggressive', art: { archetype: 'horror' }, inflicts: { status: 'poisoned', chance: 0.3 },
+  },
+  'ashfather': {
+    key: 'ashfather', name: 'The Ashfather', level: 76, hp: 850, attack: 50, defense: 42,
+    damage: '9d8+22', initiative: 11, xp: 36000, lootTable: 'demonkin', ai: 'aggressive', art: { archetype: 'demon' }, inflicts: { status: 'burning', chance: 0.4 },
+  },
+  'hollow-empress': {
+    key: 'hollow-empress', name: 'The Hollow Empress', level: 80, hp: 1000, attack: 52, defense: 44,
+    damage: '9d10+24', initiative: 12, xp: 44000, lootTable: 'demonkin', ai: 'aggressive', art: { archetype: 'spirit' },
+  },
+  'worm-of-the-ring': {
+    key: 'worm-of-the-ring', name: 'The Worm of the Ring', level: 84, hp: 1400, attack: 52, defense: 42,
+    damage: '10d10+22', initiative: 6, xp: 52000, lootTable: 'dragonkin', ai: 'aggressive', art: { archetype: 'dragon' }, inflicts: { status: 'poisoned', chance: 0.35 },
+  },
+  'the-forgotten-founder': {
+    key: 'the-forgotten-founder', name: 'The Forgotten Founder', level: 88, hp: 1100, attack: 56, defense: 46,
+    damage: '10d10+26', initiative: 13, xp: 62000, lootTable: 'greater-undead', ai: 'aggressive', art: { archetype: 'undead' },
+  },
+  'the-first-warden': {
+    key: 'the-first-warden', name: 'The First Warden', level: 92, hp: 1300, attack: 58, defense: 48,
+    damage: '11d10+26', initiative: 12, xp: 74000, lootTable: 'giantkin', ai: 'aggressive', art: { archetype: 'giant' },
+  },
+  'the-held-god-dreaming': {
+    key: 'the-held-god-dreaming', name: 'The Held God, Dreaming', level: 96, hp: 1600, attack: 60, defense: 50,
+    damage: '12d10+28', initiative: 14, xp: 90000, lootTable: 'demonkin', ai: 'aggressive', art: { archetype: 'horror' },
+  },
+  'the-held-god-waking': {
+    key: 'the-held-god-waking', name: 'The Held God, Waking', level: 100, hp: 2200, attack: 66, defense: 54,
+    damage: '14d10+30', initiative: 15, xp: 140000, lootTable: 'demonkin', ai: 'aggressive', art: { archetype: 'horror' }, inflicts: { status: 'burning', chance: 0.4 },
+  },
+  'candidate-in-borrowed-skin': {
+    key: 'candidate-in-borrowed-skin', name: 'Candidate in Borrowed Skin', level: 50, hp: 420, attack: 36, defense: 33,
+    damage: '6d8+15', initiative: 10, xp: 9500, lootTable: 'human', ai: 'cowardly', art: { archetype: 'humanoid' },
+  },
   'giant-rat': {
     key: 'giant-rat', name: 'Giant Rat', level: 1, hp: 6, attack: 2, defense: 8,
     damage: '1d4', initiative: 3, xp: 12, lootTable: 'vermin', ai: 'pack', inflicts: { status: 'poisoned', chance: 0.12 },

@@ -604,7 +604,7 @@ describe('the expansion: classes, tomes, jewelry, streets (round 3)', () => {
       expect(CLASSES[a.charClass], a.key).toBeTruthy();
     }
     // two paths per playable class
-    for (const cls of ['fighter', 'rogue', 'mage', 'priest', 'ranger', 'bard', 'monk', 'spellblade', 'warlock'] as const) {
+    for (const cls of ['fighter', 'rogue', 'mage', 'priest', 'ranger', 'bard', 'monk', 'spellblade', 'warlock', 'paladin', 'necromancer', 'berserker'] as const) {
       expect(ASCENSIONS.filter((a) => a.charClass === cls), cls).toHaveLength(2);
     }
   });
@@ -686,7 +686,7 @@ describe('round 4: companions, the Saltworks, and the calendar', () => {
       expect(c.sex).toBe('female');
       const arc = COMPANION_ARCS.find((a) => a.charId === id);
       expect(arc, id).toBeTruthy();
-      expect(arc!.stages).toHaveLength(3);
+      expect(arc!.stages).toHaveLength(4);
       const q1 = Object.values(w.quests).find((q) => q.personal === id && q.personalStage === 1);
       expect(q1?.status, id).toBe('offered');
     }
@@ -1177,10 +1177,15 @@ describe('the log round (round 8): books, milestones, digests, threads, grief, s
     expect(w.events.some((e) => e.kind === 'birth' && e.summary.includes(child!.name))).toBe(true);
   });
 
-  it('the finished spine writes its own epilogue material', () => {
+  it('the first spine ends by opening the second; the second writes the epilogue', () => {
     const w = freshWorld();
     const stage1 = mainQuests(w)[0];
     advanceCampaign(w, { ...stage1, stage: 8, status: 'completed' });
+    // arc I closing is a book-end, not the end: arc II stage 9 is offered
+    expect(w.campaignComplete).toBeUndefined();
+    expect(mainQuests(w).some((q) => q.stage === 9 && q.status === 'offered')).toBe(true);
+    expect(w.events.some((e) => e.kind === 'campaign.complete' && e.summary.includes('first spine'))).toBe(true);
+    advanceCampaign(w, { ...stage1, stage: 16, status: 'completed' });
     expect(w.campaignComplete).toBe(true);
     const epi = w.events.find((e) => e.kind === 'epilogue');
     expect(epi).toBeTruthy();
