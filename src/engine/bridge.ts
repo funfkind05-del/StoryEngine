@@ -138,7 +138,7 @@ export function statBlock(world: WorldState, charId: string): string {
   const a = c.attributes;
   const skills = Object.entries(c.skills).filter(([, v]) => v > 0).map(([k, v]) => `${k[0].toUpperCase()}${k.slice(1)} ${v}`);
   const lines = [
-    `${c.name.toUpperCase()} — ${cls.label} · Level ${c.level}`,
+    `${c.name.toUpperCase()}${c.title ? ` "${c.title}"` : ''} — ${cls.label} · Level ${c.level}`,
     `XP: ${c.xp} / ${xpForLevel(c.level)}${levelUpAvailable(c) ? '  ◆ LEVEL UP AVAILABLE ◆' : ''}`,
     `HP ${c.hp.current}/${c.hp.max} · Mana ${c.mana.current}/${c.mana.max} · Stamina ${c.stamina.current}/${c.stamina.max}`,
     `STR ${a.strength} · DEX ${a.dexterity} · CON ${a.constitution} · INT ${a.intelligence} · WIS ${a.wisdom} · CHA ${a.charisma}`,

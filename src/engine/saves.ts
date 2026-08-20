@@ -61,6 +61,7 @@ export function migrateWorld(world: WorldState): WorldState {
   world.guildRanks ??= {};
   world.codex ??= [];
   world.activeEvents ??= [];
+  world.achievements ??= [];
   if (!world.quests) {
     world.quests = {};
     seedQuests(world);

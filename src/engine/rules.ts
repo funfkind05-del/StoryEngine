@@ -165,6 +165,15 @@ export const ITEM_PROTOS: Record<string, ItemProto> = {
   bread: { key: 'bread', name: 'Bread', kind: 'supply', slot: 'none', tier: 'mundane', effectKey: 'food-25', stackable: true, value: 1 },
   ration: { key: 'ration', name: 'Trail Ration', kind: 'supply', slot: 'none', tier: 'mundane', effectKey: 'food-40', stackable: true, value: 4 },
   'sealed-package': { key: 'sealed-package', name: 'Sealed Package', kind: 'misc', slot: 'none', tier: 'mundane', stackable: true, value: 0 },
+  // crafting materials & products
+  'iron-scrap': { key: 'iron-scrap', name: 'Iron Scrap', kind: 'misc', slot: 'none', tier: 'mundane', stackable: true, value: 4 },
+  'leather-strips': { key: 'leather-strips', name: 'Leather Strips', kind: 'misc', slot: 'none', tier: 'mundane', stackable: true, value: 3 },
+  'night-herbs': { key: 'night-herbs', name: 'Night Herbs', kind: 'misc', slot: 'none', tier: 'common', stackable: true, value: 8 },
+  'ember-essence': { key: 'ember-essence', name: 'Ember Essence', kind: 'misc', slot: 'none', tier: 'uncommon', stackable: true, value: 40 },
+  'hearty-stew': { key: 'hearty-stew', name: 'Hearty Stew', kind: 'supply', slot: 'none', tier: 'common', effectKey: 'food-80', stackable: true, value: 12 },
+  'harbor-fish': { key: 'harbor-fish', name: 'Harbor Fish', kind: 'supply', slot: 'none', tier: 'mundane', effectKey: 'food-30', stackable: true, value: 3 },
+  'old-boot': { key: 'old-boot', name: 'Old Boot', kind: 'misc', slot: 'none', tier: 'mundane', stackable: true, value: 1 },
+  'harbor-pearl': { key: 'harbor-pearl', name: 'Harbor Pearl', kind: 'treasure', slot: 'none', tier: 'uncommon', stackable: true, value: 150 },
   // weapons & armor (shop stock)
   dagger: { key: 'dagger', name: 'Dagger', kind: 'weapon', slot: 'main-hand', tier: 'mundane', damage: '1d4+1', durability: 50, value: 90 },
   'iron-shortsword': { key: 'iron-shortsword', name: 'Iron Shortsword', kind: 'weapon', slot: 'main-hand', tier: 'common', damage: '1d6+1', durability: 80, value: 220 },

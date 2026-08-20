@@ -47,7 +47,7 @@ const QUALITIES: { key: NonNullable<Item['quality']>; bonus: number; valueMult: 
   { key: 'exquisite', bonus: 3, valueMult: 4, chance: 0.02 },
 ];
 
-const AFFIXES: { name: string; stat: NonNullable<Item['affix']>['stat']; amount: number }[] = [
+export const AFFIXES: { name: string; stat: NonNullable<Item['affix']>['stat']; amount: number }[] = [
   { name: 'of the Bull', stat: 'attack', amount: 1 },
   { name: 'of the Wall', stat: 'defense', amount: 2 },
   { name: 'of the Fox', stat: 'evasion', amount: 2 },

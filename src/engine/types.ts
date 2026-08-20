@@ -618,6 +618,10 @@ export interface WorldState {
   activeEvents?: { id: string; kind: string; locationId: string; expiresDay: number; description: string; monsters: { templateKey: string; count: number }[]; reward: number }[];
   /** the household's stray, if one was taken in */
   pet?: { name: string; kind: string } | null;
+  /** a world event fought but not yet paid out */
+  pendingWorldEventReward?: { id: string; reward: number; locationId: string } | null;
+  /** earned achievement keys */
+  achievements?: string[];
   counters: Record<string, number>; // id counters
   masterSeed: number;
 }

@@ -121,7 +121,10 @@ export function restAtHome(world: WorldState): string | null {
       mended.push(c.name);
     }
   }
-  logEvent(world, 'rest.home', { mended }, mended.length ? `The party slept in their own beds; the infirmary mended ${mended.join(', ')} (the scars remain).` : 'The party slept in their own beds and woke whole.', { location: home.id });
+  if (world.pet) {
+    for (const c of partyMembers(world)) c.tempBonuses.push({ stat: 'defense', amount: 1, roundsLeft: 5, source: `${world.pet.name} slept against the door` });
+  }
+  logEvent(world, 'rest.home', { mended }, mended.length ? `The party slept in their own beds; the infirmary mended ${mended.join(', ')} (the scars remain).` : `The party slept in their own beds and woke whole.${world.pet ? ` ${world.pet.name} held the doorway all night, seriously.` : ''}`, { location: home.id });
   return null;
 }
 
@@ -254,6 +257,72 @@ export function buyMeal(world: WorldState, locId: LocationId): string | null {
   addMinutes(world, 30);
   for (const c of party) eatFood(c, 60);
   logEvent(world, 'meal', { cost, at: locId }, `The party ate a hot meal at ${loc.name} (${fmtMoney(cost)}).`, { location: locId, witnesses: party.map((c) => c.id) });
+  return null;
+}
+
+// ---------- Carriage, fishing, and the stray ----------
+export const CARRIAGE_STOPS = ['LOC_IRONMARKET_SQ', 'LOC_RATCATCHER', 'LOC_GRAVEROW', 'LOC_TEMPLE', 'LOC_WHARVES'];
+
+/** Safe paid travel between carriage stops: no street encounters. */
+export function rideCarriage(world: WorldState, destId: LocationId): string | null {
+  if (!CARRIAGE_STOPS.includes(world.partyLocation)) return 'No carriage stand here.';
+  if (!CARRIAGE_STOPS.includes(destId) || destId === world.partyLocation) return 'The carriage does not go there.';
+  const mc = world.characters[world.mcId];
+  const fare = 10;
+  if (mc.money < fare) return `The fare is ${fmtMoney(fare)}.`;
+  mc.money -= fare;
+  addMinutes(world, 15);
+  world.partyLocation = destId;
+  for (const c of partyMembers(world)) {
+    c.location = destId;
+    c.activity = 'stepping down from the carriage';
+  }
+  logEvent(world, 'carriage', { to: destId, fare }, `The party took the carriage to ${world.locations[destId]?.name} (${fmtMoney(fare)}) — cushioned, quick, and nobody tried to rob them.`, { location: destId, witnesses: partyMembers(world).map((c) => c.id) });
+  return null;
+}
+
+/** An hour with a line off the docks. The most beloved pointless system. */
+export function goFishing(world: WorldState): string | null {
+  const loc = world.locations[world.partyLocation];
+  if (!loc || (loc.type !== 'dock' && !loc.services.includes('passage'))) return 'No water worth fishing here.';
+  const rng = new Rng(randomSeed());
+  addMinutes(world, 60);
+  const mc = world.characters[world.mcId];
+  const roll = rng.next();
+  if (roll < 0.5) {
+    const n = rng.int(1, 3);
+    const fish = makeItem(world, 'harbor-fish', n);
+    addToContainer(world, fish, 'party');
+    logEvent(world, 'fishing.catch', { n }, `${mc.name} pulled ${n} fish out of the black harbor. ${n > 2 ? 'A good hour.' : 'An honest hour.'}`, { location: loc.id, witnesses: partyMembers(world).map((c) => c.id) });
+  } else if (roll < 0.75) {
+    logEvent(world, 'fishing.nothing', {}, `An hour with the line and nothing to show but the harbor's patience. It was, somehow, still worth it.`, { location: loc.id, witnesses: partyMembers(world).map((c) => c.id) });
+  } else if (roll < 0.92) {
+    const boot = makeItem(world, 'old-boot', 1);
+    addToContainer(world, boot, 'party');
+    logEvent(world, 'fishing.catch', { n: 0 }, `${mc.name} caught a boot. Lyra has opinions about whose it was.`, { location: loc.id, witnesses: partyMembers(world).map((c) => c.id) });
+  } else {
+    const pearl = makeItem(world, 'harbor-pearl', 1);
+    addToContainer(world, pearl, 'party');
+    logEvent(world, 'fishing.catch', { n: 1, pearl: true }, `An oyster came up with the line — and a pearl inside worth real coin (${fmtMoney(150)}). The harbor pays its debts strangely.`, { location: loc.id, witnesses: partyMembers(world).map((c) => c.id) });
+  }
+  // the party unwinds a little
+  for (const c of partyMembers(world)) c.needs.fatigue = Math.max(0, c.needs.fatigue - 5);
+  return null;
+}
+
+const STRAY_NAMES = ['Bones', 'Cinder', 'Wharf', 'Copper', 'Grim', 'Biscuit', 'Tar'];
+
+/** Take in the stray that's been haunting the doorstep. Home owners only. */
+export function adoptStray(world: WorldState): string | null {
+  const home = Object.values(world.locations).find((l) => l.household);
+  if (!home) return 'A stray needs a doorstep to haunt. Buy a home first.';
+  if (world.pet) return `${world.pet.name} would object.`;
+  const rng = new Rng(randomSeed());
+  const name = rng.pick(STRAY_NAMES);
+  const kind = rng.chance(0.7) ? 'dock-dog' : 'harbor cat';
+  world.pet = { name, kind };
+  home.household!.residents.push(`PET_${name}`);
+  logEvent(world, 'pet.adopted', { name, kind }, `The ${kind} that has been haunting the doorstep has a name now: ${name}. It sleeps on the cold side of the door, on purpose.`, { location: home.id, witnesses: partyMembers(world).map((c) => c.id) });
   return null;
 }
 

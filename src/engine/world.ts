@@ -14,6 +14,7 @@ import type {
 } from './types';
 import { Rng } from './rng';
 import { CLASSES, advanceNeeds, calendarLabel, needsBlocksHpRegen, needsBlocksStaminaRegen, sleepOff, tickStatusesOverTime, weatherFor, xpForLevel as xpForLevelRule } from './rules';
+import { expireWorldEvents, maybeSpawnWorldEvent } from './worldEvents';
 
 // ---------- IDs ----------
 export function nextId(world: WorldState, prefix: string): string {
@@ -195,8 +196,10 @@ export function tick(world: WorldState, minutes: number): SimEvent[] {
         produced.push(logEvent(world, 'home.interest', { interest }, `The vault's careful lending returned ${interest} copper to the household treasury.`, { location: home.id }));
       }
     }
-    // daily weather
+    // daily weather + world events
     if (!world.weather || world.weather.day !== world.time.day) {
+      maybeSpawnWorldEvent(world);
+      expireWorldEvents(world);
       const kind = weatherFor(world.masterSeed, world.time.day);
       const changed = world.weather && world.weather.kind !== kind;
       world.weather = { kind, day: world.time.day };

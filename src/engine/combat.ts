@@ -39,6 +39,7 @@ import {
 import { generateLoot } from './loot';
 import { checkQuests } from './quests';
 import { affixMod, trainSkill } from './progression';
+import { resolveWorldEventVictory } from './worldEvents';
 
 export interface SkillDef {
   name: string;
@@ -208,6 +209,11 @@ function monsterAI(combat: CombatState, world: WorldState, m: CombatantMonster, 
   const t = MONSTERS[m.templateKey];
   const living = combat.partyIds.map((id) => world.characters[id]).filter((c) => c.hp.current > 0);
   if (!living.length) return { actor: m.id, type: 'defend' };
+  // big creatures telegraph a heavy blow: one round of warning
+  if (!m.charging && t.level >= 4 && rng.chance(0.25)) {
+    m.charging = true;
+    return { actor: m.id, type: 'defend', skillKey: 'charge-up' };
+  }
   if (t.ai === 'cowardly' && m.hp.current <= m.hp.max * 0.3 && rng.chance(0.6)) {
     return { actor: m.id, type: 'flee' };
   }
@@ -455,8 +461,9 @@ function swingAt(
     record({ round: combat.round, actor: c.id, actorName: c.name, action: skill ? 'skill' : 'attack', targetName: m.name, detail, roll, result: 'miss', text: `${c.name} ${skill ? `used ${skill.name} against` : 'attacked'} ${m.name} and missed. (roll ${roll})` });
     return;
   }
-  const isCrit = roll === 20 || rng.chance((c.critChance + (skill?.critBonus ?? 0) + affixMod(world, c, 'critChance')) / 100);
-  let dmg = charDamage(world, c, rng, skill?.dmgBonus ?? 0);
+  const opening = m.status.includes('stunned');
+  const isCrit = roll === 20 || rng.chance((c.critChance + (skill?.critBonus ?? 0) + affixMod(world, c, 'critChance') + (opening ? 20 : 0)) / 100);
+  let dmg = charDamage(world, c, rng, (skill?.dmgBonus ?? 0) + (opening ? 2 : 0));
   if (isCrit) dmg *= 2;
   // weapon wear
   const w = weaponOf(world, c);
@@ -493,6 +500,10 @@ function applyDamageToMonster(
   if (stuns && m.hp.current > 0) {
     statusApplied = 'stunned';
     m.status.push('stunned');
+    if (m.charging) {
+      m.charging = false;
+      record({ round: combat.round, actor: c.id, actorName: c.name, action: 'skill', targetName: m.name, detail: 'interrupt', result: 'status', text: `${c.name}'s blow INTERRUPTED ${m.name}'s wind-up — the massive strike dies unthrown.` });
+    }
   }
   const critTxt = result === 'crit' ? 'CRITICAL HIT — ' : '';
   record({
@@ -529,6 +540,10 @@ function resolveMonsterAction(
   record: (e: CombatLogEntry) => void,
 ) {
   const t = MONSTERS[m.templateKey];
+  if (action.skillKey === 'charge-up') {
+    record({ round: combat.round, actor: m.id, actorName: m.name, action: 'defend', detail: 'telegraph', result: 'status', text: `${m.name} draws back, gathering itself for a massive blow — STUN IT OR BRACE.` });
+    return;
+  }
   if (action.type === 'flee') {
     const roll = rng.die(20);
     if (roll >= 10) {
@@ -548,14 +563,25 @@ function resolveMonsterAction(
     record({ round: combat.round, actor: m.id, actorName: m.name, action: 'attack', targetName: target.name, detail: 'attack', roll, result: 'miss', text: `${m.name} attacked ${target.name} and missed. (roll ${roll})` });
     return;
   }
-  const dmg = Math.max(1, rng.roll(t.damage) - target.armor);
+  let dmg = Math.max(1, rng.roll(t.damage) - target.armor);
+  let heavyNote = '';
+  if (m.charging) {
+    m.charging = false;
+    if (combat.defending.includes(target.id)) {
+      heavyNote = ` ${target.name} braced — the massive blow broke on their guard (halved).`;
+      dmg = Math.max(1, Math.floor(dmg / 2));
+    } else {
+      dmg *= 2;
+      heavyNote = ' — a MASSIVE blow!';
+    }
+  }
   target.hp.current = Math.max(0, target.hp.current - dmg);
   let inflictNote = '';
   if (t.inflicts && target.hp.current > 0 && rng.chance(t.inflicts.chance) && !hasStatus(target, t.inflicts.status)) {
     applyStatus(target, t.inflicts.status, undefined, m.name);
     if (hasStatus(target, t.inflicts.status)) inflictNote = ` ${target.name} is ${t.inflicts.status}!`;
   }
-  record({ round: combat.round, actor: m.id, actorName: m.name, action: 'attack', targetName: target.name, detail: 'attack', roll, result: 'hit', damage: dmg, statusApplied: inflictNote ? t.inflicts!.status : undefined, text: `${m.name} hit ${target.name} for ${dmg} damage.${inflictNote}` });
+  record({ round: combat.round, actor: m.id, actorName: m.name, action: 'attack', targetName: target.name, detail: 'attack', roll, result: 'hit', damage: dmg, statusApplied: inflictNote ? t.inflicts!.status : undefined, text: `${m.name} hit ${target.name} for ${dmg} damage.${heavyNote}${inflictNote}` });
   downCheck(world, target, record, combat.round);
 }
 
@@ -645,6 +671,7 @@ function finishCombat(world: WorldState, combat: CombatState) {
     logEvent(world, 'faction.rep', { faction: fac, delta: -n, why: 'blood spilled' }, `${world.factions[fac]?.name ?? fac} will hear about their dead (reputation -${n}).`);
   }
   checkQuests(world);
+  resolveWorldEventVictory(world, combat.outcome);
   logEvent(
     world,
     'combat.end',

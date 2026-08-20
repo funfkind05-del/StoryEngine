@@ -6,6 +6,8 @@ import type { Item, LootResult, WorldState } from './types';
 import { Rng } from './rng';
 import { nextId } from './world';
 import { rollGearMods } from './progression';
+import { MATERIAL_DROPS } from './crafting';
+import { makeItem as makeProtoItem } from './rules';
 
 interface LootEntry {
   chance: number;
@@ -194,6 +196,13 @@ export function generateLoot(world: WorldState, monsterKeys: string[], seed: num
         seen[it.name] = true;
         items.push(it);
       }
+    }
+  }
+  // raw materials for the crafting bench
+  for (const key of monsterKeys) {
+    const drops = MATERIAL_DROPS[lootTableFor(key)] ?? [];
+    for (const d of drops) {
+      if (rng.chance(d.chance)) items.push(makeProtoItem(world, d.proto, rng.int(d.qty[0], d.qty[1])));
     }
   }
   return { xp, money, items, seed, taken: false };

@@ -77,6 +77,8 @@ export function generateDungeon(world: WorldState, dungeonId: string): Dungeon {
       }
       if (rng.chance(0.25)) room.chest = { opened: false, lootSeed: rng.fork() };
       if (rng.chance(0.18)) room.trap = { kind: rng.pick(TRAPS), disarmed: false, triggered: false };
+      if (rng.chance(0.1)) room.shrine = { used: false };
+      if (rng.chance(0.15)) room.resource = { proto: rng.pick(['iron-scrap', 'leather-strips', 'night-herbs', 'night-herbs', 'ember-essence']), gathered: false };
       d.rooms[id] = room;
       cells.set(`${p.x},${p.y}`, id);
     }
@@ -101,6 +103,25 @@ export function generateDungeon(world: WorldState, dungeonId: string): Dungeon {
         const other = roomsThisFloor.find((o) => o !== rid);
         if (other) { r.connections.north = other; d.rooms[other].connections.south = rid; }
       }
+    }
+    // one locked door per floor: bar a random inter-room passage
+    const lockCandidates = roomsThisFloor.filter((rid) => {
+      const r = d.rooms[rid];
+      return Object.entries(r.connections).some(([dir]) => ['north', 'south', 'east', 'west'].includes(dir));
+    });
+    if (lockCandidates.length && rng.chance(0.7)) {
+      const rid = rng.pick(lockCandidates);
+      const r = d.rooms[rid];
+      const dirs = Object.keys(r.connections).filter((k) => ['north', 'south', 'east', 'west'].includes(k)) as ('north' | 'south' | 'east' | 'west')[];
+      if (dirs.length) {
+        const dir = rng.pick(dirs);
+        r.lockedDoor = { dir, to: r.connections[dir]!, difficulty: 12 + floor * 2, opened: false };
+      }
+    }
+    // a lorebook somewhere on the floor
+    if (rng.chance(0.6)) {
+      const rid = rng.pick(roomsThisFloor);
+      d.rooms[rid].lorebook = { id: `${d.id}:${floor}`, taken: false };
     }
     const entry = roomsThisFloor[0];
     if (floor === 1) {
@@ -176,6 +197,9 @@ export function moveInDungeon(world: WorldState, dir: MoveDir): { event: SimEven
   const here = d.rooms[world.currentRoom];
   const destId = here.connections[dir];
   if (!destId) return { error: `No passage ${dir} from ${here.name}.` };
+  if (here.lockedDoor && !here.lockedDoor.opened && here.lockedDoor.dir === dir) {
+    return { error: `The way ${dir} is barred by a locked door (pick it — lockpicking vs difficulty ${here.lockedDoor.difficulty}).` };
+  }
   const dest = d.rooms[destId];
   world.currentRoom = destId;
   const firstVisit = !dest.explored;
@@ -243,4 +267,49 @@ export function disarmTrap(world: WorldState): SimEvent | { error: string } {
   mc.hp.current = Math.max(0, mc.hp.current - dmg);
   const died = mc.hp.current === 0 ? ' It nearly killed him.' : '';
   return logEvent(world, 'dungeon.trap', { room: room.id, kind: room.trap.kind, result: 'triggered', roll, damage: dmg }, `${mc.name} triggered the ${room.trap.kind} while trying to disarm it and took ${dmg} damage. (roll ${roll})${died}`, { witnesses: partyMembers(world).map((c) => c.id) });
+}
+
+
+/** Pick the room's locked door; trains lockpicking. */
+export function pickLock(world: WorldState): SimEvent | { error: string } {
+  if (!world.currentDungeon || !world.currentRoom) return { error: 'Not inside a dungeon.' };
+  const d = world.dungeons[world.currentDungeon];
+  const room = d.rooms[world.currentRoom];
+  if (!room.lockedDoor || room.lockedDoor.opened) return { error: 'No locked door here.' };
+  const mc = world.characters[world.mcId];
+  addMinutes(world, 10);
+  trainSkill(world, mc, 'lockpicking');
+  const rng = new Rng((d.generationSeed ^ (world.time.day * 131 + world.time.minute)) >>> 0);
+  const roll = rng.die(20) + mc.skills.lockpicking + Math.floor((mc.attributes.dexterity - 10) / 2);
+  if (roll >= room.lockedDoor.difficulty) {
+    room.lockedDoor.opened = true;
+    return logEvent(world, 'dungeon.lockpicked', { room: room.id, roll }, `${mc.name} worked the lock until it surrendered — the way ${room.lockedDoor.dir} stands open. (roll ${roll})`, { witnesses: partyMembers(world).map((c) => c.id) });
+  }
+  return logEvent(world, 'dungeon.lockfailed', { room: room.id, roll }, `The lock beat ${mc.name} this time. (roll ${roll} vs ${room.lockedDoor.difficulty})`, { witnesses: partyMembers(world).map((c) => c.id) });
+}
+
+/** Pray at a dungeon shrine: one blessing per shrine, ever. */
+export function useShrine(world: WorldState): SimEvent | { error: string } {
+  if (!world.currentDungeon || !world.currentRoom) return { error: 'Not inside a dungeon.' };
+  const room = world.dungeons[world.currentDungeon].rooms[world.currentRoom];
+  if (!room.shrine || room.shrine.used) return { error: 'No shrine waits here.' };
+  room.shrine.used = true;
+  addMinutes(world, 10);
+  for (const c of partyMembers(world)) {
+    c.hp.current = Math.min(c.hp.max, c.hp.current + Math.ceil(c.hp.max * 0.25));
+    c.tempBonuses.push({ stat: 'defense', amount: 2, roundsLeft: 8, source: 'Old shrine' });
+  }
+  return logEvent(world, 'dungeon.shrine', { room: room.id }, 'The party knelt at the old shrine. Whatever listens down here, it answered a little: wounds closed and a stillness settled over them (+2 defense, 8 rounds).', { witnesses: partyMembers(world).map((c) => c.id) });
+}
+
+/** Take the floor's lorebook into the Codex. */
+export function takeLorebook(world: WorldState): SimEvent | { error: string } {
+  if (!world.currentDungeon || !world.currentRoom) return { error: 'Not inside a dungeon.' };
+  const room = world.dungeons[world.currentDungeon].rooms[world.currentRoom];
+  if (!room.lorebook || room.lorebook.taken) return { error: 'No writings here.' };
+  room.lorebook.taken = true;
+  world.codex ??= [];
+  if (!world.codex.includes(room.lorebook.id)) world.codex.push(room.lorebook.id);
+  addMinutes(world, 10);
+  return logEvent(world, 'dungeon.lorebook', { id: room.lorebook.id }, `The party recovered old writings (${room.lorebook.id}) — added to the Codex.`, { witnesses: partyMembers(world).map((c) => c.id) });
 }

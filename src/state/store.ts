@@ -52,6 +52,11 @@ import { scheduleBackup } from '../engine/diskSave';
 import { acceptQuest, checkQuests, declineQuest, refreshJobs, turnInQuest } from '../engine/quests';
 import { arrestFlee, arrestPay, arrestResist, arrestSurrender, burgleShop, maybePatrolStop, payBountyAt, pickpocket } from '../engine/crime';
 import { joinGuild } from '../engine/guilds';
+import { craft, enchantItem, gatherResource } from '../engine/crafting';
+import { pickLock, takeLorebook, useShrine } from '../engine/dungeon';
+import { engageWorldEvent } from '../engine/worldEvents';
+import { adoptStray, goFishing, rideCarriage } from '../engine/services';
+import { checkAchievements } from '../engine/achievements';
 import { spendAttributePoint } from '../engine/progression';
 import { activeSlot, deleteBook, newBookSlot, renameBook, setActiveSlot, touchBook } from '../engine/books';
 import { draftScene } from '../engine/proseLlm';
@@ -152,6 +157,18 @@ interface AppState {
   questTurnIn: (id: string, choiceKey?: string) => void;
   guildJoin: (key: string) => void;
 
+  // crafting & dungeon interactivity
+  craftAct: (recipeKey: string) => void;
+  enchantAct: (itemId: string) => void;
+  gatherAct: () => void;
+  pickLockAct: () => void;
+  shrineAct: () => void;
+  lorebookAct: () => void;
+  eventEngage: () => void;
+  carriageRide: (destId: string) => void;
+  fishAct: () => void;
+  adoptPet: () => void;
+
   // companion moments
   hearMoment: () => Promise<void>;
   dismissMoment: () => void;
@@ -247,6 +264,7 @@ export const useStore = create<AppState>((set, get) => ({
 
   commit: (opts) => {
     const { world } = get();
+    checkAchievements(world);
     let snapshots = get().snapshots;
     if (opts?.autosave) {
       snapshots = pruneSnapshots([...snapshots, makeSnapshot(world, 'auto', opts.autosave)]);
@@ -567,6 +585,77 @@ export const useStore = create<AppState>((set, get) => ({
     const err = joinGuild(world, key);
     if (err) setToast(err);
     commit({ autosave: 'Joined guild' });
+  },
+
+  craftAct: (recipeKey) => {
+    const { world, commit, setToast } = get();
+    const err = craft(world, recipeKey);
+    if (err) setToast(err);
+    commit({ autosave: 'Crafting' });
+  },
+
+  enchantAct: (itemId) => {
+    const { world, commit, setToast } = get();
+    const err = enchantItem(world, itemId);
+    if (err) setToast(err);
+    commit({ autosave: 'Enchanting' });
+  },
+
+  gatherAct: () => {
+    const { world, commit, setToast } = get();
+    const err = gatherResource(world);
+    if (err) setToast(err);
+    commit();
+  },
+
+  pickLockAct: () => {
+    const { world, commit, setToast } = get();
+    const res = pickLock(world);
+    if ('error' in res) setToast(res.error);
+    commit();
+  },
+
+  shrineAct: () => {
+    const { world, commit, setToast } = get();
+    const res = useShrine(world);
+    if ('error' in res) setToast(res.error);
+    commit();
+  },
+
+  lorebookAct: () => {
+    const { world, commit, setToast } = get();
+    const res = takeLorebook(world);
+    if ('error' in res) setToast(res.error);
+    else setToast('Added to the Codex (Muse panel).');
+    commit({ autosave: 'Lorebook' });
+  },
+
+  eventEngage: () => {
+    const { world, commit, setToast } = get();
+    const err = engageWorldEvent(world);
+    if (err) setToast(err);
+    commit({ autosave: 'World event' });
+  },
+
+  carriageRide: (destId) => {
+    const { world, commit, setToast } = get();
+    const err = rideCarriage(world, destId);
+    if (err) setToast(err);
+    commit({ autosave: 'Carriage' });
+  },
+
+  fishAct: () => {
+    const { world, commit, setToast } = get();
+    const err = goFishing(world);
+    if (err) setToast(err);
+    commit({ autosave: 'Fishing' });
+  },
+
+  adoptPet: () => {
+    const { world, commit, setToast } = get();
+    const err = adoptStray(world);
+    if (err) setToast(err);
+    commit();
   },
 
   // ---------- companion moments ----------

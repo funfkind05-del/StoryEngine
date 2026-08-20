@@ -106,6 +106,41 @@ default. **Disk backup** (Saves panel, Chromium browsers) links a .json file
 on disk that the app rewrites automatically while you work — localStorage can
 be evicted by the browser; your novel shouldn't live there alone.
 
+## Playing the game: the ESO layer
+
+Bard's Tale bones, Elder Scrolls texture:
+
+- **Crime & justice** — pickpocket marks (they remember), burgle shops after
+  dark, fence stolen goods at the docks; a Watch **bounty** builds until a
+  patrol corners you: pay 120%, run, draw steel, or take two days in the
+  cells (fines + stolen goods confiscated). Bounty chip lives in the topbar.
+- **Guild membership** — join any of five guilds, climb three ranks through
+  guild quest chains, earn training discounts (10%/rank) and a carried title.
+- **Use-based progression** — swords rise by swinging, archery by shooting,
+  magic by casting, stealth and lockpicking by crime; levels grant
+  **attribute points you assign**; loot rolls craftsmanship quality
+  (Fine/Superior/Exquisite) and affixes (of the Bull, the Fox, the Adder…).
+- **Choice quests** — campaign stages 3, 4, and 6 end in decisions (who gets
+  the Hierophant's ledger; split the vault or ransom the silence; publish
+  the drowned archive or bury it) with different coin, standing, and truth.
+- **Crafting** — materials drop from kills and dungeon nodes (iron scrap,
+  leather, night herbs, ember essence); smith, brew, cook, and **enchant**
+  at the household's rooms; a forge annex and strength improve outcomes.
+- **World events** — Ash rituals flare, street bosses surface, wolf packs
+  slip the walls; step in before they expire for coin and Watch goodwill,
+  or let them lapse and the street gets permanently worse.
+- **Dungeon interactivity** — locked doors (lockpicking), one-use shrines,
+  resource nodes, and **lorebooks**: 29 hand-written pages of what lies
+  beneath, collected into a Codex (Muse panel) that doubles as the saga's
+  worldbuilding bible.
+- **Combat telegraphs & synergies** — big creatures wind up massive blows:
+  brace to halve, or stun to interrupt; attacking a stunned enemy
+  capitalizes on the opening (+crit, +damage).
+- **The rest of the texture** — 16 achievements with titles that appear in
+  stat blocks, a carriage line between five stops (safe paid travel),
+  fishing off the wharves (fish, boots, the occasional pearl), and a stray
+  who will hold your doorway all night, seriously.
+
 ## The campaign spine — What Lies Beneath Blackwall
 
 An eight-stage main questline threads the eight dungeons in level order:

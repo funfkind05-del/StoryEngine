@@ -35,6 +35,10 @@ import { activeSlot, listBooks } from '../engine/books';
 import { developIdea, generateStoryIdeas, type StoryIdea } from '../engine/muse';
 import { loadLlmConfig } from '../engine/npcChat';
 import { MONSTERS } from '../engine/monsters';
+import { CARRIAGE_STOPS } from '../engine/services';
+import { RECIPES, canCraft } from '../engine/crafting';
+import { LOREBOOKS, loreById } from '../engine/codex';
+import { ACHIEVEMENTS } from '../engine/achievements';
 import {
   chooseBackupFile,
   diskSaveSupported,
@@ -107,6 +111,9 @@ function LocationPanel() {
   const crimeBurgle = useStore((s) => s.crimeBurgle);
   const crimePayBounty = useStore((s) => s.crimePayBounty);
   const guildJoin = useStore((s) => s.guildJoin);
+  const eventEngage = useStore((s) => s.eventEngage);
+  const carriageRide = useStore((s) => s.carriageRide);
+  const fishAct = useStore((s) => s.fishAct);
   const loc = world.locations[world.partyLocation];
   const mc = world.characters[world.mcId];
   if (!loc) return <p>Nowhere?</p>;
@@ -191,6 +198,29 @@ function LocationPanel() {
             <button className="danger" onClick={crimeBurgle} title="Break in after dark. Lockpicking and stealth against the district's watchfulness.">🌙 Burgle the shop</button>
           )}
         </>
+      )}
+      {(world.activeEvents ?? []).some((e) => e.locationId === loc.id) && (
+        <div className="warn" style={{ borderLeftColor: 'var(--accent)' }}>
+          <b>⚡ {(world.activeEvents ?? []).find((e) => e.locationId === loc.id)!.description}</b>
+          <div className="row">
+            <button className="primary" onClick={eventEngage}>Step in</button>
+            <span className="dim small">expires Day {(world.activeEvents ?? []).find((e) => e.locationId === loc.id)!.expiresDay}</span>
+          </div>
+        </div>
+      )}
+      {CARRIAGE_STOPS.includes(loc.id) && (
+        <div className="row small">
+          <label>🐎 Carriage</label>
+          <select value="" onChange={(e) => { if (e.target.value) carriageRide(e.target.value); }}>
+            <option value="">ride to… (1s, no trouble)</option>
+            {CARRIAGE_STOPS.filter((sId) => sId !== loc.id).map((sId) => (
+              <option key={sId} value={sId}>{world.locations[sId]?.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
+      {(loc.type === 'dock' || loc.services.includes('passage')) && (
+        <div className="row"><button onClick={fishAct}>🎣 Fish off the pilings (1h)</button></div>
       )}
       {loc.services.includes('food') && (
         <div className="row" style={{ marginTop: 8 }}>
@@ -325,6 +355,20 @@ function MusePanel() {
         most pressing first. They refresh as the world changes. Nothing here is canon; it's material.
       </p>
       {ideas.length === 0 && <p className="dim">The world is quiet. Advance time, travel, or stir something up.</p>}
+      <details style={{ marginBottom: 8 }}>
+        <summary>📜 Codex — {(world.codex ?? []).length}/{LOREBOOKS.length} recovered writings</summary>
+        {(world.codex ?? []).length === 0 && <p className="dim small">Lorebooks wait in the dungeons; each one is a page of what lies beneath.</p>}
+        {(world.codex ?? []).map((id) => {
+          const lore = loreById(id);
+          if (!lore) return null;
+          return (
+            <div key={id} className="card">
+              <div className="name">{lore.title}</div>
+              <p className="small" style={{ fontFamily: 'var(--serif)' }}>{lore.text}</p>
+            </div>
+          );
+        })}
+      </details>
       {ideas.map((idea) => {
         const dev = developed[idea.title];
         return (
@@ -730,6 +774,10 @@ function DungeonPanel() {
   const disarm = useStore((s) => s.disarm);
   const lootChest = useStore((s) => s.lootChest);
   const fight = useStore((s) => s.fight);
+  const pickLockAct = useStore((s) => s.pickLockAct);
+  const shrineAct = useStore((s) => s.shrineAct);
+  const lorebookAct = useStore((s) => s.lorebookAct);
+  const gatherAct = useStore((s) => s.gatherAct);
   if (!world.currentDungeon || !world.currentRoom) {
     const entrances = Object.values(world.locations).filter((l) => l.dungeonId);
     return (
@@ -795,6 +843,10 @@ function DungeonPanel() {
         <button onClick={search}>Search room</button>
         {room.trap && !room.trap.disarmed && !room.trap.triggered && <button onClick={disarm}>Disarm trap</button>}
         {room.chest && !room.chest.opened && <button onClick={lootChest}>Open chest</button>}
+        {room.lockedDoor && !room.lockedDoor.opened && <button onClick={pickLockAct}>🔒 Pick lock ({room.lockedDoor.dir})</button>}
+        {room.shrine && !room.shrine.used && <button onClick={shrineAct}>🕯 Pray at the shrine</button>}
+        {room.lorebook && !room.lorebook.taken && <button onClick={lorebookAct}>📜 Take the writings</button>}
+        {room.resource && !room.resource.gathered && <button onClick={gatherAct}>⛏ Gather {room.resource.proto.replace(/-/g, ' ')}</button>}
         <button onClick={leaveDungeon}>Exit dungeon</button>
       </div>
       <h4>Floor map</h4>
@@ -954,6 +1006,9 @@ function HouseholdPanel() {
   const homeFletch = useStore((s) => s.homeFletch);
   const homeFeast = useStore((s) => s.homeFeast);
   const homeBuyFirst = useStore((s) => s.homeBuyFirst);
+  const craftAct = useStore((s) => s.craftAct);
+  const enchantAct = useStore((s) => s.enchantAct);
+  const adoptPet = useStore((s) => s.adoptPet);
   const homeId = findHome(world);
   const home = homeId ? world.locations[homeId] : null;
   const mc = world.characters[world.mcId];
@@ -1037,6 +1092,29 @@ function HouseholdPanel() {
       {!hh.upgrades.some((u) => ['kitchen', 'training-yard', 'alchemy-room', 'workshop'].includes(u)) && (
         <p className="dim small">Functional rooms (kitchen, yard, alchemy, workshop) unlock actions here once built.</p>
       )}
+      <h4>Crafting bench</h4>
+      {RECIPES.map((r) => {
+        const blocked = canCraft(world, r);
+        return (
+          <div key={r.key} className="row small">
+            <span className="grow">{r.label} <span className="dim">({r.needs.map((n) => `${n.qty}× ${n.proto.replace(/-/g, ' ')}`).join(', ')})</span></span>
+            <button disabled={!!blocked} title={blocked ?? undefined} onClick={() => craftAct(r.key)}>Craft</button>
+          </div>
+        );
+      })}
+      {hh.upgrades.includes('enchanters-study') && (
+        <div className="row small">
+          <label>✨ Enchant (2× ember essence)</label>
+          <select value="" onChange={(e) => { if (e.target.value) enchantAct(e.target.value); }}>
+            <option value="">choose gear…</option>
+            {Object.values(world.items)
+              .filter((i) => (i.kind === 'weapon' || i.kind === 'armor' || i.kind === 'shield') && !i.affix && typeof i.owner === 'string' && (world.characters[i.owner]?.inParty || i.owner === 'PARTY' || i.owner === 'HOME_STORAGE'))
+              .map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
+          </select>
+        </div>
+      )}
+      {!world.pet && <div className="row"><button onClick={adoptPet}>🐕 Take in the stray that haunts the doorstep</button></div>}
+      {world.pet && <p className="small dim">🐕 {world.pet.name} the {world.pet.kind} holds the doorway. Seriously.</p>}
       <h4>Money chest (treasury)</h4>
       <p className="mono">{fmtMoney(hh.treasury)}</p>
       <TreasuryControls />
@@ -1265,6 +1343,15 @@ function SavesPanel() {
       </div>
       <BooksSection />
       <DiskBackupSection />
+      <h4>Achievements — {(world.achievements ?? []).length}/{ACHIEVEMENTS.length}</h4>
+      {ACHIEVEMENTS.map((a) => {
+        const got = (world.achievements ?? []).includes(a.key);
+        return (
+          <p key={a.key} className="small" style={{ opacity: got ? 1 : 0.45 }}>
+            {got ? '★' : '☆'} <b>{a.label}</b> — {a.desc}{a.title ? ` (title: "${a.title}")` : ''}
+          </p>
+        );
+      })}
       <MonsterArtSection />
       <h4>Checkpoints</h4>
       <div className="row">

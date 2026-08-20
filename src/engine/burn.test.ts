@@ -11,7 +11,12 @@ import { describe, expect, it } from 'vitest';
 import { buildSeedWorld } from '../data/seed';
 import { Rng } from './rng';
 import { advanceUntilMorning, partyMembers, tick, travelTo } from './world';
-import { disarmTrap, enterDungeon, exitDungeon, moveInDungeon, searchRoom } from './dungeon';
+import { disarmTrap, enterDungeon, exitDungeon, moveInDungeon, pickLock, searchRoom, takeLorebook, useShrine } from './dungeon';
+import { gatherResource, craft, RECIPES } from './crafting';
+import { engageWorldEvent } from './worldEvents';
+import { CARRIAGE_STOPS, adoptStray, goFishing, rideCarriage } from './services';
+import { loreById } from './codex';
+import { checkAchievements } from './achievements';
 import { generateDungeonEncounter, rollCityEncounter } from './encounter';
 import { SKILLS, SPELLS, closeCombat, resolveRound, startCombat, takeLoot } from './combat';
 import { openChest } from './loot';
@@ -121,6 +126,10 @@ function checkInvariants(w: WorldState, step: number, action: string, deep: bool
     if (!w.combat.active && w.combat.outcome === 'ongoing') fail('inactive combat still ongoing');
   }
   if ((w.bounty ?? 0) < 0) fail('negative bounty');
+  for (const id of w.codex ?? []) {
+    if (!loreById(id)) fail(`codex holds unknown lore id ${id}`);
+  }
+  if ((w.activeEvents ?? []).length > 2) fail('too many concurrent world events');
   for (const [gk, r] of Object.entries(w.guildRanks ?? {})) {
     if (r < 0 || r > 3) fail(`guild ${gk} rank ${r} out of range`);
   }
@@ -216,6 +225,10 @@ function step(w: WorldState, rng: Rng): string {
     }
     if (roll < 0.45) { searchRoom(w); return 'search'; }
     if (roll < 0.5 && room.trap && !room.trap.disarmed && !room.trap.triggered) { disarmTrap(w); return 'disarm'; }
+    if (roll < 0.52 && room.lockedDoor && !room.lockedDoor.opened) { pickLock(w); return 'picklock'; }
+    if (roll < 0.54 && room.shrine && !room.shrine.used) { useShrine(w); return 'shrine'; }
+    if (roll < 0.56 && room.lorebook && !room.lorebook.taken) { takeLorebook(w); return 'lorebook'; }
+    if (roll < 0.58 && room.resource && !room.resource.gathered) { gatherResource(w); return 'gather'; }
     if (roll < 0.6 && room.chest && !room.chest.opened) {
       const loot = openChest(w);
       if (!('error' in loot)) {
@@ -338,7 +351,19 @@ function step(w: WorldState, rng: Rng): string {
     if (w.pendingMoment && rng.chance(0.7)) w.pendingMoment = null; // author waves them off
     return 'moment';
   }
-  if (roll < 0.84) { restAtHome(w); return 'home-rest'; }
+  if (roll < 0.83) { restAtHome(w); return 'home-rest'; }
+  if (roll < 0.84) {
+    const which = rng.next();
+    if (which < 0.3) engageWorldEvent(w);
+    else if (which < 0.5) rideCarriage(w, rng.pick(CARRIAGE_STOPS));
+    else if (which < 0.7) goFishing(w);
+    else if (which < 0.8) adoptStray(w);
+    else {
+      const r = rng.pick(RECIPES);
+      craft(w, r.key);
+    }
+    return 'tier23';
+  }
   if (roll < 0.88) {
     // prose-sync style proposals (the author-approved path)
     const kind = rng.pick(['damage', 'heal', 'gain_money', 'spend_money', 'relationship', 'note_event']);
@@ -432,6 +457,7 @@ describe(`burn test (${SEEDS} seeds × ${ITERS} actions, offset ${OFFSET})`, () 
         lastClock = clock;
         // periodic muse pass: ideas must always be generable and grounded
         if (i % 400 === 200) {
+          checkAchievements(w);
           for (const idea of generateStoryIdeas(w)) {
             if (!idea.grounding.length || !idea.outline) throw new Error(`ungrounded muse idea: ${idea.title}`);
           }
