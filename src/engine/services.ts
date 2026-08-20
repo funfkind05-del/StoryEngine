@@ -356,8 +356,8 @@ export function useConsumable(world: WorldState, itemId: string, targetId: strin
   const item = world.items[itemId];
   const target = world.characters[targetId];
   if (!item || !target) return 'No such item.';
-  const edible = item.kind === 'potion' || item.effectKey?.startsWith('food-');
-  if (!edible) return 'Not consumable.';
+  const usable = item.kind === 'potion' || item.effectKey?.startsWith('food-') || item.effectKey?.startsWith('teach-');
+  if (!usable) return 'Not consumable.';
   const rng = new Rng(randomSeed());
   const res = consumeItem(world, item, target, rng);
   const remaining = item.owner ? item.qty ?? 0 : 0;

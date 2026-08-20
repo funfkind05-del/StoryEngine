@@ -56,6 +56,24 @@ export interface SkillDef {
 }
 
 export const SKILLS: Record<string, SkillDef> = {
+  // monk forms — the House of the Open Hand
+  'palm-strike': { name: 'Palm Strike', stamina: 3, toHitMod: 1, dmgBonus: 2, stuns: true },
+  'flowing-fists': { name: 'Flowing Fists', stamina: 4, toHitMod: 0, dmgBonus: 1, doubleHit: true },
+  'iron-knuckle': { name: 'Iron Knuckle', stamina: 5, toHitMod: 0, dmgBonus: 5, critBonus: 10 },
+  'whirling-crane': { name: 'Whirling Crane', stamina: 7, toHitMod: -1, dmgBonus: 2, extraTargets: 2 },
+  'pressure-point': { name: 'Pressure Point', stamina: 6, toHitMod: 2, dmgBonus: 3, stuns: true, critBonus: 15 },
+  'hundred-hands': { name: 'Hundred Hands', stamina: 9, toHitMod: 0, dmgBonus: 3, doubleHit: true, extraTargets: 1 },
+  'dragon-fist': { name: 'Dragon Fist', stamina: 10, toHitMod: 1, dmgBonus: 9, critBonus: 20 },
+  'empty-body': { name: 'Empty Body', stamina: 12, toHitMod: 2, dmgBonus: 8, doubleHit: true, critBonus: 25 },
+  'fist-of-the-void': { name: 'Fist of the Void', stamina: 15, toHitMod: 2, dmgBonus: 16, stuns: true, critBonus: 30 },
+  // bard steel (when the song isn't enough)
+  'cutting-jest': { name: 'Cutting Jest', stamina: 4, toHitMod: 1, dmgBonus: 2, blinds: true },
+  // spellblade forms
+  riposte: { name: 'Riposte', stamina: 4, toHitMod: 2, dmgBonus: 3 },
+  'flame-brand': { name: 'Flame Brand', stamina: 6, toHitMod: 0, dmgBonus: 6 },
+  'mirror-parry': { name: 'Mirror Parry', stamina: 8, toHitMod: 1, dmgBonus: 5, stuns: true },
+  'runed-cleave': { name: 'Runed Cleave', stamina: 10, toHitMod: 0, dmgBonus: 6, extraTargets: 2 },
+  'edge-of-dawn': { name: 'Edge of Dawn', stamina: 14, toHitMod: 2, dmgBonus: 14, critBonus: 25 },
   // fighter line
   'shield-bash': { name: 'Shield Bash', stamina: 3, toHitMod: 0, dmgBonus: 2, stuns: true },
   'power-strike': { name: 'Power Strike', stamina: 4, toHitMod: -2, dmgBonus: 5 },
@@ -102,6 +120,33 @@ export interface SpellDef {
 }
 
 export const SPELLS: Record<string, SpellDef> = {
+  // bard songs — the Broken Crown's own curriculum
+  'sharp-word': { name: 'Sharp Word', mana: 3, damage: '1d6+1' },
+  'rallying-chorus': { name: 'Rallying Chorus', mana: 6, heal: '1d6+2', healAll: true },
+  'discordant-note': { name: 'Discordant Note', mana: 6, damage: '2d6+2', stunChance: 15 },
+  'march-of-old-kings': { name: 'March of the Old Kings', mana: 9, heal: '1d8+4', healAll: true, partyDefense: 1 },
+  'siren-strain': { name: 'Siren Strain', mana: 10, damage: '3d6', stunChance: 30 },
+  'battle-hymn': { name: 'Battle Hymn', mana: 12, heal: '2d8+6', healAll: true, partyDefense: 2 },
+  'song-of-the-broken-crown': { name: 'Song of the Broken Crown', mana: 15, damage: '4d6+4', hitsAll: true },
+  requiem: { name: 'Requiem', mana: 18, damage: '5d6+6', hitsAll: true, stunChance: 20 },
+  'the-last-song': { name: 'The Last Song', mana: 26, damage: '6d8+10', hitsAll: true, stunChance: 35 },
+  // warlock pact-work — the Nameless Chapel does not advertise
+  wither: { name: 'Wither', mana: 4, damage: '2d6+1' },
+  'gnawing-dark': { name: 'Gnawing Dark', mana: 6, damage: '2d8+2' },
+  hex: { name: 'Hex', mana: 7, damage: '1d8', stunChance: 40 },
+  'soul-lash': { name: 'Soul Lash', mana: 9, damage: '3d8+2' },
+  'black-tide': { name: 'Black Tide', mana: 12, damage: '3d6+3', hitsAll: true },
+  unravel: { name: 'Unravel', mana: 14, damage: '4d8+4' },
+  'pact-flame': { name: 'Pact Flame', mana: 16, damage: '5d8+5' },
+  'devouring-sign': { name: 'Devouring Sign', mana: 20, damage: '5d6+8', hitsAll: true, stunChance: 20 },
+  'the-hungry-door': { name: 'The Hungry Door', mana: 24, damage: '6d10+8', stunChance: 30 },
+  'name-eater': { name: 'Name-Eater', mana: 30, damage: '8d10+10' },
+  // spellblade edge-work
+  'spark-edge': { name: 'Spark Edge', mana: 3, damage: '1d8+2' },
+  'frost-guard': { name: 'Frost Guard', mana: 6, damage: '1d6', partyDefense: 1, stunChance: 20 },
+  'storm-brand': { name: 'Storm Brand', mana: 10, damage: '3d8+2' },
+  'runic-burst': { name: 'Runic Burst', mana: 14, damage: '3d6+4', hitsAll: true },
+  'blade-tempest': { name: 'Blade Tempest', mana: 20, damage: '5d8+6', hitsAll: true },
   // mage line
   firebolt: { name: 'Firebolt', mana: 4, damage: '2d6' },
   'frost-grasp': { name: 'Frost Grasp', mana: 5, damage: '1d8', stunChance: 0.4 },

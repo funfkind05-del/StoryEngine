@@ -30,6 +30,13 @@ export const RECIPES: Recipe[] = [
   { key: 'brew-antidote', label: 'Brew an antidote', room: 'alchemy-room', needs: [{ proto: 'night-herbs', qty: 2 }], makes: 'antidote', minutes: 60 },
   { key: 'brew-tonic', label: 'Brew stoneblood tonic', room: 'alchemy-room', needs: [{ proto: 'night-herbs', qty: 2 }, { proto: 'iron-scrap', qty: 1 }], makes: 'stoneblood-tonic', minutes: 90 },
   { key: 'cook-stew', label: 'Cook hearty stew (x3)', room: 'kitchen', needs: [{ proto: 'ration', qty: 1 }, { proto: 'night-herbs', qty: 1 }], makes: 'hearty-stew', minutes: 60 },
+  { key: 'brew-healing', label: 'Brew a healing potion', room: 'alchemy-room', needs: [{ proto: 'night-herbs', qty: 3 }, { proto: 'bogroot', qty: 2 }], makes: 'healing-potion', minutes: 90 },
+  { key: 'brew-greater-healing', label: 'Brew a greater healing potion', room: 'alchemy-room', needs: [{ proto: 'night-herbs', qty: 4 }, { proto: 'silver-ash', qty: 2 }], makes: 'greater-healing-potion', minutes: 150 },
+  { key: 'brew-mana', label: 'Distil a mana draught', room: 'alchemy-room', needs: [{ proto: 'bogroot', qty: 2 }, { proto: 'silver-ash', qty: 1 }], makes: 'mana-draught', minutes: 90 },
+  { key: 'brew-purification', label: 'Brew a purification elixir', room: 'alchemy-room', needs: [{ proto: 'grave-mold', qty: 3 }, { proto: 'silver-ash', qty: 1 }], makes: 'purification-elixir', minutes: 120 },
+  { key: 'smith-mace', label: 'Smith an iron mace', room: 'workshop', needs: [{ proto: 'iron-scrap', qty: 7 }], makes: 'iron-mace', minutes: 200 },
+  { key: 'smith-spear', label: 'Smith a boarding spear', room: 'workshop', needs: [{ proto: 'iron-scrap', qty: 5 }, { proto: 'leather-strips', qty: 2 }], makes: 'boarding-spear', minutes: 180 },
+  { key: 'temper-scale', label: 'Temper a scale hauberk', room: 'workshop', needs: [{ proto: 'iron-scrap', qty: 12 }, { proto: 'wyrm-scale', qty: 2 }, { proto: 'leather-strips', qty: 4 }], makes: 'scale-hauberk', minutes: 400 },
 ];
 
 function countMaterial(world: WorldState, proto: string): number {
@@ -137,8 +144,11 @@ export const MATERIAL_DROPS: Record<string, { proto: string; chance: number; qty
   goblin: [{ proto: 'iron-scrap', chance: 0.25, qty: [1, 2] }],
   cult: [{ proto: 'night-herbs', chance: 0.35, qty: [1, 2] }],
   vermin: [{ proto: 'leather-strips', chance: 0.2, qty: [1, 1] }],
-  dragonkin: [{ proto: 'ember-essence', chance: 0.5, qty: [1, 2] }],
+  dragonkin: [{ proto: 'ember-essence', chance: 0.5, qty: [1, 2] }, { proto: 'wyrm-scale', chance: 0.35, qty: [1, 2] }],
   demonkin: [{ proto: 'ember-essence', chance: 0.4, qty: [1, 2] }],
+  undead: [{ proto: 'grave-mold', chance: 0.45, qty: [1, 3] }],
+  swamp: [{ proto: 'bogroot', chance: 0.5, qty: [1, 3] }],
+  arcane: [{ proto: 'silver-ash', chance: 0.4, qty: [1, 2] }],
 };
 
 /** Gather a resource node found in a dungeon room. */

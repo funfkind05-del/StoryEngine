@@ -10,6 +10,7 @@ import { banterTopic, buildBanterPrompt, driftCompanionBonds, rememberBanter } f
 import { pickpocket } from './crime';
 import {
   ASCENSIONS,
+  affixMod,
   ascensionOptions,
   canKessIdentify,
   chooseAscension,
@@ -20,6 +21,10 @@ import {
 import { buyFromShop, buyTempleService } from './services';
 import { autoResolve, resolveRound, startCombat } from './combat';
 import { campInDungeon, isDark, lightTorch } from './dungeon';
+import { SKILLS, SPELLS } from './combat';
+import { CLASSES, ITEM_PROTOS } from './rules';
+import { RECIPES } from './crafting';
+import { useConsumable } from './services';
 import { remakeMc } from './world';
 import { addMinutes } from './world';
 import { birthDayFor, relationshipBetween, runBirthdays, travelTo } from './world';
@@ -553,5 +558,90 @@ describe('character creation (grognard round 2)', () => {
     expect(mc.attributes.intelligence).toBeGreaterThanOrEqual(13);
     expect(mc.hp.max).toBe(hpBefore + 4); // +2 per CON point
     expect(w.events.some((e) => e.kind === 'mc.created')).toBe(true);
+  });
+});
+
+
+describe('the expansion: classes, tomes, jewelry, streets (round 3)', () => {
+  it('every class unlock and ascension ability resolves to a real skill or spell', () => {
+    for (const def of Object.values(CLASSES)) {
+      for (const key of Object.values(def.unlocks)) {
+        expect(SKILLS[key] ?? SPELLS[key], `${def.key}: ${key}`).toBeTruthy();
+      }
+    }
+    for (const a of ASCENSIONS) {
+      expect(SKILLS[a.ability] ?? SPELLS[a.ability], `${a.key}: ${a.ability}`).toBeTruthy();
+      expect(CLASSES[a.charClass], a.key).toBeTruthy();
+    }
+    // two paths per playable class
+    for (const cls of ['fighter', 'rogue', 'mage', 'priest', 'ranger', 'bard', 'monk', 'spellblade', 'warlock'] as const) {
+      expect(ASCENSIONS.filter((a) => a.charClass === cls), cls).toHaveLength(2);
+    }
+  });
+
+  it('every class trainer exists somewhere in the city', () => {
+    const w = freshWorld();
+    for (const def of Object.values(CLASSES)) {
+      if (def.key === 'commoner') continue;
+      const hall = Object.values(w.locations).find((l) => l.trainerFor === def.key || (def.key === 'priest' && l.temple));
+      expect(hall, `${def.key} trains at ${def.trainer}`).toBeTruthy();
+    }
+  });
+
+  it('a tome teaches its ability once and survives an idle read', () => {
+    const w = freshWorld();
+    const mc = w.characters[w.mcId];
+    const tome = makeItem(w, 'grimoire-wither', 1);
+    addToContainer(w, tome, mc);
+    expect(mc.abilities).not.toContain('wither');
+    const err = useConsumable(w, tome.id, mc.id);
+    expect(err).toBeNull();
+    expect(mc.abilities).toContain('wither');
+  });
+
+  it('enchanted jewelry ships with its affix awake and counts when equipped', () => {
+    const w = freshWorld();
+    const mc = w.characters[w.mcId];
+    const ring = makeItem(w, 'ring-of-the-fox', 1);
+    expect(ring.affix?.stat).toBe('evasion');
+    addToContainer(w, ring, mc);
+    mc.equipment['ring'] = ring.id;
+    ring.equippedBy = mc.id;
+    expect(affixMod(w, mc, 'evasion')).toBeGreaterThanOrEqual(2);
+  });
+
+  it('the new streets are wired both ways and teach their lore on first visit', () => {
+    const w = freshWorld();
+    for (const [a, b] of Object.entries(w.locations).flatMap(([id, l]) => l.connections.map((c) => [id, c] as const))) {
+      expect(w.locations[b], `${a} -> ${b} dangles`).toBeTruthy();
+      expect(w.locations[b].connections, `${b} does not point back at ${a}`).toContain(a);
+    }
+    travelTo(w, 'LOC_RATCATCHER');
+    travelTo(w, 'LOC_NIGHTMARKET');
+    expect(w.codex).toContain('CITY:tidecourt');
+    expect(w.events.some((e) => e.kind === 'codex.found')).toBe(true);
+    // once only
+    travelTo(w, 'LOC_RATCATCHER');
+    travelTo(w, 'LOC_NIGHTMARKET');
+    expect((w.codex ?? []).filter((c) => c === 'CITY:tidecourt')).toHaveLength(1);
+  });
+
+  it('every recipe input and output is a real item proto', () => {
+    for (const r of RECIPES) {
+      expect(ITEM_PROTOS[r.makes], `${r.key} makes ${r.makes}`).toBeTruthy();
+      for (const n of r.needs) expect(ITEM_PROTOS[n.proto], `${r.key} needs ${n.proto}`).toBeTruthy();
+    }
+  });
+
+  it('the new factions exist and the new classes can be rolled at creation', () => {
+    const w = freshWorld();
+    for (const fac of ['FAC_LAMPLIGHTERS', 'FAC_TIDECOURT', 'FAC_BONEWARDENS']) {
+      expect(w.factions[fac], fac).toBeTruthy();
+    }
+    remakeMc(w, 'bard', { charisma: 2 });
+    const mc = w.characters[w.mcId];
+    expect(mc.charClass).toBe('bard');
+    expect(mc.abilities).toContain('sharp-word');
+    expect(mc.mana.max).toBeGreaterThanOrEqual(7);
   });
 });

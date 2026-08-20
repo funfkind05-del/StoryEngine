@@ -17,6 +17,7 @@ import type {
 import { Rng } from './rng';
 import { CLASSES, advanceNeeds, calendarLabel, needsBlocksHpRegen, needsBlocksStaminaRegen, sleepOff, tickStatusesOverTime, weatherFor, xpForLevel as xpForLevelRule } from './rules';
 import { expireWorldEvents, maybeSpawnWorldEvent } from './worldEvents';
+import { CITY_LORE_AT, loreById } from './codex';
 import { doomTick } from './campaign';
 
 // ---------- IDs ----------
@@ -105,6 +106,15 @@ export function travelTo(world: WorldState, dest: LocationId): SimEvent {
   for (const c of party) {
     c.location = dest;
     c.activity = 'traveling';
+  }
+  // street lore: the first visit to certain places teaches you something
+  const loreId = CITY_LORE_AT[dest];
+  if (loreId && !(world.codex ?? []).includes(loreId)) {
+    world.codex = [...(world.codex ?? []), loreId];
+    const entry = loreById(loreId);
+    if (entry) {
+      logEvent(world, 'codex.found', { id: loreId }, `Standing in ${to.name}, the party pieced together "${entry.title}" — a Codex entry.`, { location: dest, witnesses: party.map((c) => c.id) });
+    }
   }
   return logEvent(
     world,

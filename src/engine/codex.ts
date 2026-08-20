@@ -4,12 +4,28 @@
 // taken; the Muse can point at unread implications.
 
 export interface LoreEntry {
-  id: string; // `${dungeonId}:${floor}`
+  id: string; // `${dungeonId}:${floor}` — or `CITY:<slug>` for street lore
   title: string;
   text: string;
 }
 
+/** City lore surfaces the first time the party stands in the right place. */
+export const CITY_LORE_AT: Record<string, string> = {
+  LOC_LAMPHALL: 'CITY:lamplighters',
+  LOC_NIGHTMARKET: 'CITY:tidecourt',
+  LOC_GRAVEROW: 'CITY:bonewardens',
+  LOC_OPENHAND: 'CITY:openhand',
+  LOC_NAMELESS: 'CITY:namelesschapel',
+  LOC_EDGEDHALL: 'CITY:edgedhall',
+};
+
 export const LOREBOOKS: LoreEntry[] = [
+  { id: 'CITY:lamplighters', title: "The Lamplighters' Ledger", text: 'Before the Watch there were the lamps, and before the lamps there were the men who carried fire street to street and wrote down what the light found. The Union still keeps both habits. The ledger has never been read by an outsider; the excerpts that circulate are either fakes or warnings.' },
+  { id: 'CITY:tidecourt', title: 'Articles of the Tidecourt', text: 'Seventeen shipping houses, one table, no flag. The Articles bind them to a single rule: the harbor decides. What the harbor decides is written in freight rates and drowned partners, and lately the harbor has been deciding that Blackwall is cheap.' },
+  { id: 'CITY:bonewardens', title: 'Rites of the Older Door', text: 'The Bonewardens buried this city for six hundred years before the Veiled Flame arrived and called it heresy with better vestments. Their rites persist in the tomb-streets: coins on doors, salt on stairs, and the instruction — never written twice the same way — that some doors are load-bearing.' },
+  { id: 'CITY:openhand', title: 'The Open Hand Precepts', text: 'Precept one: the fist is the last argument, so finish arguments early. Precept two: stillness is not peace; it is aim. The rest of the precepts are taught by standing in the courtyard until you understand the first two differently.' },
+  { id: 'CITY:namelesschapel', title: 'What Was Chiseled Off', text: 'The altar bore a name for two hundred years. The chisel-work is dated to a single night. No record says who held the chisel, but the pact-scholars note that whatever answers prayers there now answers faster than the old occupant ever did — and never in writing.' },
+  { id: 'CITY:edgedhall', title: 'A Treatise on Cut Sigils', text: 'The College holds that magic lives in intent. The Edged Hall holds that intent lives in the wrist. Both are wrong, which is why the treaty between them is renewed annually and violated weekly, usually in duels neither institution admits sanctioning.' },
   { id: 'DUN_OLDQUARTER_001:1', title: 'Mason’s Tally, Year 12', text: 'Tally of the crypt works, twelfth year of the city: stone drawn UP from below quota again. The engineer asks no one to remark that we quarry downward for a cemetery. Paid double, all hands, for silence. — G., foreman' },
   { id: 'DUN_OLDQUARTER_001:2', title: 'The Warden’s Commission', text: 'You will stand the inner post. You will not open the door for weeping, for reason, for the King’s own voice. Especially not for the King’s own voice. — Commission of the First Warden, unsigned' },
   { id: 'DUN_OLDQUARTER_001:3', title: 'A Priest’s Doubt', text: 'They tell the flock we buried saints here. We buried a threshold. I have heard water where no water should run, warm as blood through the stones. — torn from a breviary' },

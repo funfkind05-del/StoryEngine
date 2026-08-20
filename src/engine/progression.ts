@@ -229,6 +229,14 @@ export const ASCENSIONS: AscensionPath[] = [
   { key: 'avenger', charClass: 'priest', label: 'Avenger', blurb: 'Mercy first. Then this.', attrs: { wisdom: 1, strength: 1 }, hp: 6, ability: 'divine-wrath' },
   { key: 'stormcaller', charClass: 'ranger', label: 'Stormcaller', blurb: 'The sky has opinions and you carry them quivered.', attrs: { dexterity: 2 }, ability: 'storm-of-arrows' },
   { key: 'windwalker', charClass: 'ranger', label: 'Windwalker', blurb: 'Arrive already gone.', attrs: { dexterity: 1, constitution: 1 }, initiative: 3, ability: 'wind-that-kills' },
+  { key: 'songweaver', charClass: 'bard', label: 'Songweaver', blurb: 'The city hums your choruses without knowing why.', attrs: { charisma: 2 }, mana: 10, ability: 'requiem' },
+  { key: 'doomsinger', charClass: 'bard', label: 'Doomsinger', blurb: 'Some songs end things.', attrs: { charisma: 1, intelligence: 1 }, critChance: 5, ability: 'the-last-song' },
+  { key: 'stormfist', charClass: 'monk', label: 'Stormfist', blurb: 'The strike arrives before the decision to strike.', attrs: { strength: 1, dexterity: 1 }, initiative: 2, ability: 'empty-body' },
+  { key: 'still-water', charClass: 'monk', label: 'Still Water', blurb: 'Nothing moves you. Then everything does.', attrs: { constitution: 2 }, hp: 10, evasion: 2, ability: 'fist-of-the-void' },
+  { key: 'runeknight', charClass: 'spellblade', label: 'Runeknight', blurb: 'Steel that remembers every sigil cut into it.', attrs: { strength: 1, intelligence: 1 }, defense: 1, ability: 'blade-tempest' },
+  { key: 'stormblade', charClass: 'spellblade', label: 'Stormblade', blurb: 'The sword is the wand. Always was.', attrs: { dexterity: 2 }, critChance: 6, ability: 'edge-of-dawn' },
+  { key: 'voidcaller', charClass: 'warlock', label: 'Voidcaller', blurb: 'What answers has no name, and it likes you.', attrs: { intelligence: 2 }, mana: 12, ability: 'the-hungry-door' },
+  { key: 'pactlord', charClass: 'warlock', label: 'Pactlord', blurb: 'You read the fine print. You wrote some of it.', attrs: { intelligence: 1, wisdom: 1 }, mana: 8, critChance: 4, ability: 'name-eater' },
 ];
 
 export const ASCENSION_LEVEL = 25;

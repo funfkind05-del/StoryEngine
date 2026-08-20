@@ -739,7 +739,7 @@ function ItemCard({ iid, ownerChar }: { iid: string; ownerChar?: string }) {
         {it.unidentified && <button onClick={() => identify(iid)} title="The Arcane College reads enchantments for a fee — or Kess will, once she trusts you with her past.">✦ Identify</button>}
         {ownerChar && it.slot !== 'none' && !equipped && <button disabled={it.unidentified} title={it.unidentified ? 'Identify it first.' : undefined} onClick={() => equip(iid)}>Equip</button>}
         {equipped && <button onClick={() => unequip(iid)}>Unequip</button>}
-        {(it.kind === 'potion' || it.effectKey?.startsWith('food-')) && !world.combat?.active && (inParty || ownerChar) && <button onClick={() => drinkPotion(iid)}>Use</button>}
+        {(it.kind === 'potion' || it.effectKey?.startsWith('food-') || it.effectKey?.startsWith('teach-')) && !world.combat?.active && (inParty || ownerChar) && <button onClick={() => drinkPotion(iid)} title={it.effectKey?.startsWith('teach-') ? 'Study it — learn the ability inside, forever.' : undefined}>{it.effectKey?.startsWith('teach-') ? '📖 Study' : 'Use'}</button>}
         {ownerChar && !equipped && <button onClick={() => poolItem(iid)} title="Move to shared party supplies">→ party</button>}
         {inParty && <button onClick={() => unpoolItem(iid)}>→ personal</button>}
         {atHome && !equipped && !inHome && <button onClick={() => homeDeposit(iid)}>→ storage</button>}
@@ -1484,7 +1484,7 @@ function SavesPanel() {
   const resetWorld = useStore((s) => s.resetWorld);
   const [newDeathRule, setNewDeathRule] = useState<'story' | 'classic' | 'permadeath'>('story');
   const [newResRule, setNewResRule] = useState<'safe' | 'risky'>('safe');
-  const [newClass, setNewClass] = useState<'fighter' | 'rogue' | 'mage' | 'priest' | 'ranger'>('fighter');
+  const [newClass, setNewClass] = useState<'fighter' | 'rogue' | 'mage' | 'priest' | 'ranger' | 'bard' | 'monk' | 'spellblade' | 'warlock'>('fighter');
   const [newBonus, setNewBonus] = useState<Record<string, number>>({});
   const bonusSpent = Object.values(newBonus).reduce((a, b) => a + b, 0);
   const CREATION_POINTS = 5;
@@ -1588,6 +1588,10 @@ function SavesPanel() {
           <option value="mage">Mage — the College will hear about this</option>
           <option value="priest">Priest — somebody's god owes him</option>
           <option value="ranger">Ranger — the road taught him</option>
+          <option value="bard">Bard — the Crown's own curriculum</option>
+          <option value="monk">Monk — the open hand closes fast</option>
+          <option value="spellblade">Spellblade — sigils cut into steel</option>
+          <option value="warlock">Warlock — something answered</option>
         </select>
       </div>
       <div className="row small" style={{ flexWrap: 'wrap' }}>

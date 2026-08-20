@@ -86,6 +86,26 @@ export const CLASSES: Record<CharClass, ClassDef> = {
     hpPerLevel: 5, manaPerLevel: 1, staminaPerLevel: 3, attackEvery: 1, defenseEvery: 2,
     unlocks: { 2: 'aimed-shot', 4: 'twin-strike', 8: 'pinning-shot', 12: 'volley', 16: 'piercing-arrow', 20: 'double-volley', 25: 'heartseeker', 32: 'storm-of-arrows', 40: 'wind-that-kills' },
   },
+  bard: {
+    key: 'bard', label: 'Bard', trainer: 'The Broken Crown',
+    hpPerLevel: 4, manaPerLevel: 3, staminaPerLevel: 2, attackEvery: 2, defenseEvery: 2,
+    unlocks: { 1: 'sharp-word', 3: 'rallying-chorus', 5: 'cutting-jest', 8: 'discordant-note', 12: 'march-of-old-kings', 16: 'siren-strain', 20: 'battle-hymn', 25: 'song-of-the-broken-crown', 32: 'requiem', 40: 'the-last-song' },
+  },
+  monk: {
+    key: 'monk', label: 'Monk', trainer: 'House of the Open Hand',
+    hpPerLevel: 5, manaPerLevel: 0, staminaPerLevel: 4, attackEvery: 1, defenseEvery: 2,
+    unlocks: { 2: 'palm-strike', 4: 'flowing-fists', 8: 'iron-knuckle', 12: 'whirling-crane', 16: 'pressure-point', 20: 'hundred-hands', 25: 'dragon-fist', 32: 'empty-body', 40: 'fist-of-the-void' },
+  },
+  spellblade: {
+    key: 'spellblade', label: 'Spellblade', trainer: 'The Edged Hall',
+    hpPerLevel: 5, manaPerLevel: 3, staminaPerLevel: 2, attackEvery: 1, defenseEvery: 2,
+    unlocks: { 1: 'spark-edge', 3: 'riposte', 5: 'flame-brand', 8: 'frost-guard', 12: 'storm-brand', 16: 'mirror-parry', 20: 'runic-burst', 25: 'runed-cleave', 32: 'blade-tempest', 40: 'edge-of-dawn' },
+  },
+  warlock: {
+    key: 'warlock', label: 'Warlock', trainer: 'The Nameless Chapel',
+    hpPerLevel: 4, manaPerLevel: 4, staminaPerLevel: 1, attackEvery: 3, defenseEvery: 3,
+    unlocks: { 1: 'wither', 3: 'gnawing-dark', 5: 'hex', 8: 'soul-lash', 12: 'black-tide', 16: 'unravel', 20: 'pact-flame', 25: 'devouring-sign', 32: 'the-hungry-door', 40: 'name-eater' },
+  },
   commoner: {
     key: 'commoner', label: 'Commoner', trainer: 'nowhere',
     hpPerLevel: 3, manaPerLevel: 0, staminaPerLevel: 2, attackEvery: 2, defenseEvery: 3,
@@ -147,6 +167,8 @@ export interface ItemProto {
   durability?: number;
   stackable?: boolean;
   value: number;
+  /** built-in enchantment (magic jewelry ships enchanted) */
+  affix?: NonNullable<Item['affix']>;
 }
 
 export const ITEM_PROTOS: Record<string, ItemProto> = {
@@ -173,12 +195,41 @@ export const ITEM_PROTOS: Record<string, ItemProto> = {
   'hearty-stew': { key: 'hearty-stew', name: 'Hearty Stew', kind: 'supply', slot: 'none', tier: 'common', effectKey: 'food-80', stackable: true, value: 12 },
   'harbor-fish': { key: 'harbor-fish', name: 'Harbor Fish', kind: 'supply', slot: 'none', tier: 'mundane', effectKey: 'food-30', stackable: true, value: 3 },
   'old-boot': { key: 'old-boot', name: 'Old Boot', kind: 'misc', slot: 'none', tier: 'mundane', stackable: true, value: 1 },
+  // tomes & songbooks: read once, keep the ability forever
+  'tome-of-firebolt': { key: 'tome-of-firebolt', name: 'Tome of the First Spark', kind: 'misc', slot: 'none', tier: 'rare', effectKey: 'teach-firebolt', value: 900 },
+  'tome-of-mending': { key: 'tome-of-mending', name: 'Psalter of Small Mercies', kind: 'misc', slot: 'none', tier: 'rare', effectKey: 'teach-mend-wounds', value: 900 },
+  'songbook-chorus': { key: 'songbook-chorus', name: 'Songbook: the Rallying Chorus', kind: 'misc', slot: 'none', tier: 'rare', effectKey: 'teach-rallying-chorus', value: 1100 },
+  'manual-palm-strike': { key: 'manual-palm-strike', name: 'Manual of the Open Hand', kind: 'misc', slot: 'none', tier: 'rare', effectKey: 'teach-palm-strike', value: 800 },
+  'grimoire-wither': { key: 'grimoire-wither', name: 'Grimoire of the Thin Places', kind: 'misc', slot: 'none', tier: 'rare', effectKey: 'teach-wither', value: 1000 },
+  'folio-spark-edge': { key: 'folio-spark-edge', name: 'Folio of the Edged Hall', kind: 'misc', slot: 'none', tier: 'rare', effectKey: 'teach-spark-edge', value: 950 },
+  // enchanted jewelry: ships with its magic already awake
+  'ring-of-the-fox': { key: 'ring-of-the-fox', name: 'Ring of the Fox', kind: 'jewelry', slot: 'ring', tier: 'rare', value: 700, affix: { name: 'of the Fox', stat: 'evasion', amount: 2 } },
+  'ring-of-the-bull': { key: 'ring-of-the-bull', name: 'Ring of the Bull', kind: 'jewelry', slot: 'ring', tier: 'rare', value: 750, affix: { name: 'of the Bull', stat: 'attack', amount: 1 } },
+  'amulet-of-the-wall': { key: 'amulet-of-the-wall', name: 'Amulet of the Wall', kind: 'jewelry', slot: 'amulet', tier: 'rare', value: 800, affix: { name: 'of the Wall', stat: 'defense', amount: 2 } },
+  'amulet-of-the-adder': { key: 'amulet-of-the-adder', name: 'Adder-Tooth Amulet', kind: 'jewelry', slot: 'amulet', tier: 'rare', value: 850, affix: { name: 'of the Adder', stat: 'critChance', amount: 5 } },
+  'circlet-of-the-wind': { key: 'circlet-of-the-wind', name: 'Circlet of the Wind', kind: 'jewelry', slot: 'amulet', tier: 'exceptional', value: 1400, affix: { name: 'of the Wind', stat: 'initiative', amount: 3 } },
+  // alchemy materials
+  'bogroot': { key: 'bogroot', name: 'Bogroot', kind: 'misc', slot: 'none', tier: 'mundane', stackable: true, value: 6 },
+  'silver-ash': { key: 'silver-ash', name: 'Silver Ash', kind: 'misc', slot: 'none', tier: 'common', stackable: true, value: 25 },
+  'wyrm-scale': { key: 'wyrm-scale', name: 'Wyrm Scale', kind: 'misc', slot: 'none', tier: 'rare', stackable: true, value: 120 },
+  'grave-mold': { key: 'grave-mold', name: 'Grave Mold', kind: 'misc', slot: 'none', tier: 'mundane', stackable: true, value: 8 },
   'harbor-pearl': { key: 'harbor-pearl', name: 'Harbor Pearl', kind: 'treasure', slot: 'none', tier: 'uncommon', stackable: true, value: 150 },
   // weapons & armor (shop stock)
   dagger: { key: 'dagger', name: 'Dagger', kind: 'weapon', slot: 'main-hand', tier: 'mundane', damage: '1d4+1', durability: 50, value: 90 },
   'iron-shortsword': { key: 'iron-shortsword', name: 'Iron Shortsword', kind: 'weapon', slot: 'main-hand', tier: 'common', damage: '1d6+1', durability: 80, value: 220 },
   'iron-longsword': { key: 'iron-longsword', name: 'Iron Longsword', kind: 'weapon', slot: 'main-hand', tier: 'common', damage: '1d8+1', durability: 100, value: 380 },
   'steel-longsword': { key: 'steel-longsword', name: 'Steel Longsword', kind: 'weapon', slot: 'main-hand', tier: 'uncommon', damage: '1d8+3', durability: 120, value: 840 },
+  'iron-mace': { key: 'iron-mace', name: 'Iron Mace', kind: 'weapon', slot: 'main-hand', tier: 'common', damage: '1d8', durability: 110, value: 300 },
+  'boarding-spear': { key: 'boarding-spear', name: 'Boarding Spear', kind: 'weapon', slot: 'main-hand', tier: 'common', damage: '1d8+1', durability: 90, value: 340 },
+  'quarterstaff': { key: 'quarterstaff', name: 'Quarterstaff', kind: 'weapon', slot: 'main-hand', tier: 'mundane', damage: '1d6', durability: 80, value: 60 },
+  'runed-staff': { key: 'runed-staff', name: 'Runed Staff', kind: 'weapon', slot: 'main-hand', tier: 'uncommon', damage: '1d6+2', durability: 100, value: 700 },
+  'greatsword': { key: 'greatsword', name: 'Greatsword', kind: 'weapon', slot: 'main-hand', tier: 'uncommon', damage: '2d6+1', durability: 130, value: 1100 },
+  'dueling-dagger': { key: 'dueling-dagger', name: 'Dueling Dagger', kind: 'weapon', slot: 'off-hand', tier: 'common', damage: '1d4+2', durability: 70, value: 260 },
+  'monk-wraps': { key: 'monk-wraps', name: 'Weighted Hand-Wraps', kind: 'weapon', slot: 'main-hand', tier: 'common', damage: '1d6+1', durability: 90, value: 220 },
+  'padded-jack': { key: 'padded-jack', name: 'Padded Jack', kind: 'armor', slot: 'armor', tier: 'mundane', defense: 1, durability: 60, value: 80 },
+  'brigandine': { key: 'brigandine', name: 'Brigandine', kind: 'armor', slot: 'armor', tier: 'uncommon', defense: 3, durability: 110, value: 1200 },
+  'scale-hauberk': { key: 'scale-hauberk', name: 'Scale Hauberk', kind: 'armor', slot: 'armor', tier: 'uncommon', defense: 4, durability: 130, value: 1900 },
+  'warded-robes': { key: 'warded-robes', name: 'Warded Robes', kind: 'armor', slot: 'armor', tier: 'uncommon', defense: 2, durability: 80, value: 950 },
   'hunting-bow': { key: 'hunting-bow', name: 'Hunting Bow', kind: 'weapon', slot: 'main-hand', tier: 'common', damage: '1d6+2', durability: 70, value: 300, ranged: true, ammoProto: 'arrow' },
   longbow: { key: 'longbow', name: 'Longbow', kind: 'weapon', slot: 'main-hand', tier: 'uncommon', damage: '1d8+3', durability: 90, value: 780, ranged: true, ammoProto: 'arrow' },
   arrow: { key: 'arrow', name: 'Arrow', kind: 'supply', slot: 'none', tier: 'mundane', stackable: true, value: 1 },
@@ -208,6 +259,7 @@ export function makeItem(world: WorldState, protoKey: string, qty = 1): Item {
     defense: p.defense,
     healing: p.healing,
     effectKey: p.effectKey,
+    affix: p.affix ? { ...p.affix } : undefined,
     ranged: p.ranged,
     ammoProto: p.ammoProto,
     durability: p.durability ? { current: p.durability, max: p.durability } : undefined,
@@ -300,6 +352,15 @@ export function consumeItem(world: WorldState, item: Item, target: Character, rn
     const amount = parseInt(item.effectKey.slice(5), 10) || 20;
     eatFood(target, amount);
     lines.push(`${target.name} ate the ${item.name.toLowerCase()}${target.needs.hunger <= 10 ? ' and is well fed' : ''}.`);
+  }
+  if (item.effectKey?.startsWith('teach-')) {
+    const abilityKey = item.effectKey.slice(6);
+    if (target.abilities.includes(abilityKey)) {
+      lines.push(`${target.name} already knows ${abilityKey.replace(/-/g, ' ')}; the pages hold nothing new.`);
+      return { lines }; // the tome survives an idle read
+    }
+    target.abilities.push(abilityKey);
+    lines.push(`${target.name} studied ${item.name} until the candle died — and learned ${abilityKey.replace(/-/g, ' ')}.`);
   }
   switch (item.effectKey) {
     case 'mana-30': {

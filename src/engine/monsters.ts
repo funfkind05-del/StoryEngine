@@ -1,6 +1,39 @@
 import type { MonsterTemplate } from './types';
 
 export const MONSTERS: Record<string, MonsterTemplate> = {
+  // the expansion bestiary: pit, market, chapel, and union trouble
+  'pit-bruiser': {
+    key: 'pit-bruiser', name: 'Pit Bruiser', level: 4, hp: 34, attack: 6, defense: 13,
+    damage: '1d8+3', initiative: 3, xp: 90, lootTable: 'human', ai: 'aggressive', art: { archetype: 'humanoid' },
+  },
+  'drowned-smuggler': {
+    key: 'drowned-smuggler', name: 'Drowned Smuggler', level: 3, hp: 24, attack: 5, defense: 11,
+    damage: '1d6+2', initiative: 2, xp: 66, lootTable: 'undead', ai: 'aggressive', art: { archetype: 'undead' }, inflicts: { status: 'diseased', chance: 0.15 },
+  },
+  'lamp-wisp': {
+    key: 'lamp-wisp', name: 'Lamp-Wisp', level: 5, hp: 22, attack: 7, defense: 15,
+    damage: '2d4+2', initiative: 6, xp: 120, lootTable: 'sunken', ai: 'cowardly', art: { archetype: 'spirit' },
+  },
+  'bone-warden-revenant': {
+    key: 'bone-warden-revenant', name: 'Bone-Warden Revenant', level: 7, hp: 52, attack: 8, defense: 15,
+    damage: '1d10+4', initiative: 3, xp: 210, lootTable: 'greater-undead', ai: 'aggressive', art: { archetype: 'undead' },
+  },
+  'pact-hound': {
+    key: 'pact-hound', name: 'Pact-Hound', level: 6, hp: 40, attack: 8, defense: 13,
+    damage: '1d8+4', initiative: 5, xp: 170, lootTable: 'demonkin', ai: 'pack', art: { archetype: 'demon' }, inflicts: { status: 'burning', chance: 0.2 },
+  },
+  'tidecourt-enforcer': {
+    key: 'tidecourt-enforcer', name: 'Tidecourt Enforcer', level: 6, hp: 44, attack: 8, defense: 14,
+    damage: '1d8+3', initiative: 4, xp: 175, lootTable: 'human', ai: 'aggressive', art: { archetype: 'humanoid' },
+  },
+  'grave-mold-shambler': {
+    key: 'grave-mold-shambler', name: 'Grave-Mold Shambler', level: 5, hp: 46, attack: 6, defense: 11,
+    damage: '1d8+2', initiative: 1, xp: 140, lootTable: 'undead', ai: 'aggressive', art: { archetype: 'horror' }, inflicts: { status: 'diseased', chance: 0.3 },
+  },
+  'night-market-djinn': {
+    key: 'night-market-djinn', name: 'Night-Market Djinn', level: 9, hp: 60, attack: 10, defense: 17,
+    damage: '2d6+4', initiative: 7, xp: 340, lootTable: 'sunken', ai: 'cowardly', art: { archetype: 'spirit' },
+  },
   'giant-rat': {
     key: 'giant-rat', name: 'Giant Rat', level: 1, hp: 6, attack: 2, defense: 8,
     damage: '1d4', initiative: 3, xp: 12, lootTable: 'vermin', ai: 'pack', inflicts: { status: 'poisoned', chance: 0.12 },
