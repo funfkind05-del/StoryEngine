@@ -13,6 +13,7 @@ import { addMinutes, logEvent, nextId, relationshipBetween, travelTo } from './w
 import { generateBackgroundNpc, promoteNpc } from './npc';
 import { randomSeed } from './rng';
 import { chatWithNpc, type ChatMessage, type LlmConfig } from './npcChat';
+import { ANTI_TIC_PROMPT } from './tics';
 
 // ---------- proposals ----------
 export interface SyncProposal {
@@ -249,6 +250,7 @@ export function buildDraftPrompt(world: WorldState, scene: Scene, outline: strin
         `You are drafting one scene of a gritty LitRPG novel set in Blackwall City, in close third person past tense, POV ${world.characters[scene.pov]?.name ?? 'the protagonist'}. ` +
         `Spare, concrete prose; period voice; dialogue that earns its place. 400–700 words. ` +
         `Use ONLY the facts provided — invent texture (weather on skin, sounds, small gestures), never events, items, wounds, or coin that the simulation did not report. ` +
+        `${ANTI_TIC_PROMPT} ` +
         `Output only the scene prose, no headings or commentary.`,
     },
     {
@@ -283,6 +285,7 @@ export async function polishText(cfg: LlmConfig, passage: string, styleHint: str
         `You are a fiction line editor. Polish the passage: tighten wording, fix grammar, improve rhythm. ` +
         `PRESERVE the author's voice, all facts, names, plot beats, and every @[Name](ID) token EXACTLY as written. ` +
         `Do not add new events or details. ${styleHint ? `Style guidance: ${styleHint}. ` : ''}` +
+        `${ANTI_TIC_PROMPT} Do not introduce these constructions where the author has none; where the passage already leans on them, replace the excess with what is actually there. ` +
         `Output ONLY the polished passage, no commentary.`,
     },
     { role: 'user', content: passage },

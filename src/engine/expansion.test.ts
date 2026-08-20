@@ -360,3 +360,44 @@ describe('outline from play', () => {
     expect(out).toContain('The real prose');
   });
 });
+
+describe('style-tic guard (cross-session finding from the Lotus Gate drafts)', () => {
+  it('measures withheld-action and Not-fragment density per chapter', async () => {
+    const { measureTics, ticTrend, TIC_WARN_PER_1K } = await import('./tics');
+    const clean = 'He looked at the door. The grain was oak, old, scarred by boots. Two strides left, and the ground was packed hard.';
+    expect(measureTics(clean).withheld).toBe(0);
+    expect(measureTics(clean).notFragments).toBe(0);
+    const ticky =
+      'He did not look at her. She didn’t answer. Not there. Not yet. ' +
+      'He does not speak when the Watch passes. Not tonight, he decided.';
+    const t = measureTics(ticky);
+    expect(t.withheld).toBe(3);
+    expect(t.notFragments).toBe(3);
+    expect(t.per1k).toBeGreaterThan(TIC_WARN_PER_1K);
+    // trend over the manuscript: seed scene should be near-clean
+    const w = freshWorld();
+    const trend = ticTrend(w);
+    expect(trend[0].chapter).toBe(1);
+    // and it ignores sim scaffolding when measuring
+    w.scenes[0].text += '\n---\n[SIM NOTES]\nHe did not look. Not there. Not once.\n---\n';
+    const before = trend[0].withheld;
+    expect(ticTrend(w)[0].withheld).toBe(before);
+  });
+
+  it('every prose-producing prompt carries the occupy-the-slot budget', async () => {
+    const { ANTI_TIC_PROMPT } = await import('./tics');
+    const { buildDraftPrompt } = await import('./proseLlm');
+    expect(ANTI_TIC_PROMPT).toContain('AT MOST ONCE');
+    expect(ANTI_TIC_PROMPT).toContain('write what he looked at');
+    const w = freshWorld();
+    const draft = buildDraftPrompt(w, w.scenes[0], 'outline').map((m) => m.content).join('\n');
+    expect(draft).toContain('WITHHELD ACTION IS A MANNERISM');
+  });
+});
+
+describe('silent-fallback audit', () => {
+  it('every monster loot table actually exists (absence is an authoring mistake)', async () => {
+    const { validateLootTables } = await import('./loot');
+    expect(validateLootTables()).toEqual([]);
+  });
+});

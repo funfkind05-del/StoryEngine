@@ -221,6 +221,18 @@ function lootTableFor(monsterKey: string): string {
   return declared && TABLES[declared] ? declared : 'vermin';
 }
 
+/** Every declared monster loot table must exist — absence is an authoring mistake. */
+export function validateLootTables(): string[] {
+  const problems: string[] = [];
+  const legacy = new Set(['vermin', 'goblin', 'undead', 'human', 'boss-crypt', 'boss-sewer']);
+  for (const [key, t] of Object.entries(MONSTER_DEFS)) {
+    if (!TABLES[t.lootTable] && !legacy.has(t.lootTable)) {
+      problems.push(`${key} declares loot table "${t.lootTable}" which does not exist`);
+    }
+  }
+  return problems;
+}
+
 /** Open a chest in the current dungeon room. */
 export function openChest(world: WorldState): LootResult | { error: string } {
   if (!world.currentDungeon || !world.currentRoom) return { error: 'Not inside a dungeon.' };
