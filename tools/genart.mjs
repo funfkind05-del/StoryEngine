@@ -140,6 +140,42 @@ async function runCharacters() {
   console.log(`portraits done: ${made} new, ${skipped} existing, ${failed} failed, manifest ${files.length}`);
 }
 
+// ---- class portraits: one exemplar per playable trade ----
+const CLASS_PROMPTS = {
+  fighter: 'a battle-worn human fighter in dented plate with a longsword over his shoulder, standing in a torchlit guild drill-yard',
+  rogue: 'a sharp-eyed human rogue in dark leathers palming a knife, half in shadow in a dockside alley',
+  mage: 'a stern human mage in blue-slate college robes, one hand wreathed in controlled flame, tower library behind',
+  priest: 'a solemn human priest in white-and-flame temple vestments holding a censer-mace, marble sanctuary light',
+  ranger: 'a weathered human ranger in a hooded travel cloak with a longbow, pine road and distant hills behind',
+  bard: 'a grinning human bard mid-verse in a smoky dockside tavern, lute in hand, crowd blurred behind',
+  monk: 'a serene human monk in plain grey wraps in a bare stone courtyard, hands folded, breath visible in cold air',
+  spellblade: 'a duelist spellblade with glowing sigils cut down the flat of a raised sword, ozone sparks in the air',
+  warlock: 'a gaunt human warlock in a deconsecrated chapel, shadows bending toward the pact-marks on their forearms',
+  paladin: 'an armored paladin holding a burning storm-lantern high in a dark street, oil-and-scripture vigil regalia',
+  necromancer: 'a calm grey-robed necromancer among cemetery bonehouses, pale motes rising from an open reliquary',
+  berserker: 'a scarred pit berserker wrapped in chalk and rope-bandages, roaring in a drained cistern fighting pit',
+};
+
+async function runClasses() {
+  const dir = join(root, 'public', 'classes');
+  mkdirSync(dir, { recursive: true });
+  let made = 0;
+  for (const [k, desc] of Object.entries(CLASS_PROMPTS)) {
+    const file = join(dir, `${k}.png`);
+    if (existsSync(file)) continue;
+    try {
+      const buf = await generate(PREFIX(k, `${desc}. Three-quarter portrait, a single centered subject with no text.`));
+      writeFileSync(file, buf);
+      made++;
+      console.log(`  class ${k} (${Math.round(buf.length / 1024)} KB)`);
+    } catch (e) { console.log(`  FAILED class ${k}: ${e.message}`); await sleep(2000); }
+    await sleep(400);
+  }
+  const files = readdirSync(dir).filter((f) => f.endsWith('.png')).map((f) => f.replace(/\.png$/, ''));
+  writeFileSync(join(dir, 'manifest.json'), JSON.stringify(files));
+  console.log(`classes done: ${made} new, manifest ${files.length}`);
+}
+
 // ---- doors & props: painted pieces the corridor composites ----
 const DOOR_PROMPTS = {
   bones: 'an open ancient stone doorway in a crypt wall, carved skull motifs on the arch, pure darkness inside the opening',
@@ -160,6 +196,11 @@ const PROP_PROMPTS = {
   key: 'an ornate ancient iron key, faintly glowing',
   spinner: 'a great circular stone disc set into a dungeon floor, carved with worn rotation grooves',
   ring: 'a ring of fused glowing stone set into a dungeon floor, magical shimmer above it',
+  mount: 'a sturdy saddled dun horse with travel packs, standing at a stable rail',
+  'set-ashgrip': 'a masterwork steel longsword with an ember-ash quenched blade and wyrm-scale wound grip, faintly glowing forge-light on the edge',
+  'set-tidewalker': 'a hauberk of sea-cured scale armor, brine-white and blue-grey, drops of seawater beading on it',
+  'set-edgesong': 'a duelist\u2019s greatsword with treaty-breaking sigils cut the full length of the blade, humming with faint resonance lines',
+  'set-lamplight': 'a brigandine of soot-lacquered plates that drink the light, small lamplighter\u2019s union rivets',
 };
 
 async function runProps() {
@@ -198,8 +239,10 @@ const doMonsters = args.length === 0 || args.includes('--monsters');
 const doDungeons = args.length === 0 || args.includes('--dungeons');
 const doCharacters = args.length === 0 || args.includes('--characters');
 const doProps = args.length === 0 || args.includes('--props');
+const doClasses = args.length === 0 || args.includes('--classes');
 if (doDungeons) await runDungeons();
 if (doMonsters) await runMonsters();
 if (doCharacters) await runCharacters();
 if (doProps) await runProps();
+if (doClasses) await runClasses();
 console.log('ALL DONE');

@@ -40,6 +40,7 @@ import { CARRIAGE_STOPS } from '../engine/services';
 import { RECIPES, canCraft } from '../engine/crafting';
 import { AFFIXES, ascensionOptions, callingOptions, transcendenceOptions } from '../engine/progression';
 import { HEARTH_ACTIVITIES } from '../engine/hearth';
+import { classArtUrl, propUrl } from '../engine/artFiles';
 import { COMPANION_ARCS } from '../engine/companions';
 import { FirstPersonView } from './FirstPersonView';
 import { isDark } from '../engine/dungeon';
@@ -118,6 +119,7 @@ export function SidePanels() {
 
 // ---------- Location ----------
 function LocationPanel() {
+  useSyncExternalStore(subscribeArt, artSnapshot);
   const world = useStore((s) => s.world);
   const travel = useStore((s) => s.travel);
   const openPrep = useStore((s) => s.openPrep);
@@ -427,6 +429,9 @@ function LocationPanel() {
             {sets.map((r) => (
               <div key={r.key} className="card">
                 <div className="row">
+                  {propUrl(`set-${r.key.replace(/-mail$/, '')}`) && (
+                    <img src={propUrl(`set-${r.key.replace(/-mail$/, '')}`)} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 4 }} />
+                  )}
                   <span className="name grow">{r.itemName}</span>
                   <Tag tone="gold">{r.tier}</Tag>
                 </div>
@@ -1780,6 +1785,7 @@ function MusicSection() {
 }
 
 function SavesPanel() {
+  useSyncExternalStore(subscribeArt, artSnapshot);
   const world = useStore((s) => s.world);
   const snapshots = useStore((s) => s.snapshots);
   const manualSave = useStore((s) => s.manualSave);
@@ -1792,7 +1798,7 @@ function SavesPanel() {
   const [bookTitle, setBookTitle] = useState('');
   const [newDeathRule, setNewDeathRule] = useState<'story' | 'classic' | 'permadeath'>('story');
   const [newResRule, setNewResRule] = useState<'safe' | 'risky'>('safe');
-  const [newClass, setNewClass] = useState<'fighter' | 'rogue' | 'mage' | 'priest' | 'ranger' | 'bard' | 'monk' | 'spellblade' | 'warlock'>('fighter');
+  const [newClass, setNewClass] = useState<'fighter' | 'rogue' | 'mage' | 'priest' | 'ranger' | 'bard' | 'monk' | 'spellblade' | 'warlock' | 'paladin' | 'necromancer' | 'berserker'>('fighter');
   const [newBonus, setNewBonus] = useState<Record<string, number>>({});
   const bonusSpent = Object.values(newBonus).reduce((a, b) => a + b, 0);
   const CREATION_POINTS = 5;
@@ -1914,8 +1920,16 @@ function SavesPanel() {
           <option value="monk">Monk — the open hand closes fast</option>
           <option value="spellblade">Spellblade — sigils cut into steel</option>
           <option value="warlock">Warlock — something answered</option>
+          <option value="paladin">Paladin — the lamp against the dark</option>
+          <option value="necromancer">Necromancer — the graves keep badly</option>
+          <option value="berserker">Berserker — get up, that's the lesson</option>
         </select>
       </div>
+      {classArtUrl(newClass) && (
+        <div className="row small">
+          <img src={classArtUrl(newClass)} alt={newClass} style={{ width: '100%', maxWidth: 220, borderRadius: 6, border: '1px solid #333' }} />
+        </div>
+      )}
       <div className="row small" style={{ flexWrap: 'wrap' }}>
         <span className="dim">Bonus points: {CREATION_POINTS - bonusSpent} left</span>
         {(['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'] as const).map((a) => (

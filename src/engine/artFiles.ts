@@ -51,6 +51,7 @@ const serverBestiary = new Set<string>();
 const serverDungeons = new Set<string>();
 const serverPortraits = new Set<string>();
 const serverProps = new Set<string>();
+const serverClasses = new Set<string>();
 
 export async function initServerArt(): Promise<void> {
   try {
@@ -69,7 +70,11 @@ export async function initServerArt(): Promise<void> {
     const pr = await fetch('/props/manifest.json');
     if (pr.ok) for (const k of (await pr.json()) as string[]) serverProps.add(k);
   } catch { /* no generated props yet */ }
-  if (serverBestiary.size || serverDungeons.size || serverPortraits.size || serverProps.size) notifyArt();
+  try {
+    const cl = await fetch('/classes/manifest.json');
+    if (cl.ok) for (const k of (await cl.json()) as string[]) serverClasses.add(k);
+  } catch { /* no generated class art yet */ }
+  if (serverBestiary.size || serverDungeons.size || serverPortraits.size || serverProps.size || serverClasses.size) notifyArt();
 }
 
 export function serverMonsterArtUrl(templateKey: string): string | undefined {
@@ -86,6 +91,10 @@ export function serverPortraitUrl(charId: string): string | undefined {
 
 export function propUrl(name: string): string | undefined {
   return serverProps.has(name) ? `/props/${name}.png` : undefined;
+}
+
+export function classArtUrl(classKey: string): string | undefined {
+  return serverClasses.has(classKey) ? `/classes/${classKey}.png` : undefined;
 }
 
 // ---------- IndexedDB plumbing ----------
