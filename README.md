@@ -180,6 +180,15 @@ Bard's Tale bones, Elder Scrolls texture:
 - **Rep-gated shop stock** — the good steel stays under the counter until the street knows you.
 - **Aging & birthdays** — everyone has a birthday on the 360-day calendar; party birthdays make the event log and the outline.
 
+## Fully playable: the autoplayer, the Hinterlands, and the last classics
+
+- **The playability proof** — `src/engine/autoplay.test.ts` runs a goal-directed bot that plays to WIN: jobs, level-appropriate dungeons, training, supplies, recovery. CI bar: level 8+ and (a boss down or level 12+) within 12k actions. The walls it found became balance fixes: a humane early training curve, the pauper's ladle (free daily meal for empty pockets at Graverow/temples), grudging healing while starving or sick, afflictions that run their course in ~2 days, and daylight at every dungeon entrance.
+- **Riddle doors** (❓) — passages sealed behind questions whose answers live in lorebooks from SHALLOWER floors. Read the pages, speak the answer. Knowledge is the oldest key.
+- **Bard walking songs** (🎵) — the Lantern Round (light without torches), the Finding Air (+3 to searching, disarming, lockwork), the Long Watch (deeper camps, fewer ambushes) — sustained on the singer's stamina, ended by daylight.
+- **The Hinterlands** — beyond the Land Gate: the Salt Road and the Wayrest roadhouse south to the fishing village of **Saltmere**, the Pine Barrens north past the Hermitage to **the Broken Watch** — a tenth dungeon (6–10) whose garrison never stood down, with its own lorebooks.
+- **The stable** (🐴) — buy a horse at the Wayrest: roads at 0.6× time, +3 pack slots for everyone.
+- **Crafting writs** (📜) — daily delivery orders at the Forge, Physic, Dry Goods, and Saltmere: craft the goods, deliver for coin over the odds.
+
 ## The maze round: dungeons that fight back
 
 - **Deep floors sprawl** — grids grow from 4×4 to 6×6 with depth, rooms multiply (up to ~15 a floor), and corridors get stingier the deeper you go, so real dead ends and long ways around form.

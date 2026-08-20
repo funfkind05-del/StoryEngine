@@ -170,6 +170,21 @@ export function buildSeedWorld(): WorldState {
       { proto: 'silver-ash', qty: 6, price: 32 },
       { proto: 'bogroot', qty: 10, price: 8 },
     ] } }),
+    // ---- beyond the walls: the Hinterlands ----
+    loc({ id: 'LOC_LANDGATE', mapPos: { x: 96, y: 60 }, name: 'The Land Gate', type: 'gate', district: 'The Hinterlands', parent: 'LOC_OLDQUARTER', description: 'The city\u2019s eastern gate: a portcullis that has not dropped in forty years and a toll-taker who has given up pretending. Beyond it, the roads.', atmosphere: 'Wind with grass in it — a smell the city forgets.', dangerRating: 3, connections: ['LOC_GRAVEROW', 'LOC_SALTROAD1', 'LOC_PINEROAD1'], services: ['passage'], factionInfluence: { FAC_WATCH: 4 } }),
+    loc({ id: 'LOC_SALTROAD1', mapPos: { x: 99, y: 74 }, name: 'The Salt Road', type: 'street', district: 'The Hinterlands', parent: 'LOC_LANDGATE', description: 'A coast road paved in cracked shell and old ambition, running south along the water toward Saltmere. Carts, gulls, and the occasional body.', atmosphere: 'Salt wind, cart ruts, distance.', dangerRating: 5, connections: ['LOC_LANDGATE', 'LOC_WAYREST'], factionInfluence: { FAC_TIDECOURT: 3 } }),
+    loc({ id: 'LOC_WAYREST', mapPos: { x: 97, y: 84 }, name: 'The Wayrest', type: 'inn', district: 'The Hinterlands', parent: 'LOC_SALTROAD1', description: 'A fortified roadhouse at the halfway marker: stout walls, a stable, and a landlady who has buried three husbands and several arguments.', atmosphere: 'Woodsmoke and horse.', dangerRating: 2, connections: ['LOC_SALTROAD1', 'LOC_SALTMERE'], services: ['food', 'rooms', 'stable'], innRooms: [{ name: 'Common bunk', price: 4, quality: 1 }, { name: 'Road room', price: 12, quality: 2 }], factionInfluence: { FAC_COINGUILD: 3 } }),
+    loc({ id: 'LOC_SALTMERE', mapPos: { x: 92, y: 95 }, name: 'Saltmere', type: 'market', district: 'The Hinterlands', parent: 'LOC_WAYREST', description: 'A fishing village that salts everything: fish, pork, grudges. The Tidecourt owns the drying racks; the village pretends otherwise on feast days.', atmosphere: 'Brine, netting, woodsmoke.', dangerRating: 3, connections: ['LOC_WAYREST'], services: ['trade', 'food', 'rumors'], factionInfluence: { FAC_TIDECOURT: 6, FAC_LAMPLIGHTERS: 2 }, shop: { buys: true, buyRate: 0.45, restockDay: 1, stock: [
+      { proto: 'harbor-fish', qty: 20, price: 2 },
+      { proto: 'ration', qty: 15, price: 4 },
+      { proto: 'torch', qty: 12, price: 2 },
+      { proto: 'rope', qty: 6, price: 10 },
+      { proto: 'boarding-spear', qty: 2, price: 380 },
+      { proto: 'bogroot', qty: 8, price: 7 },
+    ] } }),
+    loc({ id: 'LOC_PINEROAD1', mapPos: { x: 99, y: 45 }, name: 'The Pine Barrens', type: 'street', district: 'The Hinterlands', parent: 'LOC_LANDGATE', description: 'Stunted pines on poor soil, and a track that keeps promising to arrive somewhere. Charcoal burners work the edges; things with more legs work the middle.', atmosphere: 'Resin, silence, watched.', dangerRating: 6, connections: ['LOC_LANDGATE', 'LOC_HERMITAGE'], factionInfluence: {} }),
+    loc({ id: 'LOC_HERMITAGE', mapPos: { x: 96, y: 34 }, name: 'The Hermitage', type: 'temple', district: 'The Hinterlands', parent: 'LOC_PINEROAD1', description: 'A drystone cell and a bell with no rope. The hermit left or died or became very good at not being seen; the shrine still works, whatever that means.', atmosphere: 'Bees, moss, patience.', dangerRating: 2, connections: ['LOC_PINEROAD1', 'LOC_BROKENWATCH'], temple: true, factionInfluence: { FAC_BONEWARDENS: 2 } }),
+    loc({ id: 'LOC_BROKENWATCH', mapPos: { x: 99, y: 24 }, name: 'The Broken Watch', type: 'dungeon-entrance', district: 'The Hinterlands', parent: 'LOC_PINEROAD1', description: 'A hill-fort watchtower snapped off at the third storey, older than the city that stopped paying its garrison. The cellar stairs are swept clean. Nobody local will say by whom.', atmosphere: 'Wind through arrow-slits.', dangerRating: 7, connections: ['LOC_HERMITAGE'], dungeonId: 'DUN_WILD_001' }),
     loc({ id: 'LOC_SALTGATE', mapPos: { x: 12, y: 96 }, name: 'The Saltworks Gate', type: 'dungeon-entrance', district: 'Dock Ward', parent: 'LOC_WHARVES', description: 'The old evaporation works, shuttered since the year the brine came back wrong. The Tidecourt bought the deed and posts no guards, which everyone agrees is strange.', atmosphere: 'Salt crust, wind through slats.', dangerRating: 8, connections: ['LOC_WHARVES'], dungeonId: 'DUN_TIDE_001' }),
     loc({ id: 'LOC_CELLARDOOR', mapPos: { x: 5, y: 95 }, name: 'Drowned Cellar Door', type: 'dungeon-entrance', district: 'Dock Ward', parent: 'LOC_WHARVES', description: 'A barnacled hatch under the third pier, chained once, the chain long since cut. The tide breathes through it.', atmosphere: 'Salt rot and something moving below.', dangerRating: 7, connections: ['LOC_WHARVES'], dungeonId: 'DUN_DOCKWARD_001' }),
 
@@ -216,7 +231,7 @@ export function buildSeedWorld(): WorldState {
     loc({ id: 'LOC_HOLLOWGATE', mapPos: { x: 94, y: 66 }, name: 'The Hollow Gate', type: 'dungeon-entrance', district: 'Old Quarter', parent: 'LOC_OLDQUARTER', description: 'Behind the oldest mausoleum, a gate of black stone with no hinges. It has opened three times in written history.', atmosphere: 'Your own heartbeat, too loud.', dangerRating: 10, connections: ['LOC_MAUSOLEUM'], dungeonId: 'DUN_DEEP_001' }),
 
     // Old Quarter
-    loc({ id: 'LOC_GRAVEROW', mapPos: { x: 74, y: 40 }, name: 'Cemetery District', type: 'street', district: 'Old Quarter', parent: 'LOC_OLDQUARTER', description: 'Grave rows, mausoleums, and mourners who don’t linger after dark.', atmosphere: 'Still. Too still.', dangerRating: 6, connections: ['LOC_IRONMARKET_SQ', 'LOC_MAUSOLEUM', 'LOC_TEMPLE', 'LOC_LODGE', 'LOC_ASHDOOR', 'LOC_NAMELESS'], factionInfluence: { FAC_ASHCIRCLE: 5 } }),
+    loc({ id: 'LOC_GRAVEROW', mapPos: { x: 74, y: 40 }, name: 'Cemetery District', type: 'street', district: 'Old Quarter', parent: 'LOC_OLDQUARTER', description: 'Grave rows, mausoleums, and mourners who don’t linger after dark.', atmosphere: 'Still. Too still.', dangerRating: 6, connections: ['LOC_IRONMARKET_SQ', 'LOC_MAUSOLEUM', 'LOC_TEMPLE', 'LOC_LODGE', 'LOC_ASHDOOR', 'LOC_NAMELESS', 'LOC_LANDGATE'], factionInfluence: { FAC_ASHCIRCLE: 5 } }),
     loc({ id: 'LOC_MAUSOLEUM', mapPos: { x: 88, y: 32 }, name: 'Abandoned Mausoleum', type: 'dungeon-entrance', district: 'Old Quarter', parent: 'LOC_GRAVEROW', description: 'A defaced family tomb. The slab over the lower stair has been pushed aside — recently.', atmosphere: 'Cold air rises from below.', dangerRating: 7, connections: ['LOC_GRAVEROW', 'LOC_HOLLOWGATE'], dungeonId: 'DUN_OLDQUARTER_001' }),
 
     // Highcourt
@@ -475,6 +490,9 @@ export function buildSeedWorld(): WorldState {
   D('DUN_HIGHCOURT_001', 'Wyrmspire Undercroft', 'LOC_WYRMSPIRE', '20–27', 'dragon-haunted undercroft', 5,
     ['vampire-thrall', 'stone-golem', 'chimera', 'harbor-drake'], 'young-dragon',
     ['scorched galleries', 'a hoard-smell on the air', 'melted stone']);
+  D('DUN_WILD_001', 'The Broken Watch', 'LOC_BROKENWATCH', '6\u201310', 'ruined hill-fort', 3,
+    ['skeleton', 'wight', 'dire-wolf', 'grave-robber', 'bone-knight'], 'bone-warden-revenant',
+    ['a garrison that never stood down', 'arrow-slits facing INWARD on the lowest floor', 'pay-chits for a kingdom nobody remembers']);
   D('DUN_TIDE_001', 'The Saltworks', 'LOC_SALTGATE', '16–22', 'drowned salt-mine works', 4,
     ['salt-wight', 'brine-horror', 'saltbound-golem', 'reef-witch', 'depth-lurker'], 'salt-queen',
     ['pans of brine that hold reflections too long', 'salt-cured things that should have rotted', 'the Tidecourt’s unexplained deed']);

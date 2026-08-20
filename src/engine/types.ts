@@ -653,6 +653,12 @@ export interface WorldState {
   campaignComplete?: boolean;
   /** last day the party ate from the pauper's ladle */
   poorReliefDay?: number;
+  /** the bard's walking song, sustained on stamina */
+  activeSong?: 'light' | 'finding' | 'rest' | null;
+  /** the party's horse, if they keep one */
+  mount?: { name: string; boughtDay: number } | null;
+  /** crafting writs fulfilled, as `${day}:${locId}` */
+  writsDone?: string[];
   encumbrance: EncumbranceRule;
   /** survival needs (hunger/fatigue) tracked against story time */
   needsEnabled: boolean;

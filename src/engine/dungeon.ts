@@ -355,6 +355,7 @@ export function enterDungeon(world: WorldState, dungeonId: string): SimEvent {
 }
 
 export function exitDungeon(world: WorldState): SimEvent {
+  if (world.activeSong) stopSong(world, 'let the song end at the daylight');
   const d = world.currentDungeon ? world.dungeons[world.currentDungeon] : null;
   world.currentDungeon = null;
   world.currentRoom = null;
@@ -388,6 +389,7 @@ export function moveInDungeon(world: WorldState, dir: MoveDir): { event: SimEven
   let firstVisit = !dest.explored;
   dest.explored = true;
   addMinutes(world, 5);
+  drainSong(world);
   // one-way doors announce themselves from the wrong side
   const OPP: Record<MoveDir, MoveDir> = { north: 'south', south: 'north', east: 'west', west: 'east', up: 'down', down: 'up' };
   const oneWayNote = dest.connections[OPP[dir]] === here.id ? '' : ' The door swings shut behind you — no handle on this side.';
@@ -444,14 +446,63 @@ export function takeKey(world: WorldState): string | null {
   return null;
 }
 
+// ---------- Song magic (the Bard's Tale inheritance) ----------
+export const SONGS: Record<'light' | 'finding' | 'rest', { label: string; desc: string }> = {
+  light: { label: 'The Lantern Round', desc: 'A walking song that holds a glow around the party — light without torches, while the singer\u2019s breath lasts.' },
+  finding: { label: 'The Finding Air', desc: 'A searching melody: hidden seams and mechanisms answer it. Sharpens searching, disarming, and lockwork.' },
+  rest: { label: 'The Long Watch', desc: 'A low song for camps: deeper rest, and things in the dark keep their distance a little more.' },
+};
+
+function partyBard(world: WorldState): ReturnType<typeof partyMembers>[number] | null {
+  return partyMembers(world).find((c) => c.charClass === 'bard' && c.alive) ?? null;
+}
+
+/** Strike up (or change) the walking song. Needs a bard with breath. */
+export function startSong(world: WorldState, song: 'light' | 'finding' | 'rest'): string | null {
+  const bard = partyBard(world);
+  if (!bard) return 'Nobody in the party carries the songs.';
+  if (bard.stamina.current < 3) return `${bard.name} is too winded to hold a song.`;
+  world.activeSong = song;
+  logEvent(world, 'song.start', { song, bard: bard.id }, `${bard.name} took up ${SONGS[song].label} — ${SONGS[song].desc}`, { witnesses: partyMembers(world).map((c) => c.id) });
+  return null;
+}
+
+export function stopSong(world: WorldState, reason = 'let the song fall quiet'): void {
+  if (!world.activeSong) return;
+  const bard = partyBard(world);
+  logEvent(world, 'song.end', { song: world.activeSong }, `${bard?.name ?? 'The singer'} ${reason}.`);
+  world.activeSong = null;
+}
+
+/** Each dungeon step draws breath from the singer. */
+export function drainSong(world: WorldState): void {
+  if (!world.activeSong) return;
+  const bard = partyBard(world);
+  if (!bard) {
+    world.activeSong = null;
+    return;
+  }
+  bard.stamina.current -= 1;
+  if (bard.stamina.current <= 0) {
+    bard.stamina.current = 0;
+    stopSong(world, 'ran out of breath — the song died mid-phrase');
+  }
+}
+
+/** Finding Air sharpens delicate work. */
+export function songSearchBonus(world: WorldState): number {
+  return world.activeSong === 'finding' ? 3 : 0;
+}
+
 // ---------- Light ----------
 /** Underground with no burning torch: the oldest problem in the genre. */
 export function isDark(world: WorldState): boolean {
   if (!world.currentDungeon || !world.currentRoom) return false;
   const room = world.dungeons[world.currentDungeon]?.rooms[world.currentRoom];
   if (!room) return false;
-  if (room.darkZone) return true; // torches die here; this dark is not natural
+  if (room.darkZone) return true; // torches die here; this dark is not natural — songs too
   if (room.floor === 1 && room.isStairsUp) return false; // daylight falls through the entrance
+  if (world.activeSong === 'light') return false; // the Lantern Round holds
   return (world.torchMinutes ?? 0) <= 0;
 }
 
@@ -486,13 +537,14 @@ export function campInDungeon(world: WorldState): string | null {
   if (room.enemies === 'alive') return 'Camp here? The room disagrees.';
   const rng = new Rng(randomSeed());
   addMinutes(world, 480);
+  const sungWatch = world.activeSong === 'rest';
   for (const c of partyMembers(world)) {
-    c.needs.fatigue = Math.max(20, c.needs.fatigue - 55);
+    c.needs.fatigue = Math.max(sungWatch ? 12 : 20, c.needs.fatigue - (sungWatch ? 65 : 55));
     c.hp.current = Math.min(c.hp.max, c.hp.current + Math.ceil(c.hp.max * 0.35));
     c.mana.current = c.mana.max;
     c.stamina.current = c.stamina.max;
   }
-  const ambushChance = Math.min(0.6, 0.25 + room.floor * 0.05);
+  const ambushChance = Math.max(0.05, Math.min(0.6, 0.25 + room.floor * 0.05) - (sungWatch ? 0.12 : 0));
   if (rng.chance(ambushChance)) {
     const key = rng.pick(d.primaryEnemies);
     const count = rng.int(1, 3);
@@ -524,7 +576,7 @@ export function searchRoom(world: WorldState): SimEvent | { error: string } {
   if (room.secretDoor && !room.secretDoor.discovered) {
     const mc = world.characters[world.mcId];
     const rng = new Rng((d.generationSeed ^ room.id.length ^ world.time.minute) >>> 0);
-    if (rng.die(20) + mc.skills.tracking + Math.floor(mc.attributes.wisdom / 3) + darkMod(world) >= 14) {
+    if (rng.die(20) + mc.skills.tracking + Math.floor(mc.attributes.wisdom / 3) + darkMod(world) + songSearchBonus(world) >= 14) {
       room.secretDoor.discovered = true;
       const to = d.rooms[room.secretDoor.to];
       // open the passage both ways
@@ -551,7 +603,7 @@ export function disarmTrap(world: WorldState): SimEvent | { error: string } {
   const rng = new Rng((d.generationSeed ^ world.time.day * 7919 + world.time.minute) >>> 0);
   addMinutes(world, 5);
   trainSkill(world, mc, 'lockpicking');
-  const roll = rng.die(20) + mc.skills.lockpicking + Math.floor(mc.attributes.dexterity / 3) + darkMod(world);
+  const roll = rng.die(20) + mc.skills.lockpicking + Math.floor(mc.attributes.dexterity / 3) + darkMod(world) + songSearchBonus(world);
   if (roll >= 13) {
     room.trap.disarmed = true;
     return logEvent(world, 'dungeon.trap', { room: room.id, kind: room.trap.kind, result: 'disarmed', roll }, `${mc.name} disarmed the ${room.trap.kind} in ${room.name}. (roll ${roll})`, { witnesses: partyMembers(world).map((c) => c.id) });
@@ -574,7 +626,7 @@ export function pickLock(world: WorldState): SimEvent | { error: string } {
   addMinutes(world, 10);
   trainSkill(world, mc, 'lockpicking');
   const rng = new Rng((d.generationSeed ^ (world.time.day * 131 + world.time.minute)) >>> 0);
-  const roll = rng.die(20) + mc.skills.lockpicking + Math.floor((mc.attributes.dexterity - 10) / 2) + darkMod(world);
+  const roll = rng.die(20) + mc.skills.lockpicking + Math.floor((mc.attributes.dexterity - 10) / 2) + darkMod(world) + songSearchBonus(world);
   if (roll >= room.lockedDoor.difficulty) {
     room.lockedDoor.opened = true;
     return logEvent(world, 'dungeon.lockpicked', { room: room.id, roll }, `${mc.name} worked the lock until it surrendered — the way ${room.lockedDoor.dir} stands open. (roll ${roll})`, { witnesses: partyMembers(world).map((c) => c.id) });

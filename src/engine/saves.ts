@@ -70,6 +70,9 @@ export function migrateWorld(world: WorldState): WorldState {
   world.resurrectionRule ??= 'safe';
   world.torchMinutes ??= 0;
   world.tournament ??= null;
+  world.activeSong ??= null;
+  world.mount ??= null;
+  world.writsDone ??= [];
   world.tournamentDaysWon ??= [];
   world.auctionsWon ??= [];
   world.contestsWon ??= [];
@@ -94,13 +97,18 @@ export function migrateWorld(world: WorldState): WorldState {
     for (const id of ['CHAR_YVENNE', 'CHAR_KESS', 'CHAR_ISHA', 'CHAR_CORVA']) {
       if (!world.characters[id] && fresh.characters[id]) world.characters[id] = fresh.characters[id];
     }
-    for (const id of ['LOC_OPENHAND', 'LOC_LAMPHALL', 'LOC_NIGHTMARKET', 'LOC_EDGEDHALL', 'LOC_NAMELESS', 'LOC_FIGHTPIT', 'LOC_SALTGATE']) {
+    for (const id of ['LOC_OPENHAND', 'LOC_LAMPHALL', 'LOC_NIGHTMARKET', 'LOC_EDGEDHALL', 'LOC_NAMELESS', 'LOC_FIGHTPIT', 'LOC_SALTGATE', 'LOC_LANDGATE', 'LOC_SALTROAD1', 'LOC_WAYREST', 'LOC_SALTMERE', 'LOC_PINEROAD1', 'LOC_HERMITAGE', 'LOC_BROKENWATCH']) {
       if (!world.locations[id] && fresh.locations[id]) world.locations[id] = fresh.locations[id];
     }
     for (const id of ['FAC_LAMPLIGHTERS', 'FAC_TIDECOURT', 'FAC_BONEWARDENS']) {
       if (!world.factions[id] && fresh.factions[id]) world.factions[id] = fresh.factions[id];
     }
     if (!world.dungeons['DUN_TIDE_001'] && fresh.dungeons['DUN_TIDE_001']) world.dungeons['DUN_TIDE_001'] = fresh.dungeons['DUN_TIDE_001'];
+    if (!world.dungeons['DUN_WILD_001'] && fresh.dungeons['DUN_WILD_001']) world.dungeons['DUN_WILD_001'] = fresh.dungeons['DUN_WILD_001'];
+    // and the road back in for old saves that gained the Land Gate
+    if (world.locations['LOC_GRAVEROW'] && !world.locations['LOC_GRAVEROW'].connections.includes('LOC_LANDGATE') && world.locations['LOC_LANDGATE']) {
+      world.locations['LOC_GRAVEROW'].connections.push('LOC_LANDGATE');
+    }
   }
   ensurePersonalArcs(world);
   for (const c of Object.values(world.characters)) {

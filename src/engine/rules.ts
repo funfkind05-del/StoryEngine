@@ -329,14 +329,15 @@ export function slotsUsed(world: WorldState, c: Character): number {
   return c.inventory.map((id) => world.items[id]).filter((i) => i && i.equippedBy !== c.id).length;
 }
 
-export function slotCapacity(c: Character): number {
-  return LIGHT_SLOTS_BASE + Math.floor((c.attributes.strength - 10) / 2) * 2;
+export function slotCapacity(c: Character, world?: WorldState): number {
+  const saddlebags = world?.mount ? 3 : 0; // the horse carries her share
+  return LIGHT_SLOTS_BASE + Math.floor((c.attributes.strength - 10) / 2) * 2 + saddlebags;
 }
 
 export function hasRoomFor(world: WorldState, c: Character, item: Item): boolean {
   if (world.encumbrance === 'off') return true;
   if (item.stackable && item.proto && c.inventory.some((id) => world.items[id]?.proto === item.proto)) return true;
-  return slotsUsed(world, c) < slotCapacity(c);
+  return slotsUsed(world, c) < slotCapacity(c, world);
 }
 
 // ---------- Consumable effects ----------

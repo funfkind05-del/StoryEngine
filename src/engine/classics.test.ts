@@ -20,7 +20,9 @@ import {
 } from './progression';
 import { buyFromShop, buyTempleService } from './services';
 import { autoResolve, resolveRound, startCombat } from './combat';
-import { answerRiddle, campInDungeon, isDark, lightTorch, moveInDungeon, takeKey } from './dungeon';
+import { answerRiddle, campInDungeon, drainSong, isDark, lightTorch, moveInDungeon, startSong, takeKey } from './dungeon';
+import { buyMount, fulfillWrit, getWrit } from './services';
+import { slotCapacity } from './rules';
 import { generateDungeon } from './dungeon';
 import { SKILLS, SPELLS } from './combat';
 import { CLASSES, ITEM_PROTOS } from './rules';
@@ -1214,5 +1216,82 @@ describe('riddle doors (round 9): knowledge is the oldest key', () => {
       tested = true;
     }
     expect(tested).toBe(true);
+  });
+});
+
+
+describe('round 9b: songs, the Hinterlands, mounts, writs', () => {
+  it('the Lantern Round lights the dark on the singer\'s breath', () => {
+    const w = freshWorld();
+    const corva = w.characters['CHAR_CORVA'];
+    corva.inParty = true;
+    corva.location = w.partyLocation;
+    enterDungeon(w, 'DUN_OLDQUARTER_001');
+    const d = w.dungeons['DUN_OLDQUARTER_001'];
+    const inner = Object.values(d.rooms).find((r) => r.floor === 1 && !r.isStairsUp && !r.darkZone)!;
+    w.currentRoom = inner.id;
+    expect(isDark(w)).toBe(true); // no torch
+    expect(startSong(w, 'light')).toBeNull();
+    expect(isDark(w)).toBe(false); // the song holds
+    // breath runs out
+    corva.stamina.current = 2;
+    drainSong(w);
+    drainSong(w);
+    expect(w.activeSong).toBeNull();
+    expect(isDark(w)).toBe(true);
+    // no bard, no songs
+    const w2 = freshWorld();
+    expect(startSong(w2, 'finding')).toMatch(/carries the songs/);
+  });
+
+  it('the Hinterlands are on the map, roads run both ways, and the Broken Watch stands', () => {
+    const w = freshWorld();
+    for (const id of ['LOC_LANDGATE', 'LOC_SALTROAD1', 'LOC_WAYREST', 'LOC_SALTMERE', 'LOC_PINEROAD1', 'LOC_HERMITAGE', 'LOC_BROKENWATCH']) {
+      expect(w.locations[id], id).toBeTruthy();
+      expect(w.locations[id].district).toBe('The Hinterlands');
+    }
+    expect(w.locations['LOC_GRAVEROW'].connections).toContain('LOC_LANDGATE');
+    expect(w.locations['LOC_BROKENWATCH'].dungeonId).toBe('DUN_WILD_001');
+    enterDungeon(w, 'DUN_WILD_001');
+    expect(Object.keys(w.dungeons['DUN_WILD_001'].rooms).length).toBeGreaterThan(6);
+    expect(MONSTERS[w.dungeons['DUN_WILD_001'].bossKey]).toBeTruthy();
+  });
+
+  it('a horse shortens roads and deepens packs', () => {
+    const w = freshWorld();
+    const mc = w.characters[w.mcId];
+    mc.money = 5000;
+    expect(buyMount(w)).toMatch(/No stable/);
+    // walk to the Wayrest the long way (engine travel is instant per hop)
+    for (const hop of ['LOC_RATCATCHER', 'LOC_IRONMARKET_SQ', 'LOC_GRAVEROW', 'LOC_LANDGATE', 'LOC_SALTROAD1', 'LOC_WAYREST']) travelTo(w, hop);
+    const before = w.time.day * 1440 + w.time.minute;
+    expect(buyMount(w)).toBeNull();
+    expect(w.mount).toBeTruthy();
+    expect(buyMount(w)).toMatch(/personally/);
+    expect(slotCapacity(mc, w) - slotCapacity(mc)).toBe(3);
+    // roads shrink: same-district hop was 10, mounted is 6
+    const t0 = w.time.day * 1440 + w.time.minute;
+    travelTo(w, 'LOC_SALTROAD1');
+    expect(w.time.day * 1440 + w.time.minute - t0).toBe(6);
+    void before;
+  });
+
+  it('writs post daily, pay over the odds, and fill once per counter', () => {
+    const w = freshWorld();
+    const mc = w.characters[w.mcId];
+    const writ = getWrit(w, 'LOC_PHYSIC')!;
+    expect(writ).toBeTruthy();
+    expect(getWrit(w, 'LOC_PHYSIC')!.proto).toBe(writ.proto); // deterministic per day
+    // deliver
+    w.partyLocation = 'LOC_PHYSIC';
+    expect(fulfillWrit(w, 'LOC_PHYSIC')).toMatch(/short/);
+    const goods = makeItem(w, writ.proto, writ.qty);
+    addToContainer(w, goods, mc);
+    const cash = mc.money;
+    expect(fulfillWrit(w, 'LOC_PHYSIC')).toBeNull();
+    expect(mc.money).toBe(cash + writ.reward);
+    expect(fulfillWrit(w, 'LOC_PHYSIC')).toMatch(/already filled/);
+    // reward beats raw value
+    expect(writ.reward).toBeGreaterThan((w.items[goods.id]?.value ?? 0) * writ.qty);
   });
 });

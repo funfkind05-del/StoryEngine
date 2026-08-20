@@ -13,7 +13,7 @@ import type {
 } from '../engine/types';
 import { buildSeedWorld } from '../data/seed';
 import { advanceUntilMorning, logEvent, nextId, partyMembers, tick, travelTo } from '../engine/world';
-import { campInDungeon, disarmTrap, enterDungeon, exitDungeon, isDark, lightTorch, moveInDungeon, searchRoom, takeKey, type MoveDir } from '../engine/dungeon';
+import { SONGS, answerRiddle, campInDungeon, disarmTrap, enterDungeon, exitDungeon, isDark, lightTorch, moveInDungeon, searchRoom, startSong, stopSong, takeKey, type MoveDir } from '../engine/dungeon';
 import { generateDungeonEncounter, rollCityEncounter } from '../engine/encounter';
 import { closeCombat, resolveRound, startCombat, takeLoot } from '../engine/combat';
 import { openChest } from '../engine/loot';
@@ -55,7 +55,7 @@ import { joinGuild } from '../engine/guilds';
 import { craft, enchantItem, gatherResource } from '../engine/crafting';
 import { pickLock, takeLorebook, useShrine } from '../engine/dungeon';
 import { engageWorldEvent } from '../engine/worldEvents';
-import { adoptStray, goFishing, rideCarriage } from '../engine/services';
+import { adoptStray, buyMount, fulfillWrit, goFishing, rideCarriage } from '../engine/services';
 import { checkAchievements } from '../engine/achievements';
 import { giveGift, spendTimeWith } from '../engine/romance';
 import { autoResolve, autoRound } from '../engine/combat';
@@ -219,6 +219,10 @@ interface AppState {
   torchAct: () => void;
   campAct: () => void;
   keyAct: () => void;
+  riddleAct: () => void;
+  songAct: (song: 'light' | 'finding' | 'rest' | null) => void;
+  mountBuy: () => void;
+  writAct: () => void;
   auctionBid: (lotIdx: number, offer: number) => void;
   pitEnter: () => void;
   contestAct: (kind: 'archery' | 'song', charId: string) => void;
@@ -1307,6 +1311,41 @@ export const useStore = create<AppState>((set, get) => ({
   keyAct: () => {
     const { world, commit, setToast } = get();
     const err = takeKey(world);
+    if (err) setToast(err);
+    else sfx('coin');
+    commit();
+  },
+
+  riddleAct: () => {
+    const { world, commit, setToast } = get();
+    const err = answerRiddle(world);
+    if (err) setToast(err);
+    else sfx('chest');
+    commit();
+  },
+
+  songAct: (song) => {
+    const { world, commit, setToast } = get();
+    if (song === null) stopSong(world);
+    else {
+      const err = startSong(world, song);
+      if (err) { setToast(err); return; }
+      setToast(`${SONGS[song].label} — ${SONGS[song].desc}`);
+    }
+    commit();
+  },
+
+  mountBuy: () => {
+    const { world, commit, setToast } = get();
+    const err = buyMount(world);
+    if (err) setToast(err);
+    else sfx('victory');
+    commit({ autosave: err ? undefined : 'Bought a horse' });
+  },
+
+  writAct: () => {
+    const { world, commit, setToast } = get();
+    const err = fulfillWrit(world, world.partyLocation);
     if (err) setToast(err);
     else sfx('coin');
     commit();

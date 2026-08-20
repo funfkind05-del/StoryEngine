@@ -26,6 +26,7 @@ import {
   trainingCost,
 } from './rules';
 import { Rng, randomSeed } from './rng';
+
 import { addMinutes, advanceUntilMorning, logEvent, partyMembers } from './world';
 import { guildTrainingDiscount } from './guilds';
 
@@ -190,6 +191,81 @@ export function poorRelief(world: WorldState): string | null {
     c.needs.hunger = Math.min(c.needs.hunger, 25); // a real meal, once a day
   }
   logEvent(world, 'poor.relief', { day: world.time.day }, `The party stood the pauper's line and ate from the lych-house ladle — thin soup, real bread, no questions. Somebody kept this kindness running when nobody was watching.`, { location: world.partyLocation, witnesses: partyMembers(world).map((c) => c.id) });
+  return null;
+}
+
+// ---------- The stable ----------
+export const MOUNT_PRICE = 1500; // copper
+const HORSE_NAMES = ['Bramble', 'Copper', 'Whitefoot', 'Ledger', 'Thistle', 'Old Sin'];
+
+/** Buy a horse where there's a stable. Roads shrink; packs deepen. */
+export function buyMount(world: WorldState): string | null {
+  const loc = world.locations[world.partyLocation];
+  if (!loc?.services?.includes('stable')) return 'No stable here.';
+  if (world.mount) return `${world.mount.name} would take that personally.`;
+  const mc = world.characters[world.mcId];
+  if (mc.money < MOUNT_PRICE) return `A sound horse runs ${fmtMoney(MOUNT_PRICE)}.`;
+  mc.money -= MOUNT_PRICE;
+  const name = HORSE_NAMES[(world.masterSeed ^ world.time.day) % HORSE_NAMES.length];
+  world.mount = { name, boughtDay: world.time.day };
+  logEvent(world, 'mount.bought', { name, price: MOUNT_PRICE }, `${mc.name} bought a horse from the stable — a steady ${world.time.day % 2 ? 'bay' : 'grey'} the ostler called ${name}. The roads just got shorter and the packs deeper.`, { location: loc.id, witnesses: partyMembers(world).map((c) => c.id) });
+  return null;
+}
+
+// ---------- Crafting writs ----------
+export interface Writ {
+  proto: string;
+  qty: number;
+  reward: number; // copper
+  xp: number;
+}
+
+const WRIT_POOLS: Record<string, string[]> = {
+  LOC_FORGE: ['dagger', 'iron-shortsword', 'iron-mace', 'boarding-spear'],
+  LOC_PHYSIC: ['antidote', 'healing-potion', 'stoneblood-tonic', 'mana-draught'],
+  LOC_DRYGOODS: ['hearty-stew', 'ration', 'torch'],
+  LOC_SALTMERE: ['hearty-stew', 'harbor-fish', 'antidote'],
+};
+
+/** Today's writ at a shop counter, deterministic per day. */
+export function getWrit(world: WorldState, locId: string): Writ | null {
+  const pool = WRIT_POOLS[locId];
+  if (!pool) return null;
+  const rng = new Rng((world.masterSeed ^ (world.time.day * 92821) ^ locId.length) >>> 0);
+  const proto = rng.pick(pool);
+  const p = ITEM_PROTOS[proto];
+  if (!p) return null;
+  const qty = proto === 'torch' || proto === 'ration' || proto === 'harbor-fish' ? rng.int(4, 8) : rng.int(2, 4);
+  return { proto, qty, reward: Math.round(p.value * qty * 1.7) + 20, xp: 25 * qty };
+}
+
+/** Deliver the goods, take the coin. Once per counter per day. */
+export function fulfillWrit(world: WorldState, locId: string): string | null {
+  if (world.partyLocation !== locId) return 'Deliver in person.';
+  const writ = getWrit(world, locId);
+  if (!writ) return 'No writ posted here.';
+  const key = `${world.time.day}:${locId}`;
+  if ((world.writsDone ?? []).includes(key)) return 'Today\u2019s writ is already filled.';
+  const mc = world.characters[world.mcId];
+  const pools: string[][] = [mc.inventory, world.partyInventory, ...partyMembers(world).map((c) => c.inventory)];
+  let need = writ.qty;
+  const consumed: string[] = [];
+  for (const pool of pools) {
+    for (const iid of [...pool]) {
+      if (need <= 0) break;
+      const it = world.items[iid];
+      if (!it || it.proto !== writ.proto || it.equippedBy) continue;
+      const take = Math.min(need, it.qty ?? 1);
+      removeUnits(world, it, take);
+      need -= take;
+      consumed.push(`${take}× ${it.name}`);
+    }
+  }
+  if (need > 0) return `The writ wants ${writ.qty}× ${ITEM_PROTOS[writ.proto].name} — the party is ${need} short. (Craft them; the guild pays over the odds.)`;
+  mc.money += writ.reward;
+  for (const c of partyMembers(world)) c.xp += Math.floor(writ.xp / partyMembers(world).length);
+  world.writsDone = [...(world.writsDone ?? []), key];
+  logEvent(world, 'writ.fulfilled', { loc: locId, proto: writ.proto, qty: writ.qty, reward: writ.reward }, `Writ filled at ${world.locations[locId].name}: ${writ.qty}× ${ITEM_PROTOS[writ.proto].name} delivered for ${fmtMoney(writ.reward)}. Honest work, over the odds.`, { location: locId, witnesses: partyMembers(world).map((c) => c.id) });
   return null;
 }
 

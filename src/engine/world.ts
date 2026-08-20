@@ -99,7 +99,8 @@ export function partyMembers(world: WorldState): Character[] {
 export function travelTo(world: WorldState, dest: LocationId): SimEvent {
   const from = world.locations[world.partyLocation];
   const to = world.locations[dest];
-  const minutes = from && from.district === to.district ? 10 : 30;
+  let minutes = from && from.district === to.district ? 10 : 30;
+  if (world.mount) minutes = Math.max(5, Math.round(minutes * 0.6)); // hooves beat boots
   addMinutes(world, minutes);
   world.partyLocation = dest;
   world.currentDungeon = null;

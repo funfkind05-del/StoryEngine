@@ -53,6 +53,8 @@ import { currentBook, scenesInBook } from '../engine/series';
 import { PREGNANCY_TERM_DAYS } from '../engine/family';
 import { generateArt, monsterPrompt, portraitPrompt } from '../engine/artGen';
 import { PIT_LOCATION, isPitTrialsDay } from '../engine/tournament';
+import { SONGS } from '../engine/dungeon';
+import { MOUNT_PRICE, getWrit } from '../engine/services';
 import { LOREBOOKS, loreById } from '../engine/codex';
 import { ACHIEVEMENTS } from '../engine/achievements';
 import {
@@ -128,6 +130,8 @@ function LocationPanel() {
   const aiBusy = useStore((s) => s.aiBusy);
   const pitEnter = useStore((s) => s.pitEnter);
   const contestAct = useStore((s) => s.contestAct);
+  const mountBuy = useStore((s) => s.mountBuy);
+  const writAct = useStore((s) => s.writAct);
   const [bids, setBids] = useState<Record<number, number>>({});
   const crimePickpocket = useStore((s) => s.crimePickpocket);
   const crimeBurgle = useStore((s) => s.crimeBurgle);
@@ -404,6 +408,28 @@ function LocationPanel() {
           <p className="dim small">The hammer answers to coin, presence, and the Tidecourt's mood. Lots change every auction night.</p>
         </>
       )}
+      {loc.services?.includes('stable') && !world.mount && (
+        <>
+          <h4>🐴 The stable</h4>
+          <button onClick={mountBuy} title="A sound horse: roads at 0.6x time, +3 pack slots for everyone (saddlebags).">Buy a horse ({fmtMoney(MOUNT_PRICE)})</button>
+        </>
+      )}
+      {(() => {
+        const writ = getWrit(world, loc.id);
+        if (!writ) return null;
+        const done = (world.writsDone ?? []).includes(`${world.time.day}:${loc.id}`);
+        return (
+          <>
+            <h4>📜 Today's writ</h4>
+            {done ? <p className="dim small">Filled. New writ at dawn.</p> : (
+              <div className="row small">
+                <span className="grow">Deliver {writ.qty}× {ITEM_PROTOS[writ.proto]?.name} — pays {fmtMoney(writ.reward)} + {writ.xp} xp</span>
+                <button onClick={writAct} title="Guild work: craft or gather the goods, deliver for coin over the odds. One writ per counter per day.">Deliver</button>
+              </div>
+            )}
+          </>
+        );
+      })()}
       <h4>Travel</h4>
       {loc.connections.filter((c) => world.locations[c]).map((cid) => (
         <div key={cid} className="row">
@@ -880,7 +906,7 @@ function InventoryPanel() {
         <div key={c.id}>
           <h4>
             {c.name} — {fmtMoney(c.money)}
-            {world.encumbrance === 'light' && <span className="dim"> · pack {slotsUsed(world, c)}/{slotCapacity(c)} slots</span>}
+            {world.encumbrance === 'light' && <span className="dim"> · pack {slotsUsed(world, c)}/{slotCapacity(c, world)} slots</span>}
           </h4>
           <div className="small dim" style={{ marginBottom: 4 }}>
             {SLOT_LABELS.map(([slot, label]) => {
@@ -938,6 +964,8 @@ function DungeonPanel() {
   const torchAct = useStore((s) => s.torchAct);
   const campAct = useStore((s) => s.campAct);
   const keyAct = useStore((s) => s.keyAct);
+  const riddleAct = useStore((s) => s.riddleAct);
+  const songAct = useStore((s) => s.songAct);
   const moveScheme = useStore((s) => s.moveScheme);
   const setMoveScheme = useStore((s) => s.setMoveScheme);
   const aiDescribeRoom = useStore((s) => s.aiDescribeRoom);
@@ -983,6 +1011,18 @@ function DungeonPanel() {
             : isDark(world) ? '🌑 pitch dark — searching and lockwork suffer' : ''}
         </span>
         <button onClick={torchAct} title="Burn a torch from the packs: +90 minutes of light. (key: T)">🔥 Light torch</button>
+        {Object.values(world.characters).some((c) => c.inParty && c.alive && c.charClass === 'bard') && (
+          <select
+            value={world.activeSong ?? ''}
+            onChange={(e) => songAct((e.target.value || null) as 'light' | 'finding' | 'rest' | null)}
+            title="The bard's walking songs: light without torches, sharper searching, or deeper camps — sustained on the singer's stamina, one at a time."
+          >
+            <option value="">🎵 no song</option>
+            {(Object.keys(SONGS) as ('light' | 'finding' | 'rest')[]).map((k) => (
+              <option key={k} value={k}>🎵 {SONGS[k].label}</option>
+            ))}
+          </select>
+        )}
         <select value={moveScheme} onChange={(e) => setMoveScheme(e.target.value as 'compass' | 'relative')} title="Compass: arrows are absolute N/S/E/W. Crawler: up walks forward, left/right turn — the old way.">
           <option value="compass">compass keys</option>
           <option value="relative">crawler keys</option>
@@ -1026,6 +1066,11 @@ function DungeonPanel() {
         {room.trap && !room.trap.disarmed && !room.trap.triggered && <button onClick={disarm}>Disarm trap</button>}
         {room.chest && !room.chest.opened && <button onClick={lootChest}>Open chest</button>}
         {room.key && !room.key.taken && <button onClick={keyAct} title="A key lying in the open. Somewhere on this floor, its lock is waiting.">🗝 Take the key</button>}
+        {room.riddleDoor && !room.riddleDoor.opened && (
+          <button onClick={riddleAct} title="Old script asks its question. The answer lives in a lorebook from a shallower floor — if the party has read it, speak.">
+            ❓ Speak the answer ({room.riddleDoor.dir})
+          </button>
+        )}
         {room.lockedDoor && !room.lockedDoor.opened && (
           <button onClick={pickLockAct} title={d.keysHeld?.includes(room.id) ? 'You carry this floor\u2019s key — just walk through.' : 'Lockpicking against the mechanism, or find this floor\u2019s key.'}>
             🔒 Pick lock ({room.lockedDoor.dir}){d.keysHeld?.includes(room.id) ? ' — key held' : ''}
