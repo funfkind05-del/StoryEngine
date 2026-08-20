@@ -18,6 +18,7 @@ import {
   rollGearMods,
 } from './progression';
 import { buyFromShop, buyTempleService } from './services';
+import { autoResolve, startCombat } from './combat';
 import { birthDayFor, relationshipBetween, runBirthdays, travelTo } from './world';
 import { makeItem } from './rules';
 import { Rng } from './rng';
@@ -95,6 +96,26 @@ describe('named elites & rivals', () => {
     settleElites(w, [m3], 'victory', new Rng(9));
     expect(livingRivals(w).length).toBe(0);
     expect(w.events.some((e) => e.kind === 'rival.slain')).toBe(true);
+  });
+
+  it('an inflicting elite over a non-inflicting template resolves without crashing', () => {
+    // regression: the combat log once read t.inflicts!.status when only
+    // the ELITE carried the inflict (Vhessa the Venomous over skeletons)
+    let sawStatus = false;
+    for (let seed = 0; seed < 40; seed++) {
+      const w = freshWorld();
+      const combat = startCombat(w, {
+        seed,
+        description: 'skeletons led by Vhessa the Venomous',
+        monsters: [{ templateKey: 'skeleton', count: 2 }],
+        source: 'city',
+        locationId: w.partyLocation,
+        elite: { templateKey: 'skeleton', name: 'Vhessa the Venomous', modifierKey: 'venomous', power: 2 },
+      });
+      autoResolve(w); // throws before the fix whenever the poison lands
+      if (combat.log.some((l) => l.statusApplied === 'poisoned')) sawStatus = true;
+    }
+    expect(sawStatus).toBe(true); // the crashing path must actually be exercised
   });
 
   it('living rivals can take the field again and feed the Muse', () => {

@@ -587,7 +587,7 @@ function resolveMonsterAction(
     applyStatus(target, inflicts.status, undefined, m.name);
     if (hasStatus(target, inflicts.status)) inflictNote = ` ${target.name} is ${inflicts.status}!`;
   }
-  record({ round: combat.round, actor: m.id, actorName: m.name, action: 'attack', targetName: target.name, detail: 'attack', roll, result: 'hit', damage: dmg, statusApplied: inflictNote ? t.inflicts!.status : undefined, text: `${m.name} hit ${target.name} for ${dmg} damage.${heavyNote}${inflictNote}` });
+  record({ round: combat.round, actor: m.id, actorName: m.name, action: 'attack', targetName: target.name, detail: 'attack', roll, result: 'hit', damage: dmg, statusApplied: inflictNote ? inflicts!.status : undefined, text: `${m.name} hit ${target.name} for ${dmg} damage.${heavyNote}${inflictNote}` });
   downCheck(world, target, record, combat.round);
 }
 
