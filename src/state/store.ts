@@ -13,7 +13,7 @@ import type {
 } from '../engine/types';
 import { buildSeedWorld } from '../data/seed';
 import { advanceUntilMorning, logEvent, nextId, partyMembers, tick, travelTo } from '../engine/world';
-import { campInDungeon, disarmTrap, enterDungeon, exitDungeon, lightTorch, moveInDungeon, searchRoom, type MoveDir } from '../engine/dungeon';
+import { campInDungeon, disarmTrap, enterDungeon, exitDungeon, lightTorch, moveInDungeon, searchRoom, takeKey, type MoveDir } from '../engine/dungeon';
 import { generateDungeonEncounter, rollCityEncounter } from '../engine/encounter';
 import { closeCombat, resolveRound, startCombat, takeLoot } from '../engine/combat';
 import { openChest } from '../engine/loot';
@@ -215,6 +215,7 @@ interface AppState {
   setRow: (charId: string, row: 'front' | 'back') => void;
   torchAct: () => void;
   campAct: () => void;
+  keyAct: () => void;
   auctionBid: (lotIdx: number, offer: number) => void;
   pitEnter: () => void;
   contestAct: (kind: 'archery' | 'song', charId: string) => void;
@@ -1243,6 +1244,20 @@ export const useStore = create<AppState>((set, get) => ({
       sfx('step');
       set({ facing: dir });
     }
+    // spinner tiles: the room turns under your boots
+    if (res.room.spinner) {
+      const dirs: ('north' | 'south' | 'east' | 'west')[] = ['north', 'south', 'east', 'west'];
+      set({ facing: dirs[Math.floor(Math.random() * 4)] });
+      setToast('The floor turns beneath you. Which way were you facing?');
+    }
+    commit();
+  },
+
+  keyAct: () => {
+    const { world, commit, setToast } = get();
+    const err = takeKey(world);
+    if (err) setToast(err);
+    else sfx('coin');
     commit();
   },
 

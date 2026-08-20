@@ -20,7 +20,8 @@ import {
 } from './progression';
 import { buyFromShop, buyTempleService } from './services';
 import { autoResolve, resolveRound, startCombat } from './combat';
-import { campInDungeon, isDark, lightTorch } from './dungeon';
+import { campInDungeon, isDark, lightTorch, moveInDungeon, takeKey } from './dungeon';
+import { generateDungeon } from './dungeon';
 import { SKILLS, SPELLS } from './combat';
 import { CLASSES, ITEM_PROTOS } from './rules';
 import { RECIPES } from './crafting';
@@ -832,5 +833,139 @@ describe('art moves out of the save (round 6)', () => {
     expect(snapshots[1].world).toBe(before2); // untouched: no art inside
     // idempotent: second sweep finds nothing
     expect(Object.keys(collectWorldArt(w, snapshots))).toHaveLength(0);
+  });
+});
+
+
+describe('the maze round (round 7)', () => {
+  function gen(seed: number, dungeonId = 'DUN_DEEP_001') {
+    const w = freshWorld();
+    w.dungeons[dungeonId].generationSeed = seed;
+    generateDungeon(w, dungeonId);
+    return { w, d: w.dungeons[dungeonId] };
+  }
+
+  it('deep floors sprawl onto bigger grids with more rooms', () => {
+    let sawWide = false;
+    let deepBigger = false;
+    for (let seed = 1; seed <= 10; seed++) {
+      const { d } = gen(seed); // the Hollow Crown: 6 floors
+      const byFloor = new Map<number, number>();
+      for (const r of Object.values(d.rooms)) {
+        byFloor.set(r.floor, (byFloor.get(r.floor) ?? 0) + 1);
+        if (r.floor >= 4 && (r.x >= 4 || r.y >= 4)) sawWide = true; // beyond the old 4x4
+      }
+      if ((byFloor.get(6) ?? 0) > (byFloor.get(1) ?? 99)) deepBigger = true;
+    }
+    expect(sawWide).toBe(true);
+    expect(deepBigger).toBe(true);
+  });
+
+  it('spinners, dark zones, teleport rings, and keys all occur — and every target exists', () => {
+    let spinners = 0, darks = 0, rings = 0, keys = 0, oneWays = 0;
+    for (let seed = 1; seed <= 12; seed++) {
+      const { d } = gen(seed);
+      const OPP: Record<string, string> = { north: 'south', south: 'north', east: 'west', west: 'east' };
+      for (const r of Object.values(d.rooms)) {
+        if (r.spinner) spinners++;
+        if (r.darkZone) darks++;
+        if (r.teleporter) {
+          rings++;
+          expect(d.rooms[r.teleporter.to], `${d.id} ring target`).toBeTruthy();
+        }
+        if (r.key) {
+          keys++;
+          expect(d.rooms[r.key.opensRoom]?.lockedDoor, `${d.id} key's lock`).toBeTruthy();
+        }
+        for (const [dir, t] of Object.entries(r.connections)) {
+          if (!t || !OPP[dir]) continue;
+          expect(d.rooms[t], `${r.id} ${dir}`).toBeTruthy();
+          if (d.rooms[t].connections[OPP[dir] as 'north'] !== r.id) oneWays++;
+        }
+      }
+    }
+    expect(spinners).toBeGreaterThan(0);
+    expect(darks).toBeGreaterThan(0);
+    expect(rings).toBeGreaterThan(0);
+    expect(keys).toBeGreaterThan(0);
+    expect(oneWays).toBeGreaterThan(0); // some doors have no handle on the far side
+  });
+
+  it('one-way doors never strand the party: every room reaches and is reached from its floor entry', () => {
+    for (let seed = 1; seed <= 8; seed++) {
+      const { d } = gen(seed);
+      const floors = new Map<number, string[]>();
+      for (const r of Object.values(d.rooms)) {
+        floors.set(r.floor, [...(floors.get(r.floor) ?? []), r.id]);
+      }
+      for (const [floor, ids] of floors) {
+        const entry = ids.find((id) => d.rooms[id].isStairsUp) ?? ids[0];
+        const walk = (start: string, reverse: boolean) => {
+          const seen = new Set([start]);
+          const q = [start];
+          while (q.length) {
+            const cur = q.pop()!;
+            for (const rid of ids) {
+              if (seen.has(rid)) continue;
+              const fwd = Object.values(d.rooms[cur].connections).includes(rid);
+              const bck = Object.values(d.rooms[rid].connections).includes(cur);
+              if ((reverse ? bck : fwd)) { seen.add(rid); q.push(rid); }
+            }
+          }
+          return seen;
+        };
+        expect(walk(entry, false).size, `seed ${seed} floor ${floor} out`).toBe(ids.length);
+        expect(walk(entry, true).size, `seed ${seed} floor ${floor} back`).toBe(ids.length);
+      }
+    }
+  });
+
+  it('a carried key opens its floor\'s lock without picking', () => {
+    for (let seed = 1; seed <= 30; seed++) {
+      const { w, d } = gen(seed);
+      const keyRoom = Object.values(d.rooms).find((r) => r.key && !r.key.taken);
+      if (!keyRoom) continue;
+      const lockRoom = d.rooms[keyRoom.key!.opensRoom];
+      w.currentDungeon = d.id;
+      w.currentRoom = keyRoom.id;
+      expect(takeKey(w)).toBeNull();
+      expect(d.keysHeld).toContain(lockRoom.id);
+      w.currentRoom = lockRoom.id;
+      const res = moveInDungeon(w, lockRoom.lockedDoor!.dir);
+      expect('error' in res, `seed ${seed}`).toBe(false);
+      expect(lockRoom.lockedDoor!.opened).toBe(true);
+      return; // one full pass is the test
+    }
+    throw new Error('no key found across 30 seeds');
+  });
+
+  it('teleport rings move the party; dead-dark rooms ignore torchlight', () => {
+    let tested = 0;
+    for (let seed = 1; seed <= 40 && tested < 2; seed++) {
+      const { w, d } = gen(seed);
+      const ringRoom = Object.values(d.rooms).find((r) => r.teleporter);
+      if (ringRoom && tested % 2 === 0) {
+        const neighbor = Object.values(d.rooms).find((r) => Object.values(r.connections).includes(ringRoom.id) && r.floor === ringRoom.floor);
+        if (neighbor) {
+          const dir = (Object.entries(neighbor.connections).find(([, t]) => t === ringRoom.id)![0]) as 'north';
+          w.currentDungeon = d.id;
+          w.currentRoom = neighbor.id;
+          if (neighbor.lockedDoor?.dir === dir && !neighbor.lockedDoor.opened) continue;
+          const res = moveInDungeon(w, dir);
+          if ('error' in res) continue;
+          expect(w.currentRoom).toBe(ringRoom.teleporter!.to);
+          tested++;
+        }
+      }
+      const darkRoom = Object.values(d.rooms).find((r) => r.darkZone);
+      if (darkRoom && tested < 2) {
+        w.currentDungeon = d.id;
+        w.currentRoom = darkRoom.id;
+        w.torchMinutes = 200;
+        expect(isDark(w)).toBe(true); // the dark eats torches
+        tested++;
+      }
+    }
+    expect(tested).toBeGreaterThanOrEqual(2);
   });
 });

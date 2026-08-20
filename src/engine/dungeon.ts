@@ -30,21 +30,55 @@ const ROOM_DESCS = [
 const TRAPS = ['pit trap', 'dart trap', 'snare', 'collapsing ceiling', 'poison needle'];
 
 /** Generate the dungeon's full map from its stored seed (idempotent). */
+/** Directed both-ways reachability between every floor room and the entry. */
+function floorFullyTraversable(d: Dungeon, roomIds: RoomId[], entry: RoomId): boolean {
+  const onFloor = new Set(roomIds);
+  const walkFrom = (start: RoomId, reverse: boolean): Set<RoomId> => {
+    const seen = new Set<RoomId>([start]);
+    const queue = [start];
+    while (queue.length) {
+      const cur = queue.pop()!;
+      for (const rid of roomIds) {
+        if (seen.has(rid)) continue;
+        const canStep = reverse
+          ? Object.values(d.rooms[rid].connections).includes(cur)
+          : Object.values(d.rooms[cur].connections).includes(rid);
+        if (canStep && onFloor.has(rid)) {
+          seen.add(rid);
+          queue.push(rid);
+        }
+      }
+      // forward pass also needs cur's own edges walked (handled above via pair scan)
+      if (!reverse) {
+        for (const t of Object.values(d.rooms[cur].connections)) {
+          if (t && onFloor.has(t) && !seen.has(t)) { seen.add(t); queue.push(t); }
+        }
+      }
+    }
+    return seen;
+  };
+  const out = walkFrom(entry, false); // entry -> everywhere
+  if (out.size < roomIds.length) return false;
+  const back = walkFrom(entry, true); // everywhere -> entry (reverse edges)
+  return back.size >= roomIds.length;
+}
+
 export function generateDungeon(world: WorldState, dungeonId: string): Dungeon {
   const d = world.dungeons[dungeonId];
   if (d.generated) return d;
   const rng = new Rng(d.generationSeed);
 
-  const grid = 4; // rooms laid on a 4x4 grid per floor, not all cells used
   let firstRoom: RoomId | null = null;
   let prevStairs: RoomId | null = null;
 
   for (let floor = 1; floor <= d.floors; floor++) {
+    // deeper floors sprawl: bigger grids, more rooms, meaner corridors
+    const grid = Math.min(6, 4 + Math.floor(floor / 2));
     // carve a connected set of cells via random walk
     const cells = new Map<string, RoomId>();
     let cx = rng.int(0, grid - 1);
     let cy = rng.int(0, grid - 1);
-    const targetRooms = rng.int(6, 9);
+    const targetRooms = Math.min(grid * grid - 1, rng.int(6, 9) + floor);
     const walk: { x: number; y: number }[] = [{ x: cx, y: cy }];
     let guard = 0;
     while (walk.length < targetRooms && guard++ < 200) {
@@ -83,7 +117,8 @@ export function generateDungeon(world: WorldState, dungeonId: string): Dungeon {
       d.rooms[id] = room;
       cells.set(`${p.x},${p.y}`, id);
     }
-    // connect adjacent cells
+    // connect adjacent cells — stingier with depth, so real dead ends form
+    const linkChance = Math.max(0.55, 0.85 - floor * 0.06);
     for (const p of walk) {
       const here = cells.get(`${p.x},${p.y}`)!;
       const north = cells.get(`${p.x},${p.y - 1}`);
@@ -91,19 +126,56 @@ export function generateDungeon(world: WorldState, dungeonId: string): Dungeon {
       const east = cells.get(`${p.x + 1},${p.y}`);
       const west = cells.get(`${p.x - 1},${p.y}`);
       const r = d.rooms[here];
-      if (north && rng.chance(0.85)) { r.connections.north = north; d.rooms[north].connections.south = here; }
-      if (south && !r.connections.south && rng.chance(0.85)) { r.connections.south = south; d.rooms[south].connections.north = here; }
-      if (east && rng.chance(0.85)) { r.connections.east = east; d.rooms[east].connections.west = here; }
-      if (west && !r.connections.west && rng.chance(0.85)) { r.connections.west = west; d.rooms[west].connections.east = here; }
+      if (north && rng.chance(linkChance)) { r.connections.north = north; d.rooms[north].connections.south = here; }
+      if (south && !r.connections.south && rng.chance(linkChance)) { r.connections.south = south; d.rooms[south].connections.north = here; }
+      if (east && rng.chance(linkChance)) { r.connections.east = east; d.rooms[east].connections.west = here; }
+      if (west && !r.connections.west && rng.chance(linkChance)) { r.connections.west = west; d.rooms[west].connections.east = here; }
     }
-    // ensure connectivity: link any orphaned room to a neighbor cell room
+    // ensure connectivity properly: sparse linking can split the floor
+    // into clusters, not just orphan single rooms. Merge components by
+    // bridging grid-adjacent cells until one region remains.
     const roomsThisFloor = walk.map((p) => cells.get(`${p.x},${p.y}`)!);
-    for (const rid of roomsThisFloor) {
-      const r = d.rooms[rid];
-      if (Object.keys(r.connections).length === 0) {
-        const other = roomsThisFloor.find((o) => o !== rid);
-        if (other) { r.connections.north = other; d.rooms[other].connections.south = rid; }
+    const componentOf = (): Map<RoomId, number> => {
+      const comp = new Map<RoomId, number>();
+      let n = 0;
+      for (const rid of roomsThisFloor) {
+        if (comp.has(rid)) continue;
+        const queue = [rid];
+        comp.set(rid, n);
+        while (queue.length) {
+          const cur = queue.pop()!;
+          for (const t of Object.values(d.rooms[cur].connections)) {
+            if (t && !comp.has(t) && roomsThisFloor.includes(t)) { comp.set(t, n); queue.push(t); }
+          }
+        }
+        n += 1;
       }
+      return comp;
+    };
+    let compGuard = 0;
+    for (;;) {
+      const comp = componentOf();
+      if (new Set(comp.values()).size <= 1 || compGuard++ > 40) break;
+      // bridge the first grid-adjacent pair that crosses components
+      let bridged = false;
+      for (const rid of roomsThisFloor) {
+        const r = d.rooms[rid];
+        const neighbors: [MoveDir, MoveDir, RoomId | undefined][] = [
+          ['north', 'south', cells.get(`${r.x},${r.y - 1}`)],
+          ['south', 'north', cells.get(`${r.x},${r.y + 1}`)],
+          ['east', 'west', cells.get(`${r.x + 1},${r.y}`)],
+          ['west', 'east', cells.get(`${r.x - 1},${r.y}`)],
+        ];
+        for (const [dir, rev, other] of neighbors) {
+          if (!other || comp.get(other) === comp.get(rid)) continue;
+          r.connections[dir] = other;
+          d.rooms[other].connections[rev] = rid;
+          bridged = true;
+          break;
+        }
+        if (bridged) break;
+      }
+      if (!bridged) break; // cannot happen on a walk-connected cell set, but never loop forever
     }
     // one locked door per floor: bar a random inter-room passage
     const lockCandidates = roomsThisFloor.filter((rid) => {
@@ -117,6 +189,16 @@ export function generateDungeon(world: WorldState, dungeonId: string): Dungeon {
       if (dirs.length) {
         const dir = rng.pick(dirs);
         r.lockedDoor = { dir, to: r.connections[dir]!, difficulty: 12 + floor * 2, opened: false };
+        // its key lies as far across the floor as the walk allows
+        const others = roomsThisFloor.filter((o) => o !== rid);
+        if (others.length) {
+          const far = others.reduce((a, b) => {
+            const da = Math.abs(d.rooms[a].x - r.x) + Math.abs(d.rooms[a].y - r.y);
+            const db = Math.abs(d.rooms[b].x - r.x) + Math.abs(d.rooms[b].y - r.y);
+            return db > da ? b : a;
+          });
+          d.rooms[far].key = { taken: false, opensRoom: rid };
+        }
       }
     }
     // a lorebook somewhere on the floor
@@ -125,6 +207,41 @@ export function generateDungeon(world: WorldState, dungeonId: string): Dungeon {
       d.rooms[rid].lorebook = { id: `${d.id}:${floor}`, taken: false };
     }
     const entry = roomsThisFloor[0];
+    // ---- the old cruelties (Bard's Tale sends its regards) ----
+    const midRooms = roomsThisFloor.slice(1, -1); // never the entry, never the boss/stairs room
+    // spinner tiles: the floor turns under you
+    for (const rid of midRooms) {
+      if (rng.chance(0.08)) d.rooms[rid].spinner = true;
+    }
+    // darkness zones (floor 2 down): torches die here
+    if (floor >= 2) {
+      for (const rid of midRooms) {
+        if (!d.rooms[rid].spinner && rng.chance(0.08)) d.rooms[rid].darkZone = true;
+      }
+    }
+    // a teleport ring (floor 2 down): step in, come out elsewhere
+    if (floor >= 2 && midRooms.length >= 3 && rng.chance(0.45)) {
+      const src = rng.pick(midRooms);
+      const targets = roomsThisFloor.filter((r) => r !== src);
+      if (targets.length) d.rooms[src].teleporter = { to: rng.pick(targets) };
+    }
+    // one one-way door per floor when it can't strand anyone: remove the
+    // reverse side of an edge only if every room still reaches (and is
+    // reached from) the floor entry through directed passages
+    if (rng.chance(0.5)) {
+      const dirPairs: [MoveDir, MoveDir][] = [['north', 'south'], ['south', 'north'], ['east', 'west'], ['west', 'east']];
+      outer: for (let attempt = 0; attempt < 8; attempt++) {
+        const rid = rng.pick(roomsThisFloor);
+        const r = d.rooms[rid];
+        for (const [dir, rev] of rng.chance(0.5) ? dirPairs : [...dirPairs].reverse()) {
+          const other = r.connections[dir];
+          if (!other || d.rooms[other].connections[rev] !== rid) continue;
+          delete d.rooms[other].connections[rev];
+          if (floorFullyTraversable(d, roomsThisFloor, entry)) break outer; // the door stays one-way
+          d.rooms[other].connections[rev] = rid; // would strand someone — restore
+        }
+      }
+    }
     if (floor === 1) {
       firstRoom = entry;
       d.rooms[entry].isStairsUp = true; // back to the surface
@@ -199,13 +316,22 @@ export function moveInDungeon(world: WorldState, dir: MoveDir): { event: SimEven
   const destId = here.connections[dir];
   if (!destId) return { error: `No passage ${dir} from ${here.name}.` };
   if (here.lockedDoor && !here.lockedDoor.opened && here.lockedDoor.dir === dir) {
-    return { error: `The way ${dir} is barred by a locked door (pick it — lockpicking vs difficulty ${here.lockedDoor.difficulty}).` };
+    // a carried key beats any lock on its own floor
+    if (d.keysHeld?.includes(here.id)) {
+      here.lockedDoor.opened = true;
+      logEvent(world, 'dungeon.unlocked', { room: here.id, dir }, `The key found across the floor turns hard, then all at once — the way ${dir} stands open.`, { witnesses: partyMembers(world).map((c) => c.id) });
+    } else {
+      return { error: `The way ${dir} is barred by a locked door (pick it — lockpicking vs difficulty ${here.lockedDoor.difficulty} — or find this floor's key).` };
+    }
   }
-  const dest = d.rooms[destId];
+  let dest = d.rooms[destId];
   world.currentRoom = destId;
-  const firstVisit = !dest.explored;
+  let firstVisit = !dest.explored;
   dest.explored = true;
   addMinutes(world, 5);
+  // one-way doors announce themselves from the wrong side
+  const OPP: Record<MoveDir, MoveDir> = { north: 'south', south: 'north', east: 'west', west: 'east', up: 'down', down: 'up' };
+  const oneWayNote = dest.connections[OPP[dir]] === here.id ? '' : ' The door swings shut behind you — no handle on this side.';
   // trap check on entering
   let trapNote = '';
   if (dest.trap && !dest.trap.disarmed && !dest.trap.triggered) {
@@ -215,16 +341,41 @@ export function moveInDungeon(world: WorldState, dir: MoveDir): { event: SimEven
     world,
     'dungeon.move',
     { dungeon: d.id, from: here.id, to: destId, dir },
-    `The party moved ${dir} into ${dest.name} (floor ${dest.floor}).${firstVisit ? ' First time explored.' : ''}${trapNote}`,
+    `The party moved ${dir} into ${dest.name} (floor ${dest.floor}).${firstVisit ? ' First time explored.' : ''}${trapNote}${oneWayNote}`,
     { witnesses: partyMembers(world).map((c) => c.id) },
   );
+  // teleport rings fire on entry: the stones fold and you are elsewhere
+  if (dest.teleporter && d.rooms[dest.teleporter.to]) {
+    const landed = d.rooms[dest.teleporter.to];
+    world.currentRoom = landed.id;
+    firstVisit = !landed.explored;
+    landed.explored = true;
+    logEvent(world, 'dungeon.teleport', { from: dest.id, to: landed.id }, `The floor of ${dest.name} was a ring of fused stone. The world folded — the party stands in ${landed.name}, and nobody's stomach agrees about how.`, { witnesses: partyMembers(world).map((c) => c.id) });
+    dest = landed;
+  }
   return { event, room: dest };
+}
+
+/** Pocket the key lying in this room; it opens a door somewhere on this floor. */
+export function takeKey(world: WorldState): string | null {
+  if (!world.currentDungeon || !world.currentRoom) return 'Not inside a dungeon.';
+  const d = world.dungeons[world.currentDungeon];
+  const room = d.rooms[world.currentRoom];
+  if (!room.key || room.key.taken) return 'No key here.';
+  room.key.taken = true;
+  d.keysHeld = [...(d.keysHeld ?? []), room.key.opensRoom];
+  addMinutes(world, 2);
+  logEvent(world, 'dungeon.key', { room: room.id, opens: room.key.opensRoom }, `A heavy iron key, cold as the floor it lay on. Somewhere on this level, a lock has been waiting for it.`, { witnesses: partyMembers(world).map((c) => c.id) });
+  return null;
 }
 
 // ---------- Light ----------
 /** Underground with no burning torch: the oldest problem in the genre. */
 export function isDark(world: WorldState): boolean {
-  return !!world.currentDungeon && (world.torchMinutes ?? 0) <= 0;
+  if (!world.currentDungeon || !world.currentRoom) return false;
+  const room = world.dungeons[world.currentDungeon]?.rooms[world.currentRoom];
+  if (room?.darkZone) return true; // torches die here; this dark is not natural
+  return (world.torchMinutes ?? 0) <= 0;
 }
 
 function darkMod(world: WorldState): number {
@@ -286,6 +437,9 @@ export function searchRoom(world: WorldState): SimEvent | { error: string } {
   addMinutes(world, 10);
   trainSkill(world, world.characters[world.mcId], 'tracking');
   const finds: string[] = [];
+  if (room.spinner) finds.push('the floor here is one great stone disc, its rim worn bright by turning — a SPINNER; hold your bearings');
+  if (room.teleporter) finds.push('a ring of fused stone set into the floor; the air above it bends like heat');
+  if (room.darkZone) finds.push('soot on every surface and no draft to explain it — this dark eats torches');
   if (room.secretDoor && !room.secretDoor.discovered) {
     const mc = world.characters[world.mcId];
     const rng = new Rng((d.generationSeed ^ room.id.length ^ world.time.minute) >>> 0);

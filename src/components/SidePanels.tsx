@@ -875,6 +875,10 @@ function roomGlyph(r: DungeonRoom, itemsCount: number): string {
   if (r.enemies === 'alive') bits.push('!');
   if (r.chest && !r.chest.opened) bits.push('▣');
   if (r.trap && !r.trap.disarmed && !r.trap.triggered) bits.push('✕');
+  if (r.spinner) bits.push('↻');
+  if (r.teleporter) bits.push('◎');
+  if (r.darkZone) bits.push('☾');
+  if (r.key && !r.key.taken) bits.push('🗝');
   if (r.isStairsDown) bits.push('▼');
   if (r.isStairsUp) bits.push('▲');
   if (itemsCount > 0) bits.push('·');
@@ -895,6 +899,7 @@ function DungeonPanel() {
   const gatherAct = useStore((s) => s.gatherAct);
   const torchAct = useStore((s) => s.torchAct);
   const campAct = useStore((s) => s.campAct);
+  const keyAct = useStore((s) => s.keyAct);
   const moveScheme = useStore((s) => s.moveScheme);
   const setMoveScheme = useStore((s) => s.setMoveScheme);
   const aiDescribeRoom = useStore((s) => s.aiDescribeRoom);
@@ -980,7 +985,12 @@ function DungeonPanel() {
         <button onClick={search}>Search room</button>
         {room.trap && !room.trap.disarmed && !room.trap.triggered && <button onClick={disarm}>Disarm trap</button>}
         {room.chest && !room.chest.opened && <button onClick={lootChest}>Open chest</button>}
-        {room.lockedDoor && !room.lockedDoor.opened && <button onClick={pickLockAct}>🔒 Pick lock ({room.lockedDoor.dir})</button>}
+        {room.key && !room.key.taken && <button onClick={keyAct} title="A key lying in the open. Somewhere on this floor, its lock is waiting.">🗝 Take the key</button>}
+        {room.lockedDoor && !room.lockedDoor.opened && (
+          <button onClick={pickLockAct} title={d.keysHeld?.includes(room.id) ? 'You carry this floor\u2019s key — just walk through.' : 'Lockpicking against the mechanism, or find this floor\u2019s key.'}>
+            🔒 Pick lock ({room.lockedDoor.dir}){d.keysHeld?.includes(room.id) ? ' — key held' : ''}
+          </button>
+        )}
         {room.shrine && !room.shrine.used && <button onClick={shrineAct}>🕯 Pray at the shrine</button>}
         {room.lorebook && !room.lorebook.taken && <button onClick={lorebookAct}>📜 Take the writings</button>}
         {room.resource && !room.resource.gathered && <button onClick={gatherAct}>⛏ Gather {room.resource.proto.replace(/-/g, ' ')}</button>}
@@ -1006,7 +1016,7 @@ function DungeonPanel() {
           }),
         )}
       </div>
-      <p className="dim small">! enemies · ▣ chest · ✕ trap · ☠ boss · ▼▲ stairs. Room state persists between visits.</p>
+      <p className="dim small">! enemies · ▣ chest · ✕ trap · ☠ boss · ↻ spinner · ◎ teleport · ☾ dead dark · 🗝 key · ▼▲ stairs. Room state persists between visits.</p>
       </div>
       </div>
     </div>

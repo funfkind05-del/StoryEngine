@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest';
 import { buildSeedWorld } from '../data/seed';
 import { Rng } from './rng';
 import { advanceUntilMorning, partyMembers, tick, travelTo } from './world';
-import { campInDungeon, disarmTrap, enterDungeon, exitDungeon, lightTorch, moveInDungeon, pickLock, searchRoom, takeLorebook, useShrine } from './dungeon';
+import { campInDungeon, disarmTrap, enterDungeon, exitDungeon, lightTorch, moveInDungeon, pickLock, searchRoom, takeKey, takeLorebook, useShrine } from './dungeon';
 import { getAuctionLots, isAuctionDay, placeBid } from './auction';
 import { contestArchery, contestSong, enterPitTrials, isPitTrialsDay } from './tournament';
 import { gatherResource, craft, RECIPES } from './crafting';
@@ -140,6 +140,19 @@ function checkInvariants(w: WorldState, step: number, action: string, deep: bool
     fail(`torchMinutes out of range: ${w.torchMinutes}`);
   }
   if (w.tournament && (w.tournament.round < 1 || w.tournament.round > 3)) fail(`tournament round ${w.tournament.round}`);
+  if (deep) {
+    // dungeon structural integrity: no passage, ring, or key points nowhere
+    for (const d of Object.values(w.dungeons)) {
+      if (!d.generated) continue;
+      for (const r of Object.values(d.rooms)) {
+        for (const [dir, target] of Object.entries(r.connections)) {
+          if (target && !d.rooms[target]) fail(`${d.id}/${r.id} connection ${dir} -> missing room ${target}`);
+        }
+        if (r.teleporter && !d.rooms[r.teleporter.to]) fail(`${d.id}/${r.id} teleporter -> missing room`);
+        if (r.key && !d.rooms[r.key.opensRoom]) fail(`${d.id}/${r.id} key opens missing room`);
+      }
+    }
+  }
   for (const r of w.rivals ?? []) {
     if (!r.name || r.power < 0 || r.grudge < 0) fail(`malformed rival ${r.id}: power ${r.power}, grudge ${r.grudge}`);
   }
@@ -264,6 +277,7 @@ function step(w: WorldState, rng: Rng): string {
       }
       return 'chest';
     }
+    if (roll < 0.605 && room.key && !room.key.taken) { takeKey(w); return 'key'; }
     if (roll < 0.61) { lightTorch(w); return 'torch'; }
     if (roll < 0.63 && room.enemies !== 'alive') { campInDungeon(w); return 'camp'; }
     if (roll < 0.75 && room.enemies === 'alive') { generateDungeonEncounter(w); return 'fight'; }

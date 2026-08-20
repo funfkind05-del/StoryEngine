@@ -172,6 +172,16 @@ Bard's Tale bones, Elder Scrolls texture:
 - **Rep-gated shop stock** — the good steel stays under the counter until the street knows you.
 - **Aging & birthdays** — everyone has a birthday on the 360-day calendar; party birthdays make the event log and the outline.
 
+## The maze round: dungeons that fight back
+
+- **Deep floors sprawl** — grids grow from 4×4 to 6×6 with depth, rooms multiply (up to ~15 a floor), and corridors get stingier the deeper you go, so real dead ends and long ways around form.
+- **Spinner tiles** (↻) — the floor turns under your boots and scrambles your facing. Searching a room warns you it's a spinner.
+- **Dead-dark zones** (☾, floor 2 down) — rooms where torches simply die; searching, lockwork, and the corridor view all suffer, whatever you're carrying.
+- **Teleport rings** (◎, floor 2 down) — step in, come out elsewhere on the floor, stomachs disagreeing about how.
+- **One-way doors** — some doors have no handle on the far side. The generator proves every floor stays fully traversable (in *and* out) before it commits one.
+- **Keys and locks** — each floor's locked door now has an iron key (🗝) lying as far across the floor as the walk allows. Carry it and the door opens as you walk through; lockpicking remains the impatient option.
+- **A real connectivity guarantee** — sparse floors are merged component-by-component, so no cluster of rooms can ever generate unreachable (this fixed a latent bug the old 85%-link density had been hiding).
+
 ## The corridor and the crawl (grognard round 2)
 
 - **Walk the picture** — the doorways in the first-person view are clickable; "crawler keys" mode makes ↑ walk forward and ←/→ turn in place, the way your hands remember it. Compass mode stays the default.

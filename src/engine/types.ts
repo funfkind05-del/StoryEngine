@@ -409,6 +409,14 @@ export interface DungeonRoom {
   isBossRoom?: boolean;
   isStairsDown?: boolean;
   isStairsUp?: boolean;
+  /** stepping in scrambles the party's facing (classic spinner tile) */
+  spinner?: boolean;
+  /** unnatural dark: torches die here; the room is always pitch black */
+  darkZone?: boolean;
+  /** stepping in folds space to another room on the floor */
+  teleporter?: { to: RoomId };
+  /** a key lies here, opening the locked door in `opensRoom` */
+  key?: { taken: boolean; opensRoom: RoomId };
   connections: Partial<Record<'north' | 'south' | 'east' | 'west' | 'down' | 'up', RoomId>>;
 }
 
@@ -424,6 +432,8 @@ export interface Dungeon {
   specialFeatures: string[];
   generated: boolean;
   generationSeed: number;
+  /** lock-room ids whose key the party carries */
+  keysHeld?: RoomId[];
   rooms: Record<RoomId, DungeonRoom>;
   entryRoom: RoomId;
   bossDefeated: boolean;
