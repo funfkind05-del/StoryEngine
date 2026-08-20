@@ -20,7 +20,7 @@ import {
 } from './progression';
 import { buyFromShop, buyTempleService } from './services';
 import { autoResolve, resolveRound, startCombat } from './combat';
-import { campInDungeon, isDark, lightTorch, moveInDungeon, takeKey } from './dungeon';
+import { answerRiddle, campInDungeon, isDark, lightTorch, moveInDungeon, takeKey } from './dungeon';
 import { generateDungeon } from './dungeon';
 import { SKILLS, SPELLS } from './combat';
 import { CLASSES, ITEM_PROTOS } from './rules';
@@ -496,17 +496,27 @@ describe('torchlight (grognard round 2)', () => {
     expect(lightTorch(w)).toMatch(/dark below/); // only underground
     w.currentDungeon = 'DUN_OLDQUARTER_001';
     enterDungeon(w, 'DUN_OLDQUARTER_001');
-    expect(isDark(w)).toBe(true);
+    // daylight falls through the entrance — the entry chamber is never dark
+    expect(isDark(w)).toBe(false);
     expect(lightTorch(w)).toBeNull(); // party carries 4 torches
     expect(w.torchMinutes).toBeGreaterThan(0);
     expect(isDark(w)).toBe(false);
     addMinutes(w, 200);
     expect(w.torchMinutes).toBe(0);
+    // step off the daylit entry: the dark is waiting
+    const d0 = w.dungeons['DUN_OLDQUARTER_001'];
+    const inner = Object.values(d0.rooms).find((r) => r.floor === 1 && !r.isStairsUp && !r.darkZone)!;
+    w.currentRoom = inner.id;
     expect(isDark(w)).toBe(true);
     expect(w.events.some((e) => e.summary.includes('guttered out'))).toBe(true);
-    // burn the rest of the bundle
+    // burn the rest of the bundle (draining light between lights —
+    // stacking past the cap is refused now)
     let lit = 0;
-    while (lightTorch(w) === null) lit++;
+    for (let i = 0; i < 10; i++) {
+      if (lightTorch(w) !== null) break;
+      lit++;
+      addMinutes(w, 200);
+    }
     expect(lit).toBe(3);
     expect(lightTorch(w)).toMatch(/No torches/);
   });
@@ -1173,5 +1183,36 @@ describe('the log round (round 8): books, milestones, digests, threads, grief, s
     const epi = w.events.find((e) => e.kind === 'epilogue');
     expect(epi).toBeTruthy();
     expect(epi!.summary).toContain('EPILOGUE MATERIAL');
+  });
+});
+
+
+describe('riddle doors (round 9): knowledge is the oldest key', () => {
+  it('riddle doors cite lorebooks from shallower floors and open only to the read', () => {
+    let tested = false;
+    for (let seed = 1; seed <= 40 && !tested; seed++) {
+      const w = freshWorld();
+      w.dungeons['DUN_DEEP_001'].generationSeed = seed;
+      enterDungeon(w, 'DUN_DEEP_001');
+      const d = w.dungeons['DUN_DEEP_001'];
+      const room = Object.values(d.rooms).find((r) => r.riddleDoor && !r.riddleDoor.opened);
+      if (!room) continue;
+      // the answer lives shallower than the door
+      const loreFloor = parseInt(room.riddleDoor!.loreId.split(':')[1], 10);
+      expect(loreFloor).toBeLessThan(room.floor);
+      // barred without the reading
+      w.currentRoom = room.id;
+      const blocked = moveInDungeon(w, room.riddleDoor!.dir);
+      expect('error' in blocked && blocked.error).toMatch(/riddle-door/);
+      expect(answerRiddle(w)).toMatch(/does not know the answer/);
+      // read the pages, speak the answer
+      w.codex = [...(w.codex ?? []), room.riddleDoor!.loreId];
+      expect(answerRiddle(w)).toBeNull();
+      expect(room.riddleDoor!.opened).toBe(true);
+      const through = moveInDungeon(w, room.riddleDoor!.dir);
+      expect('error' in through).toBe(false);
+      tested = true;
+    }
+    expect(tested).toBe(true);
   });
 });

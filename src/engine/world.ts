@@ -340,13 +340,16 @@ export function advanceUntilMorning(world: WorldState, quality: 'bed' | 'rough' 
     const starving = world.needsEnabled && needsBlocksHpRegen(c);
     if (quality === 'bed') {
       sleepOff(c);
+      // sick or starving bodies still mend — grudgingly, never fully
       if (!sick && !starving) c.hp.current = c.hp.max;
+      else c.hp.current = Math.min(c.hp.max, c.hp.current + Math.ceil((c.hp.max - c.hp.current) / 2));
       c.mana.current = c.mana.max;
       c.stamina.current = c.stamina.max;
     } else {
       // rough: fatigue never fully clears, healing is grudging
       c.needs.fatigue = Math.max(30, c.needs.fatigue - 50);
       if (!sick && !starving) c.hp.current = Math.min(c.hp.max, c.hp.current + Math.ceil((c.hp.max - c.hp.current) / 2));
+      else c.hp.current = Math.min(c.hp.max, c.hp.current + Math.ceil((c.hp.max - c.hp.current) / 4));
       c.mana.current = c.mana.max;
       c.stamina.current = Math.min(c.stamina.max, c.stamina.current + Math.ceil(c.stamina.max * 0.6));
     }

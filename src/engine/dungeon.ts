@@ -220,9 +220,47 @@ export function generateDungeon(world: WorldState, dungeonId: string): Dungeon {
       }
     }
     // a lorebook somewhere on the floor
+    let loreFloorHasBook = false;
     if (rng.chance(0.6)) {
       const rid = rng.pick(roomsThisFloor);
       d.rooms[rid].lorebook = { id: `${d.id}:${floor}`, taken: false };
+      loreFloorHasBook = true;
+    }
+    void loreFloorHasBook;
+    // a riddle door (floor 2 down): it opens to knowledge — the answer
+    // lives in a lorebook from a SHALLOWER floor, so the diligent pass
+    // and the hasty turn back to read
+    if (floor >= 2 && rng.chance(0.5)) {
+      const earlierLore = Object.values(d.rooms).find((r) => r.floor < floor && r.lorebook);
+      if (earlierLore) {
+        for (let attempt = 0; attempt < 8; attempt++) {
+          const rid = rng.pick(roomsThisFloor);
+          const r = d.rooms[rid];
+          if (r.lockedDoor) continue; // one barred passage per room is plenty
+          const dirs = Object.keys(r.connections).filter((k) => ['north', 'south', 'east', 'west'].includes(k)) as ('north' | 'south' | 'east' | 'west')[];
+          if (!dirs.length) continue;
+          const dir = rng.pick(dirs);
+          // same no-stranding rule as locks: the floor must survive the barred passage
+          const reachable = (() => {
+            const seen = new Set<RoomId>([roomsThisFloor[0]]);
+            const q = [roomsThisFloor[0]];
+            const onFloor = new Set(roomsThisFloor);
+            while (q.length) {
+              const cur = q.pop()!;
+              for (const [cdir, t] of Object.entries(d.rooms[cur].connections)) {
+                if (!t || !onFloor.has(t) || seen.has(t)) continue;
+                if (cur === rid && cdir === dir) continue;
+                seen.add(t);
+                q.push(t);
+              }
+            }
+            return seen;
+          })();
+          if (!reachable.has(rid)) continue;
+          r.riddleDoor = { dir, to: r.connections[dir]!, loreId: earlierLore.lorebook!.id, opened: false };
+          break;
+        }
+      }
     }
     const entry = roomsThisFloor[0];
     // ---- the old cruelties (Bard's Tale sends its regards) ----
@@ -333,6 +371,9 @@ export function moveInDungeon(world: WorldState, dir: MoveDir): { event: SimEven
   const here = d.rooms[world.currentRoom];
   const destId = here.connections[dir];
   if (!destId) return { error: `No passage ${dir} from ${here.name}.` };
+  if (here.riddleDoor && !here.riddleDoor.opened && here.riddleDoor.dir === dir) {
+    return { error: `The way ${dir} is sealed by a riddle-door — old script waits for an answer. (Speak the answer if the party has read the right pages; the writings lie on a shallower floor.)` };
+  }
   if (here.lockedDoor && !here.lockedDoor.opened && here.lockedDoor.dir === dir) {
     // a carried key beats any lock on its own floor
     if (d.keysHeld?.includes(here.id)) {
@@ -374,6 +415,22 @@ export function moveInDungeon(world: WorldState, dir: MoveDir): { event: SimEven
   return { event, room: dest };
 }
 
+/** Speak the answer at a riddle-door: knowledge is the key. */
+export function answerRiddle(world: WorldState): string | null {
+  if (!world.currentDungeon || !world.currentRoom) return 'Not inside a dungeon.';
+  const d = world.dungeons[world.currentDungeon];
+  const room = d.rooms[world.currentRoom];
+  if (!room.riddleDoor || room.riddleDoor.opened) return 'No riddle waits here.';
+  addMinutes(world, 5);
+  if (!(world.codex ?? []).includes(room.riddleDoor.loreId)) {
+    logEvent(world, 'dungeon.riddle', { room: room.id, answered: false }, 'The script on the door asks its question and the party has no answer. Somewhere shallower, the writings that hold it are still lying unread.', { witnesses: partyMembers(world).map((c) => c.id) });
+    return 'The party does not know the answer. The writings that hold it lie on a shallower floor.';
+  }
+  room.riddleDoor.opened = true;
+  logEvent(world, 'dungeon.riddle', { room: room.id, answered: true, lore: room.riddleDoor.loreId }, `The answer was in the old writings all along — spoken aloud, the riddle-door grinds open. Knowledge is the oldest key.`, { witnesses: partyMembers(world).map((c) => c.id) });
+  return null;
+}
+
 /** Pocket the key lying in this room; it opens a door somewhere on this floor. */
 export function takeKey(world: WorldState): string | null {
   if (!world.currentDungeon || !world.currentRoom) return 'Not inside a dungeon.';
@@ -392,7 +449,9 @@ export function takeKey(world: WorldState): string | null {
 export function isDark(world: WorldState): boolean {
   if (!world.currentDungeon || !world.currentRoom) return false;
   const room = world.dungeons[world.currentDungeon]?.rooms[world.currentRoom];
-  if (room?.darkZone) return true; // torches die here; this dark is not natural
+  if (!room) return false;
+  if (room.darkZone) return true; // torches die here; this dark is not natural
+  if (room.floor === 1 && room.isStairsUp) return false; // daylight falls through the entrance
   return (world.torchMinutes ?? 0) <= 0;
 }
 
@@ -403,6 +462,9 @@ function darkMod(world: WorldState): number {
 /** Burn a torch from anyone's pack: +90 minutes of light (cap 240). */
 export function lightTorch(world: WorldState): string | null {
   if (!world.currentDungeon) return 'Torches are for the dark below.';
+  if ((world.torchMinutes ?? 0) >= 200) return 'The torch already burns high — no sense stacking fire.';
+  const hereRoom = world.currentRoom ? world.dungeons[world.currentDungeon]?.rooms[world.currentRoom] : null;
+  if (hereRoom?.darkZone) return 'A torch gutters and dies the moment it crosses this threshold. This dark is not natural.';
   const holders = [...partyMembers(world).flatMap((c) => c.inventory), ...world.partyInventory];
   const torch = holders.map((iid) => world.items[iid]).find((it) => it && it.proto === 'torch' && (it.qty ?? 1) > 0);
   if (!torch) return 'No torches left. The dark is patient.';
@@ -456,6 +518,7 @@ export function searchRoom(world: WorldState): SimEvent | { error: string } {
   trainSkill(world, world.characters[world.mcId], 'tracking');
   const finds: string[] = [];
   if (room.spinner) finds.push('the floor here is one great stone disc, its rim worn bright by turning — a SPINNER; hold your bearings');
+  if (room.riddleDoor && !room.riddleDoor.opened) finds.push('the sealed door bears a question in old script — its answer reads like something from a lorebook');
   if (room.teleporter) finds.push('a ring of fused stone set into the floor; the air above it bends like heat');
   if (room.darkZone) finds.push('soot on every surface and no draft to explain it — this dark eats torches');
   if (room.secretDoor && !room.secretDoor.discovered) {

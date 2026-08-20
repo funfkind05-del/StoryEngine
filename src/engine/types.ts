@@ -193,6 +193,10 @@ export interface ActiveStatus {
   roundsLeft?: number;
   magnitude?: number;
   source?: string;
+  /** minutes endured without treatment; afflictions burn out eventually */
+  minutesUntreated?: number;
+  /** marked for removal after running its course */
+  expired?: boolean;
 }
 
 export interface Injury {
@@ -427,6 +431,8 @@ export interface DungeonRoom {
   key?: { taken: boolean; opensRoom: RoomId };
   /** the model already rendered this room's description — it persists */
   describedByLlm?: boolean;
+  /** a door that opens to knowledge: the answer is in a lorebook */
+  riddleDoor?: { dir: 'north' | 'south' | 'east' | 'west'; to: RoomId; loreId: string; opened: boolean };
   connections: Partial<Record<'north' | 'south' | 'east' | 'west' | 'down' | 'up', RoomId>>;
 }
 
@@ -645,6 +651,8 @@ export interface WorldState {
   companionSights?: Record<string, true>;
   /** the recorded spine has been played to its end */
   campaignComplete?: boolean;
+  /** last day the party ate from the pauper's ladle */
+  poorReliefDay?: number;
   encumbrance: EncumbranceRule;
   /** survival needs (hunger/fatigue) tracked against story time */
   needsEnabled: boolean;

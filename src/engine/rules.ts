@@ -44,7 +44,9 @@ export function levelUpAvailable(c: Character): boolean {
 }
 
 export function trainingCost(currentLevel: number): number {
-  return (currentLevel + 1) * 250; // copper
+  // autoplayer-calibrated: the first climb must be reachable on
+  // street-job money; the late climbs stay a real sink
+  return 100 + currentLevel * 150; // L1: 250c, L5: 850c, L20: 3100c
 }
 
 // ---------- Classes ----------
@@ -458,8 +460,9 @@ export function tickStatusesRound(c: Character): string[] {
 export function tickStatusesOverTime(c: Character, minutes: number): string[] {
   const lines: string[] = [];
   for (const s of c.statuses) {
+    if (s.roundsLeft !== undefined) continue; // combat-scoped; combat ticks it
     const rule = STATUS_RULES[s.key];
-    if (rule.per10MinDamage && s.roundsLeft === undefined) {
+    if (rule.per10MinDamage) {
       const ticks = Math.floor(minutes / 10);
       if (ticks > 0 && c.hp.current > 1) {
         const dmg = Math.min(c.hp.current - 1, rule.per10MinDamage * ticks);
@@ -467,7 +470,17 @@ export function tickStatusesOverTime(c: Character, minutes: number): string[] {
         if (dmg > 0) lines.push(`${c.name} lost ${dmg} HP to ${rule.label.toLowerCase()} (untreated).`);
       }
     }
+    // untreated afflictions run their course: ~2 days, then the body
+    // wins or the fever breaks — no eternal sentences for the destitute
+    if (s.key === 'poisoned' || s.key === 'diseased' || s.key === 'bleeding' || s.key === 'burning') {
+      s.minutesUntreated = (s.minutesUntreated ?? 0) + minutes;
+      if (s.minutesUntreated >= 2880) {
+        s.expired = true;
+        lines.push(`${c.name}'s ${rule.label.toLowerCase()} finally ran its course.`);
+      }
+    }
   }
+  c.statuses = c.statuses.filter((s) => !s.expired);
   return lines;
 }
 

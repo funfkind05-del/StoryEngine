@@ -175,6 +175,24 @@ export function buyTempleService(world: WorldState, locId: LocationId, svcKey: s
   return null;
 }
 
+/** The lych-house ladle: the destitute eat once a day, free, no sermon.
+ *  Yvenne has been doing this all along — now the sim honors it. */
+export function poorRelief(world: WorldState): string | null {
+  const loc = world.locations[world.partyLocation];
+  const qualifies = loc?.temple || loc?.id === 'LOC_GRAVEROW';
+  if (!qualifies) return 'The ladle is at the lych-house in Graverow, or any temple.';
+  const mc = world.characters[world.mcId];
+  if (mc.money >= 20) return 'The ladle is for empty pockets. Yours jingles.';
+  if (world.poorReliefDay === world.time.day) return 'One bowl a day keeps the line moving.';
+  world.poorReliefDay = world.time.day;
+  addMinutes(world, 30);
+  for (const c of partyMembers(world)) {
+    c.needs.hunger = Math.min(c.needs.hunger, 25); // a real meal, once a day
+  }
+  logEvent(world, 'poor.relief', { day: world.time.day }, `The party stood the pauper's line and ate from the lych-house ladle — thin soup, real bread, no questions. Somebody kept this kindness running when nobody was watching.`, { location: world.partyLocation, witnesses: partyMembers(world).map((c) => c.id) });
+  return null;
+}
+
 // ---------- Training ----------
 export function trainAt(world: WorldState, locId: LocationId, charId: string): string | null {
   const loc = world.locations[locId];

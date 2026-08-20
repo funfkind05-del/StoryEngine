@@ -447,11 +447,11 @@ table.stats td { padding: 2px 6px 2px 0; }
 table.stats td:first-child { color: var(--text-dim); }
 
 
-/* ---------- Play mode: the game gets the screen ---------- */
-.app.play .sidebar { display: none; }
+/* ---------- Play mode: the game takes the prose column; the
+   manuscript sidebar (scenes + minimap) stays exactly as in write ---------- */
 .app.play .editor-wrap { display: none; }
-.app.play .main { grid-template-columns: 1fr; }
-.app.play .panels { border-left: none; max-width: 1440px; width: 100%; margin: 0 auto; }
+.app.play .main { grid-template-columns: 230px 1fr; }
+.app.play .panels { border-left: 1px solid var(--border); max-width: none; width: auto; margin: 0; }
 .app.play .dcell { min-height: 56px; font-size: 12px; }
 .app.play .fpv svg { max-height: 420px; }
 .banners { flex-shrink: 0; }
@@ -583,3 +583,5 @@ button.danger:hover:not(:disabled) { border-color: var(--danger); color: var(--d
 .panel-body h3 { color: var(--district); }
 .topbar .crumb b { color: var(--district); }
 .party-strip { border-left: 3px solid var(--district); }
+
+
