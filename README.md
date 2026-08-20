@@ -278,6 +278,38 @@ shown on encounter banners and combat cards — dead enemies gray out. Replace
 any plate with your own image via Saves → Monster art; uploads are stored
 inside the save file, so AI-generated or commissioned art drops straight in.
 
+## The harem book: companions, courting, and the clock
+
+- **Recruitable women with personal arcs** — Mara Venn (rogue), Yvenne the
+  defrocked priestess (healer), and Kestrel "Kess" Vane, expelled College
+  pyromancer (mage) — completing the party's missing classes. Each has a
+  three-stage personal questline: stage one ends with her *choosing* to
+  join; later stages gate on trust and level, and completing them moves her
+  dials hard and writes her defining memories.
+- **The relationship system** — stages derived from the dials (Stranger →
+  Friend → Something unspoken → Lover → Partner → Spouse, shown in Bonds);
+  **gifts** that land by what she values, not what they cost (a stolen gift
+  reads very differently to an honest woman than to a cunning one); shared
+  time (meals, walks, sparring, fishing) with daily pacing and diminishing
+  returns; and **harem dynamics** — when more than one heart is in play,
+  companions raise it themselves through their values: freedom and kindness
+  lean toward terms, loyalty with thin trust leans toward friction.
+- **Combat autopilot** — ▶ Auto round and ⏩ Let them fight: sensible AI
+  (heals the hurt, braces or interrupts telegraphs, spends abilities when
+  rich) so trash fights cost seconds and the boss fights stay yours.
+- **The Circle's clock** — the villain no longer waits: if the campaign
+  spine idles ~30 days, the Ash Circle advances in four loud stages —
+  converts preaching openly, cleared dungeons restirring, the Cemetery
+  District falling to the ash-marked after dark, and finally the Gate
+  warming ahead of schedule. Toggleable in world rules.
+- **Writer tools** — 📔 **Series bible** (cast with relationship stages and
+  defining memories, the spine with choices made, factions, dungeons,
+  Codex, deeds — one download); ⏮ **Recap** ("Previously, in Blackwall…"
+  LLM-drafted from milestones for the next book's opening); **event-log
+  compaction** (routine outlined history digests to one line, milestones
+  kept — twenty books stay fast); and a **writing dashboard** (Timeline
+  panel: compiled words, daily bars, writing days).
+
 ## Companions start conversations
 
 Sometimes a companion wants a word — driven by their state, not yours:

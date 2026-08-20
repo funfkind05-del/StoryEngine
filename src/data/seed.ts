@@ -352,7 +352,45 @@ export function buildSeedWorld(): WorldState {
     activity: 'holding court behind the warehouse',
   });
 
-  for (const c of [kael, lyra, mara, tobbe, harrow, sella, dorn, varga]) world.characters[c.id] = c;
+  const yvenne = chr({
+    id: 'CHAR_YVENNE', name: 'Yvenne', occupation: 'defrocked priestess', location: 'LOC_GRAVEROW',
+    age: 29, sex: 'female', charClass: 'priest', abilities: ['mend-wounds', 'purify'],
+    description: 'Grey-eyed, steady-handed, hair cropped like a penitent’s. Still wears the Flame’s grey, with the sigils unpicked thread by thread.',
+    background: 'Cast out of the Temple of the Veiled Flame for a mercy the doctrine forbade. Tends the Cemetery District’s poor for free and won’t say why she isn’t bitter.',
+    personality: ['gentle', 'immovable', 'quietly funny'],
+    hp: { current: 13, max: 13 }, mana: { current: 12, max: 12 },
+    attributes: { strength: 8, dexterity: 10, constitution: 11, intelligence: 12, wisdom: 15, charisma: 13 },
+    skills: { swordsmanship: 0, archery: 0, magic: 3, stealth: 1, lockpicking: 0, tracking: 1, healing: 6, streetwise: 3 },
+    attack: 2, defense: 10, initiative: 2, critChance: 4, combatAI: 'support',
+    money: 15, values: ['kindness', 'honesty', 'courage'],
+    objectives: ['Keep the graveyard poor alive through winter', 'Never explain herself to the Temple again'],
+    schedule: [
+      { from: 7 * 60, to: 21 * 60, location: 'LOC_GRAVEROW', activity: 'tending the district’s sick' },
+      { from: 21 * 60, to: 7 * 60, location: 'LOC_GRAVEROW', activity: 'sleeping in the lych-house' },
+    ],
+    activity: 'tending the district’s sick',
+  });
+
+  const kess = chr({
+    id: 'CHAR_KESS', name: 'Kestrel “Kess” Vane', occupation: 'expelled College pyromancer', location: 'LOC_IRONMARKET_SQ',
+    age: 24, sex: 'female', charClass: 'mage', abilities: ['firebolt', 'frost-grasp'],
+    description: 'Ink-stained fingers, singed cuffs, a grin that arrives before she does. Sells firework-charms off a blanket she can fold in three seconds flat.',
+    background: 'Expelled from the Arcane College over an experiment she maintains WORKED. The College holds her research notes and a debt she disputes line by line.',
+    personality: ['brilliant', 'reckless', 'allergic to being condescended to'],
+    hp: { current: 11, max: 11 }, mana: { current: 16, max: 16 },
+    attributes: { strength: 8, dexterity: 12, constitution: 10, intelligence: 16, wisdom: 10, charisma: 13 },
+    skills: { swordsmanship: 0, archery: 0, magic: 5, stealth: 2, lockpicking: 2, tracking: 0, healing: 1, streetwise: 4 },
+    attack: 2, defense: 10, initiative: 4, critChance: 6, combatAI: 'ranged',
+    money: 60, values: ['cunning', 'freedom', 'courage'],
+    objectives: ['Get her research notes back from the College', 'Prove the experiment worked'],
+    schedule: [
+      { from: 9 * 60, to: 19 * 60, location: 'LOC_IRONMARKET_SQ', activity: 'selling firework-charms off a blanket' },
+      { from: 19 * 60, to: 9 * 60, location: 'LOC_RATCATCHER', activity: 'sleeping over a chandlery, rent overdue' },
+    ],
+    activity: 'selling firework-charms off a blanket',
+  });
+
+  for (const c of [kael, lyra, mara, tobbe, harrow, sella, dorn, varga, yvenne, kess]) world.characters[c.id] = c;
 
   // ---------- knowledge seeds (world truth vs. what people know) ----------
   kael.knowledge.push(
@@ -423,6 +461,11 @@ export function buildSeedWorld(): WorldState {
     ['lich-acolyte', 'shadow-reaper', 'iron-colossus', 'elder-vampire', 'pit-fiend', 'void-spawn'], 'the-hollow-king',
     ['a throne older than the city', 'silence with weight', 'doors that remember names']);
 
+  // counters: reserve prefixes BEFORE any seeding that logs events or
+  // makes items — resetting after would recycle ids (EVT_0001 twice)
+  world.counters['ITEM'] = 100;
+  world.counters['SCN'] = 1;
+
   seedQuests(world);
 
   // ---------- opening scene ----------
@@ -450,9 +493,6 @@ The @[Broken Crown Tavern](LOC_DOCK_0042) filled up at dusk the way a wound fill
 
   // counters: reserve prefixes already used by hand-authored ids
   world.partyInventory = ['ITEM_SUPPLY_0001', 'ITEM_SUPPLY_0002'];
-  world.counters['ITEM'] = 100;
-  world.counters['EVT'] = 0;
-  world.counters['SCN'] = 1;
 
   return world;
 }

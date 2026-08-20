@@ -4,6 +4,8 @@
 import type { Snapshot, WorldState } from './types';
 import { seedQuests } from './quests';
 import { ensureCampaign } from './campaign';
+import { ensurePersonalArcs } from './companions';
+import { buildSeedWorld } from '../data/seed';
 import { activeSlot, slotKeys, touchBook } from './books';
 
 const MAX_AUTO = 20;
@@ -62,11 +64,22 @@ export function migrateWorld(world: WorldState): WorldState {
   world.codex ??= [];
   world.activeEvents ??= [];
   world.achievements ??= [];
+  world.doomEnabled ??= true;
+  world.eventArchive ??= [];
+  world.writingStats ??= {};
   if (!world.quests) {
     world.quests = {};
     seedQuests(world);
   }
   ensureCampaign(world);
+  // pre-companion saves gain the recruitable women + their arcs
+  if (!world.characters['CHAR_YVENNE'] || !world.characters['CHAR_KESS']) {
+    const fresh = buildSeedWorld();
+    for (const id of ['CHAR_YVENNE', 'CHAR_KESS']) {
+      if (!world.characters[id] && fresh.characters[id]) world.characters[id] = fresh.characters[id];
+    }
+  }
+  ensurePersonalArcs(world);
   for (const c of Object.values(world.characters)) {
     c.needs ??= { hunger: 25, fatigue: 30 };
     c.injuries ??= [];

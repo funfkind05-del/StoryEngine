@@ -8,6 +8,7 @@
 import type { CharacterId, WorldState } from './types';
 import { Rng } from './rng';
 import { levelUpAvailable } from './rules';
+import { haremMomentHook } from './romance';
 
 export interface CompanionMoment {
   npcId: CharacterId;
@@ -51,6 +52,8 @@ function candidatesFor(world: WorldState, cid: CharacterId): Candidate[] {
   if (recentBoss && c.values.includes('courage')) {
     out.push({ weight: 1, hook: `The recent fight is still in your blood. Share a war story from your past that it reminded you of.`, teaser: 'in a storytelling mood' });
   }
+  const harem = haremMomentHook(world, cid);
+  if (harem) out.push({ weight: 5, hook: harem.hook, teaser: harem.teaser });
   // always available, low weight: their past
   out.push({ weight: 1, hook: `A memory from your past surfaced today. Share a piece of it with ${mc.name} — the piece you can bear to.`, teaser: 'thinking about the past' });
   return out;

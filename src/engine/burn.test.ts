@@ -42,6 +42,9 @@ import { generateStoryIdeas } from './muse';
 import { arrestFlee, arrestPay, arrestResist, arrestSurrender, burgleShop, maybePatrolStop, payBountyAt, pickpocket } from './crime';
 import { GUILDS, joinGuild } from './guilds';
 import { spendAttributePoint } from './progression';
+import { DATE_ACTIVITIES, giveGift, spendTimeWith } from './romance';
+import { autoRound } from './combat';
+import { compactEvents } from './compile';
 import { buildOutline } from './outline';
 import { applyProposal } from './proseLlm';
 import { generateBackgroundNpc, promoteNpc } from './npc';
@@ -135,7 +138,13 @@ function checkInvariants(w: WorldState, step: number, action: string, deep: bool
   }
   for (const c of Object.values(w.characters)) {
     if ((c.attributePoints ?? 0) < 0) fail(`${c.name} negative attribute points`);
+    for (const rel of Object.values(c.relationships)) {
+      for (const [k, v] of Object.entries(rel)) {
+        if (v < -10 || v > 10) fail(`${c.name} relationship ${k}=${v} out of bounds`);
+      }
+    }
   }
+  if ((w.doom?.stage ?? 0) < 0 || (w.doom?.stage ?? 0) > 4) fail('doom stage out of range');
   // quests: no double-pay, objectives well-formed
   for (const q of Object.values(w.quests)) {
     for (const o of q.objectives) {
@@ -188,7 +197,8 @@ function step(w: WorldState, rng: Rng): string {
   // resolve any open combat / loot / encounter first
   if (w.combat) {
     if (w.combat.active) {
-      randomCombatRound(w, rng);
+      if (rng.chance(0.3)) autoRound(w);
+      else randomCombatRound(w, rng);
       return 'combat-round';
     }
     if (w.combat.pendingLoot && !w.combat.pendingLoot.taken) {
@@ -412,6 +422,21 @@ function step(w: WorldState, rng: Rng): string {
     maybePatrolStop(w);
     return 'crime-and-growth';
   }
+  if (roll < 0.94) {
+    // courting and maintenance
+    const which = rng.next();
+    const present = Object.values(w.characters).filter((c) => c.persistent && c.alive && !c.isMC && c.location === w.partyLocation);
+    if (which < 0.4 && present.length) {
+      const mc = w.characters[w.mcId];
+      const loose = mc.inventory.filter((i) => !w.items[i]?.equippedBy);
+      if (loose.length) giveGift(w, rng.pick(present).id, rng.pick(loose));
+    } else if (which < 0.8 && present.length) {
+      spendTimeWith(w, rng.pick(present).id, rng.pick(DATE_ACTIVITIES).key);
+    } else {
+      compactEvents(w);
+    }
+    return 'courting';
+  }
   if (roll < 0.96) {
     // party churn: recruit or dismiss a persistent local (never the MC)
     const locals = Object.values(w.characters).filter((c) => c.persistent && !c.isMC && c.alive && c.location === w.partyLocation && !c.inParty);
@@ -467,8 +492,13 @@ describe(`burn test (${SEEDS} seeds × ${ITERS} actions, offset ${OFFSET})`, () 
             }
           }
         }
-        // periodic serialization round-trip
+        // periodic serialization round-trip + id uniqueness
         if (i % 500 === 250) {
+          const ids = new Set<string>();
+          for (const e of w.events) {
+            if (ids.has(e.id)) throw new Error(`duplicate event id ${e.id} at step ${i}`);
+            ids.add(e.id);
+          }
           const back = JSON.parse(JSON.stringify(w)) as WorldState;
           expect(Object.keys(back.characters).length).toBe(Object.keys(w.characters).length);
         }

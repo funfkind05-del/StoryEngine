@@ -107,6 +107,43 @@ ${body.join('\n')}
 </body></html>`;
 }
 
+/**
+ * Compact the event log: everything before the outline cursor except
+ * load-bearing kinds is replaced with a one-line digest. Keeps saves
+ * fast across a twenty-book campaign. The outline cursor is adjusted.
+ */
+const KEEP_KINDS = new Set([
+  'campaign.revelation', 'campaign.offered', 'campaign.complete', 'quest.completed', 'quest.choice',
+  'personal.completed', 'party.join', 'party.leave', 'household.purchased', 'household.tier',
+  'guild.joined', 'guild.rank', 'guild.mastery', 'achievement', 'character.death', 'doom', 'world.created',
+]);
+
+export function compactEvents(world: WorldState): { removed: number; kept: number } {
+  const cursor = Math.min(world.outlinedUpTo ?? 0, world.events.length);
+  if (cursor < 200) return { removed: 0, kept: world.events.length };
+  const before = world.events.slice(0, cursor);
+  const after = world.events.slice(cursor);
+  const kept = before.filter((e) => KEEP_KINDS.has(e.kind));
+  const removed = before.length - kept.length;
+  if (removed === 0) return { removed: 0, kept: world.events.length };
+  const firstDay = before[0]?.time.day ?? 1;
+  const lastDay = before[before.length - 1]?.time.day ?? firstDay;
+  const combats = before.filter((e) => e.kind === 'combat.end').length;
+  world.eventArchive ??= [];
+  world.eventArchive.push(`Days ${firstDay}–${lastDay}: ${removed} routine events compacted (${combats} combats among them; milestones retained).`);
+  world.events = [...kept, ...after];
+  world.outlinedUpTo = kept.length;
+  return { removed, kept: world.events.length };
+}
+
+/** Track manuscript size per real calendar day (writing dashboard). */
+export function recordWritingStats(world: WorldState) {
+  const words = compileStats(world, DEFAULT_COMPILE).words;
+  const today = new Date().toISOString().slice(0, 10);
+  world.writingStats ??= {};
+  world.writingStats[today] = words;
+}
+
 export function downloadFile(name: string, content: string, mime: string) {
   const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);

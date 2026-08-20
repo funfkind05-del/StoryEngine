@@ -29,6 +29,7 @@ import { Bar, RelBar, Tag } from './common';
 import { activeQuests, describeReward, objectiveDone, objectiveLabel, offeredQuestsAt, questProgress } from '../engine/quests';
 import { CAMPAIGN, campaignStageNumber, latestRevelation, mainQuests } from '../engine/campaign';
 import { GUILDS, guildRank, guildTitle } from '../engine/guilds';
+import { DATE_ACTIVITIES, STAGE_LABELS, relationshipStage } from '../engine/romance';
 import { MonsterPortrait } from './MonsterArt';
 import { CharacterPortrait } from './CharacterArt';
 import { activeSlot, listBooks } from '../engine/books';
@@ -916,6 +917,8 @@ function EventsPanel() {
 // ---------- Relationships ----------
 function RelationshipsPanel() {
   const world = useStore((s) => s.world);
+  const gift = useStore((s) => s.gift);
+  const date = useStore((s) => s.date);
   const mc = world.characters[world.mcId];
   const others = Object.values(world.characters).filter((c) => c.persistent && c.id !== mc.id && c.alive);
   return (
@@ -942,15 +945,35 @@ function RelationshipsPanel() {
             <p className="dim small">No opinion of {mc.name} yet. (values: {c.values.join(', ')})</p>
           </div>
         );
+        const stage = STAGE_LABELS[relationshipStage(rel)];
+        const here = c.location === world.partyLocation;
         return (
           <div key={c.id} className="card">
-            <div className="name">{c.name}</div>
+            <div className="row" style={{ flexWrap: 'nowrap' }}>
+              <CharacterPortrait charId={c.id} size={34} world={world} />
+              <span className="name grow">{c.name}</span>
+              <Tag tone={['Lover', 'Partner', 'Spouse'].includes(stage) ? 'gold' : undefined}>{stage}</Tag>
+            </div>
             <p className="dim small">values: {c.values.join(', ')}</p>
             <RelBar label="Affection" value={rel.affection} />
             <RelBar label="Trust" value={rel.trust} />
             <RelBar label="Respect" value={rel.respect} />
             <RelBar label="Attraction" value={rel.attraction} />
             <RelBar label="Commitment" value={rel.commitment} />
+            {here && (
+              <div className="row small">
+                <select value="" onChange={(e) => { if (e.target.value) gift(c.id, e.target.value); }} title="A gift says what you see in her — match her values, not the price tag.">
+                  <option value="">🎁 give…</option>
+                  {mc.inventory.map((iid) => world.items[iid]).filter((i) => i && !i.equippedBy).map((i) => (
+                    <option key={i!.id} value={i!.id}>{i!.name}</option>
+                  ))}
+                </select>
+                <select value="" onChange={(e) => { if (e.target.value) date(c.id, e.target.value); }} title="Time together moves what gifts can't.">
+                  <option value="">🕯 spend time…</option>
+                  {DATE_ACTIVITIES.map((a) => <option key={a.key} value={a.key}>{a.label}{a.cost ? ` (${fmtMoney(a.cost)})` : ''}</option>)}
+                </select>
+              </div>
+            )}
           </div>
         );
       })}
@@ -978,6 +1001,25 @@ function TimelinePanel() {
           }}
         />
       </div>
+      <h4>Writing dashboard</h4>
+      {(() => {
+        const stats = Object.entries(world.writingStats ?? {}).sort(([a], [b]) => a.localeCompare(b));
+        if (!stats.length) return <p className="dim small">Word counts appear as you write.</p>;
+        const total = stats[stats.length - 1][1];
+        const deltas = stats.map(([d, w], i) => ({ d, delta: i === 0 ? w : w - stats[i - 1][1] })).filter((x) => x.delta !== 0).slice(-10);
+        return (
+          <>
+            <p className="small"><b>{total.toLocaleString()}</b> compiled words · {world.scenes.length} scenes · writing on {stats.length} day{stats.length === 1 ? '' : 's'}</p>
+            {deltas.map(({ d, delta }) => (
+              <div key={d} className="row small">
+                <span className="mono dim" style={{ width: 84 }}>{d.slice(5)}</span>
+                <span className="mono grow">{'▇'.repeat(Math.min(24, Math.max(1, Math.round(Math.abs(delta) / 150))))}</span>
+                <span className="mono dim">{delta > 0 ? '+' : ''}{delta.toLocaleString()}</span>
+              </div>
+            ))}
+          </>
+        );
+      })()}
       <h4>Manuscript chronology</h4>
       {ordered.map((s) => (
         <div key={s.id} className="event-line">
@@ -1314,6 +1356,8 @@ function SavesPanel() {
   const setDeathRule = useStore((s) => s.setDeathRule);
   const setEncumbrance = useStore((s) => s.setEncumbrance);
   const setNeedsEnabled = useStore((s) => s.setNeedsEnabled);
+  const setDoomEnabled = useStore((s) => s.setDoomEnabled);
+  const compactLog = useStore((s) => s.compactLog);
   return (
     <div>
       <h3>Saves & Rules</h3>
@@ -1353,6 +1397,17 @@ function SavesPanel() {
         );
       })}
       <MonsterArtSection />
+      <div className="row small">
+        <label className="grow">The Circle's clock (the villain acts if the spine idles)</label>
+        <select value={world.doomEnabled === false ? 'off' : 'on'} onChange={(e) => setDoomEnabled(e.target.value === 'on')}>
+          <option value="on">Ticking{world.doom?.stage ? ` — stage ${world.doom.stage}/4` : ''}</option>
+          <option value="off">Paused</option>
+        </select>
+      </div>
+      <div className="row small">
+        <label className="grow">Event log: {world.events.length.toLocaleString()} events{(world.eventArchive ?? []).length ? ` (+${world.eventArchive!.length} archived spans)` : ''}</label>
+        <button onClick={compactLog} title="Digest already-outlined routine events; milestones are kept.">Compact</button>
+      </div>
       <h4>Checkpoints</h4>
       <div className="row">
         <input type="text" className="grow" placeholder="checkpoint label" value={label} onChange={(e) => setLabel(e.target.value)} />

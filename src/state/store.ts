@@ -57,6 +57,9 @@ import { pickLock, takeLorebook, useShrine } from '../engine/dungeon';
 import { engageWorldEvent } from '../engine/worldEvents';
 import { adoptStray, goFishing, rideCarriage } from '../engine/services';
 import { checkAchievements } from '../engine/achievements';
+import { giveGift, spendTimeWith } from '../engine/romance';
+import { autoResolve, autoRound } from '../engine/combat';
+import { compactEvents, recordWritingStats } from '../engine/compile';
 import { spendAttributePoint } from '../engine/progression';
 import { activeSlot, deleteBook, newBookSlot, renameBook, setActiveSlot, touchBook } from '../engine/books';
 import { draftScene } from '../engine/proseLlm';
@@ -168,6 +171,18 @@ interface AppState {
   carriageRide: (destId: string) => void;
   fishAct: () => void;
   adoptPet: () => void;
+
+  // romance
+  gift: (npcId: string, itemId: string) => void;
+  date: (npcId: string, activityKey: string) => void;
+
+  // combat autopilot
+  combatAutoRound: () => void;
+  combatAutoResolve: () => void;
+
+  // world rules & maintenance
+  setDoomEnabled: (on: boolean) => void;
+  compactLog: () => void;
 
   // companion moments
   hearMoment: () => Promise<void>;
@@ -658,6 +673,45 @@ export const useStore = create<AppState>((set, get) => ({
     commit();
   },
 
+  gift: (npcId, itemId) => {
+    const { world, commit, setToast } = get();
+    const err = giveGift(world, npcId, itemId);
+    if (err) setToast(err);
+    commit({ autosave: 'Gift' });
+  },
+
+  date: (npcId, activityKey) => {
+    const { world, commit, setToast } = get();
+    const err = spendTimeWith(world, npcId, activityKey);
+    if (err) setToast(err);
+    commit({ autosave: 'Time together' });
+  },
+
+  combatAutoRound: () => {
+    const { world, commit } = get();
+    autoRound(world);
+    commit();
+  },
+
+  combatAutoResolve: () => {
+    const { world, commit } = get();
+    autoResolve(world);
+    commit({ autosave: 'Auto-resolved fight' });
+  },
+
+  setDoomEnabled: (on) => {
+    const { world, commit } = get();
+    world.doomEnabled = on;
+    commit();
+  },
+
+  compactLog: () => {
+    const { world, commit, setToast } = get();
+    const res = compactEvents(world);
+    setToast(res.removed ? `${res.removed} routine events compacted; ${res.kept} remain (milestones kept).` : 'Nothing worth compacting yet — outline your play first.');
+    commit();
+  },
+
   // ---------- companion moments ----------
   hearMoment: async () => {
     const { world, commit } = get();
@@ -1079,6 +1133,7 @@ export const useStore = create<AppState>((set, get) => ({
     const s = world.scenes.find((x) => x.id === id);
     if (!s) return;
     Object.assign(s, patch);
+    recordWritingStats(world);
     commit();
   },
 

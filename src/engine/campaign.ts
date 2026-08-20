@@ -200,6 +200,51 @@ export function ensureCampaign(world: WorldState) {
   }
 }
 
+// ---------- the Circle's clock ----------
+// The villain is not waiting. If the spine's current stage sits idle
+// too long, the Ash Circle advances — the world degrades in stages,
+// loudly, until the party moves. Toggleable (world.doomEnabled).
+
+export const DOOM_STAGE_DAYS = 30; // idle days per doom advance
+export const DOOM_MAX = 4;
+
+export function doomTick(world: WorldState) {
+  if (world.doomEnabled === false) return;
+  const open = mainQuests(world).find((q) => q.status === 'offered' || q.status === 'active' || q.status === 'ready');
+  if (!open) return; // spine finished — the clock stops
+  world.doom ??= { stage: 0, lastAdvanceDay: open.offeredDay };
+  const idleSince = Math.max(world.doom.lastAdvanceDay, open.offeredDay);
+  if (world.time.day - idleSince < DOOM_STAGE_DAYS || world.doom.stage >= DOOM_MAX) return;
+  world.doom.stage += 1;
+  world.doom.lastAdvanceDay = world.time.day;
+  const stage = world.doom.stage;
+  const circle = world.factions['FAC_ASHCIRCLE'];
+  if (stage === 1) {
+    if (circle) circle.power = Math.min(10, circle.power + 1);
+    logEvent(world, 'doom', { stage }, 'THE CIRCLE MOVES: new converts in ash-marked grey preach openly in three districts. Whatever they dig toward, they dig faster now.');
+  } else if (stage === 2) {
+    const cleared = Object.values(world.dungeons).find((d) => d.bossDefeated && d.id !== 'DUN_DEEP_001');
+    if (cleared) {
+      cleared.bossDefeated = false;
+      logEvent(world, 'doom', { stage, dungeon: cleared.id }, `THE CIRCLE MOVES: something stirs again in ${cleared.name}. What the party put down has been... encouraged back up.`);
+    } else {
+      logEvent(world, 'doom', { stage }, 'THE CIRCLE MOVES: the under-river runs warm for a week straight. The sewermen stop going below the second gallery.');
+    }
+  } else if (stage === 3) {
+    const grave = world.locations['LOC_GRAVEROW'];
+    if (grave) {
+      grave.state = 'occupied';
+      grave.dangerRating = Math.min(10, grave.dangerRating + 2);
+    }
+    logEvent(world, 'doom', { stage }, 'THE CIRCLE MOVES: the Cemetery District belongs to the ash-marked after dark now. The Watch pulled its patrols. The digging is audible from the street.');
+  } else {
+    for (const c of partyMembers(world)) {
+      c.knowledge.push({ fact: 'The Hollow Gate is warming ahead of any schedule the founders feared. The Circle is no longer digging TOWARD something — they are digging it OUT.', day: world.time.day, accurate: true });
+    }
+    logEvent(world, 'doom', { stage }, 'THE CIRCLE MOVES: the Hollow Gate is warm to the touch and the party knows it. The spine of this story has stopped waiting for them.');
+  }
+}
+
 /** Called after a main quest is turned in: pay the revelation, open the next stage. */
 export function advanceCampaign(world: WorldState, completed: Quest) {
   if (!completed.isMain) return;
@@ -209,6 +254,7 @@ export function advanceCampaign(world: WorldState, completed: Quest) {
     }
     logEvent(world, 'campaign.revelation', { stage: completed.stage, quest: completed.id }, `REVELATION (stage ${completed.stage}): ${completed.revelation}`, { witnesses: partyMembers(world).map((c) => c.id) });
   }
+  if (world.doom) world.doom.lastAdvanceDay = world.time.day; // progress resets the clock
   const next = CAMPAIGN.find((s) => s.stage === (completed.stage ?? 0) + 1);
   if (next) {
     const q = stageToQuest(world, next);

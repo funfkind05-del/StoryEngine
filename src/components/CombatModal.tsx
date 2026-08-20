@@ -101,6 +101,8 @@ export function CombatModal() {
   const updateScene = useStore((s) => s.updateScene);
   const selectedSceneId = useStore((s) => s.selectedSceneId);
   const setToast = useStore((s) => s.setToast);
+  const combatAutoRound = useStore((s) => s.combatAutoRound);
+  const combatAutoResolve = useStore((s) => s.combatAutoResolve);
   const combat = world.combat;
   const [plans, setPlans] = useState<Record<string, Plan>>({});
   const [proseSeed, setProseSeed] = useState(() => randomSeed());
@@ -233,9 +235,15 @@ export function CombatModal() {
                 </div>
               ))}
               {!over && (
-                <button className="primary" style={{ width: '100%', marginTop: 6 }} onClick={resolve}>
-                  Resolve Round {combat.round}
-                </button>
+                <>
+                  <button className="primary" style={{ width: '100%', marginTop: 6 }} onClick={resolve}>
+                    Resolve Round {combat.round}
+                  </button>
+                  <div className="row" style={{ marginTop: 4 }}>
+                    <button className="grow" onClick={combatAutoRound} title="One round on sensible autopilot: heals the hurt, braces or interrupts telegraphs, spends abilities when rich.">▶ Auto round</button>
+                    <button className="grow" onClick={combatAutoResolve} title="Let them fight — autopilot until it ends. For the fights that aren't the chapter.">⏩ Let them fight</button>
+                  </div>
+                </>
               )}
             </div>
             <div>

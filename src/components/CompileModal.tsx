@@ -4,6 +4,8 @@
 import { useState } from 'react';
 import { useStore } from '../state/store';
 import { TIC_SEVERE_PER_1K, TIC_WARN_PER_1K, ticTrend } from '../engine/tics';
+import { compileBible, generateRecap } from '../engine/bible';
+import { loadLlmConfig } from '../engine/npcChat';
 import {
   DEFAULT_COMPILE,
   compileHtml,
@@ -48,6 +50,8 @@ export function CompileModal({ onClose }: { onClose: () => void }) {
   const stats = compileStats(world, opts);
   const set = (patch: Partial<CompileOptions>) => setOpts({ ...opts, ...patch });
   const fname = title.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'manuscript';
+  const [recap, setRecap] = useState<string | null>(null);
+  const [recapBusy, setRecapBusy] = useState(false);
   return (
     <div className="modal-backdrop">
       <div className="modal" style={{ width: 'min(520px, 92vw)' }}>
@@ -78,12 +82,19 @@ export function CompileModal({ onClose }: { onClose: () => void }) {
             Entity tokens render as plain names.
           </p>
           <TicTrendSection />
+          {recap && <div className="sugg-text" style={{ margin: '8px 0' }}>{recap}</div>}
           <div className="row" style={{ marginTop: 8 }}>
             <button className="primary" onClick={() => downloadFile(`${fname}.md`, compileMarkdown(world, title, opts), 'text/markdown')}>
               Download .md
             </button>
             <button onClick={() => downloadFile(`${fname}.html`, compileHtml(world, title, opts), 'text/html')}>
               Download .html (print → PDF)
+            </button>
+            <button onClick={() => downloadFile(`${fname}-bible.md`, compileBible(world, title), 'text/markdown')} title="Cast, spine, factions, dungeons, Codex, deeds — everything the engine knows, as a reference document.">
+              📔 Series bible
+            </button>
+            <button disabled={recapBusy} onClick={() => { setRecapBusy(true); void generateRecap(loadLlmConfig(), world).then((r) => { setRecap(r); setRecapBusy(false); }).catch((e) => { setRecapBusy(false); setRecap(`Recap failed: ${e instanceof Error ? e.message : e}`); }); }} title="LLM 'Previously, in Blackwall…' from the sim's milestones — for the front of the next book.">
+              {recapBusy ? '…' : '⏮ Recap'}
             </button>
             <span className="grow" />
             <button onClick={onClose}>Close</button>

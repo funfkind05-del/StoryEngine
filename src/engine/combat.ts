@@ -681,6 +681,56 @@ function finishCombat(world: WorldState, combat: CombatState) {
   );
 }
 
+/** Sensible auto-play for one party member's round. */
+function autoAction(world: WorldState, combat: CombatState, c: Character): PlannedAction {
+  const living = combat.monsters.filter((m) => m.alive && !m.fled);
+  const target = living.find((m) => m.status.includes('stunned')) ?? living.reduce((a, b) => (a && a.hp.current <= b.hp.current ? a : b), living[0]);
+  // heal the hurt first
+  const hurt = combat.partyIds.map((id) => world.characters[id]).filter((a) => a.alive && a.hp.current > 0 && a.hp.current < a.hp.max * 0.4);
+  const healSpell = c.abilities.find((k) => SPELLS[k]?.heal);
+  if (hurt.length && healSpell && c.mana.current >= SPELLS[healSpell].mana) {
+    return { actor: c.id, type: 'spell', spellKey: healSpell, target: hurt[0].id };
+  }
+  if (c.hp.current < c.hp.max * 0.3) {
+    const potion = [...c.inventory, ...world.partyInventory].find((i) => world.items[i]?.kind === 'potion' && world.items[i]?.healing);
+    if (potion) return { actor: c.id, type: 'item', itemId: potion, target: c.id };
+  }
+  // brace against a telegraphed blow if fragile
+  if (living.some((m) => m.charging) && c.hp.current < c.hp.max * 0.5) return { actor: c.id, type: 'defend' };
+  // interrupt a charger with a stun skill
+  const stunSkill = c.abilities.find((k) => SKILLS[k]?.stuns);
+  if (living.some((m) => m.charging) && stunSkill && c.stamina.current >= SKILLS[stunSkill].stamina) {
+    return { actor: c.id, type: 'skill', skillKey: stunSkill, target: living.find((m) => m.charging)!.id };
+  }
+  // spend big abilities when rich
+  const dmgSpell = c.abilities.filter((k) => SPELLS[k]?.damage).sort((a, b) => SPELLS[b].mana - SPELLS[a].mana)[0];
+  if (dmgSpell && c.mana.current >= SPELLS[dmgSpell].mana * 1.5 && target) {
+    return { actor: c.id, type: 'spell', spellKey: dmgSpell, target: target.id };
+  }
+  const skill = c.abilities.filter((k) => SKILLS[k]).sort((a, b) => SKILLS[b].stamina - SKILLS[a].stamina)[0];
+  if (skill && c.stamina.current >= SKILLS[skill].stamina * 2 && target) {
+    return { actor: c.id, type: 'skill', skillKey: skill, target: target.id };
+  }
+  return { actor: c.id, type: 'attack', target: target?.id };
+}
+
+/** Run one round on autopilot. */
+export function autoRound(world: WorldState): void {
+  const combat = world.combat;
+  if (!combat || !combat.active) return;
+  const planned = combat.partyIds
+    .map((id) => world.characters[id])
+    .filter((c) => c && c.hp.current > 0)
+    .map((c) => autoAction(world, combat, c));
+  resolveRound(world, planned);
+}
+
+/** Let them fight: auto-rounds until the fight ends (bounded). */
+export function autoResolve(world: WorldState): void {
+  let guard = 0;
+  while (world.combat?.active && guard++ < 60) autoRound(world);
+}
+
 /** After the loot screen: apply the taken items to inventories. */
 export function takeLoot(world: WorldState, itemIndexes: number[] | 'all' | 'none') {
   const combat = world.combat;

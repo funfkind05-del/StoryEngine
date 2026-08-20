@@ -15,6 +15,7 @@ import type {
 import { Rng } from './rng';
 import { CLASSES, advanceNeeds, calendarLabel, needsBlocksHpRegen, needsBlocksStaminaRegen, sleepOff, tickStatusesOverTime, weatherFor, xpForLevel as xpForLevelRule } from './rules';
 import { expireWorldEvents, maybeSpawnWorldEvent } from './worldEvents';
+import { doomTick } from './campaign';
 
 // ---------- IDs ----------
 export function nextId(world: WorldState, prefix: string): string {
@@ -196,10 +197,11 @@ export function tick(world: WorldState, minutes: number): SimEvent[] {
         produced.push(logEvent(world, 'home.interest', { interest }, `The vault's careful lending returned ${interest} copper to the household treasury.`, { location: home.id }));
       }
     }
-    // daily weather + world events
+    // daily weather + world events + the Circle's clock
     if (!world.weather || world.weather.day !== world.time.day) {
       maybeSpawnWorldEvent(world);
       expireWorldEvents(world);
+      doomTick(world);
       const kind = weatherFor(world.masterSeed, world.time.day);
       const changed = world.weather && world.weather.kind !== kind;
       world.weather = { kind, day: world.time.day };

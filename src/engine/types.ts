@@ -295,6 +295,9 @@ export interface Character {
   attributePoints?: number;
   /** use-based skill progression counters */
   skillXp?: Partial<Record<keyof Skills, number>>;
+  /** last day a gift/date was accepted, per giver — courting has pacing */
+  lastGiftDay?: Record<CharacterId, number>;
+  lastDateDay?: Record<CharacterId, number>;
   /** earned title, shown in stat blocks */
   title?: string;
   permanentBonuses: string[]; // human-readable, e.g. 'Blessing of the Flame: +1 WIS'
@@ -525,6 +528,9 @@ export interface Quest {
   /** guild-rank quest markers */
   guild?: string;
   guildRank?: number;
+  /** companion personal-arc markers */
+  personal?: CharacterId;
+  personalStage?: number;
   offeredDay: number;
   deadlineDay?: number;
   acceptedDay?: number;
@@ -622,6 +628,13 @@ export interface WorldState {
   pendingWorldEventReward?: { id: string; reward: number; locationId: string } | null;
   /** earned achievement keys */
   achievements?: string[];
+  /** the Ash Circle's counter-clock: advances when the spine idles */
+  doom?: { stage: number; lastAdvanceDay: number };
+  doomEnabled?: boolean;
+  /** one-line digests of compacted event-log spans */
+  eventArchive?: string[];
+  /** total manuscript words per real calendar date (dashboard) */
+  writingStats?: Record<string, number>;
   counters: Record<string, number>; // id counters
   masterSeed: number;
 }

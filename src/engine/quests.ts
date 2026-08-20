@@ -11,6 +11,7 @@ import { grantXp, logEvent, partyMembers } from './world';
 import { addToContainer, fmtMoney, makeItem } from './rules';
 import { advanceCampaign, ensureCampaign } from './campaign';
 import { advanceGuild } from './guilds';
+import { advancePersonal, ensurePersonalArcs } from './companions';
 
 function questId(world: WorldState): string {
   const n = (world.counters['QST'] ?? 0) + 1;
@@ -180,6 +181,7 @@ export function turnInQuest(world: WorldState, id: string, choiceKey?: string): 
   logEvent(world, 'quest.completed', { quest: q.id, reward: q.reward }, `"${q.title}" completed — paid ${describeReward(world, q)}.`, { location: q.giverLocation, witnesses: partyMembers(world).map((c) => c.id) });
   advanceCampaign(world, q);
   advanceGuild(world, q);
+  advancePersonal(world, q);
   return null;
 }
 
@@ -223,7 +225,9 @@ const JOB_TEMPLATES: ((world: WorldState, rng: Rng) => Omit<Quest, 'id' | 'statu
 ];
 
 export function refreshJobs(world: WorldState) {
-  const openOffers = Object.values(world.quests).filter((q) => q.status === 'offered').length;
+  ensurePersonalArcs(world); // trust/level gates may have opened
+  // the board cap counts board jobs only — never the spine, arcs, or guild trials
+  const openOffers = Object.values(world.quests).filter((q) => q.status === 'offered' && !q.isMain && !q.personal && !q.guild).length;
   if (openOffers >= 4) return;
   const rng = new Rng((world.masterSeed ^ (world.time.day * 7907)) >>> 0);
   if (!rng.chance(0.6)) return;
@@ -253,4 +257,5 @@ export function seedQuests(world: WorldState) {
   ];
   for (const q of seed) world.quests[q.id] = q;
   ensureCampaign(world);
+  ensurePersonalArcs(world);
 }
