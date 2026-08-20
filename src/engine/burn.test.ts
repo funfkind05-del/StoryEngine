@@ -34,8 +34,9 @@ import { applyProposal } from './proseLlm';
 import { generateBackgroundNpc, promoteNpc } from './npc';
 import { OWNER_HOME, OWNER_PARTY, type PlannedAction, type WorldState } from './types';
 
-const ITERS = parseInt(process.env.BURN_ITERS ?? '1500', 10);
-const SEEDS = parseInt(process.env.BURN_SEEDS ?? '3', 10);
+const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
+const ITERS = parseInt(env.BURN_ITERS ?? '1500', 10);
+const SEEDS = parseInt(env.BURN_SEEDS ?? '3', 10);
 
 // ---------- invariants ----------
 function assertNoNaN(obj: unknown, path = 'world'): void {
@@ -53,9 +54,9 @@ function assertNoNaN(obj: unknown, path = 'world'): void {
 }
 
 function checkInvariants(w: WorldState, step: number, action: string, deep: boolean) {
-  const fail = (msg: string) => {
+  function fail(msg: string): never {
     throw new Error(`[step ${step}, after ${action}] ${msg}`);
-  };
+  }
 
   for (const c of Object.values(w.characters)) {
     if (c.hp.current < 0 || c.hp.current > c.hp.max) fail(`${c.name} HP ${c.hp.current}/${c.hp.max}`);
