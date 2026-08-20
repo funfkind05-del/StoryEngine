@@ -131,6 +131,13 @@ daily sparring XP trickle, the **alchemy room** brews a potion a day into
 storage (**library** improves the formula), and the **workshop** mends worn
 and broken gear for material costs.
 
+## Bestiary art
+
+Every monster has a drawn bestiary plate (self-contained SVG, no assets)
+shown on encounter banners and combat cards — dead enemies gray out. Replace
+any plate with your own image via Saves → Monster art; uploads are stored
+inside the save file, so AI-generated or commissioned art drops straight in.
+
 ## Companions start conversations
 
 Sometimes a companion wants a word — driven by their state, not yours:

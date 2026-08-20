@@ -27,6 +27,8 @@ import {
 } from '../engine/rules';
 import { Bar, RelBar, Tag } from './common';
 import { activeQuests, describeReward, objectiveDone, objectiveLabel, offeredQuestsAt, questProgress } from '../engine/quests';
+import { MonsterPortrait } from './MonsterArt';
+import { MONSTERS } from '../engine/monsters';
 import {
   chooseBackupFile,
   diskSaveSupported,
@@ -945,6 +947,39 @@ function DiskBackupSection() {
   );
 }
 
+// ---------- Monster art ----------
+function MonsterArtSection() {
+  const world = useStore((s) => s.world);
+  const setMonsterArt = useStore((s) => s.setMonsterArt);
+  const setToast = useStore((s) => s.setToast);
+  const [key, setKey] = useState('giant-rat');
+  const fileRef = useRef<HTMLInputElement>(null);
+  const onFile = (f: File) => {
+    if (f.size > 400_000) {
+      setToast('Keep monster art under 400 KB — it lives inside the save file.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setMonsterArt(key, String(reader.result));
+    reader.readAsDataURL(f);
+  };
+  return (
+    <>
+      <h4>Monster art</h4>
+      <p className="dim small">Every monster ships with a drawn bestiary plate. Replace any of them with your own image (AI-generated or otherwise) — it's stored in the save.</p>
+      <div className="row">
+        <MonsterPortrait templateKey={key} size={44} world={world} />
+        <select value={key} onChange={(e) => setKey(e.target.value)}>
+          {Object.keys(MONSTERS).map((k) => <option key={k} value={k}>{MONSTERS[k].name}</option>)}
+        </select>
+        <button onClick={() => fileRef.current?.click()}>Upload…</button>
+        {world.monsterArt?.[key] && <button className="danger" onClick={() => setMonsterArt(key, null)}>Use drawn plate</button>}
+        <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = ''; }} />
+      </div>
+    </>
+  );
+}
+
 // ---------- Saves ----------
 function SavesPanel() {
   const world = useStore((s) => s.world);
@@ -988,6 +1023,7 @@ function SavesPanel() {
         </select>
       </div>
       <DiskBackupSection />
+      <MonsterArtSection />
       <h4>Checkpoints</h4>
       <div className="row">
         <input type="text" className="grow" placeholder="checkpoint label" value={label} onChange={(e) => setLabel(e.target.value)} />

@@ -114,6 +114,7 @@ interface AppState {
   setEncumbrance: (r: WorldState['encumbrance']) => void;
   setNeedsEnabled: (on: boolean) => void;
   eatMeal: () => void;
+  setMonsterArt: (templateKey: string, dataUri: string | null) => void;
 
   // quests
   questAccept: (id: string) => void;
@@ -366,6 +367,14 @@ export const useStore = create<AppState>((set, get) => ({
     const { world, commit, setToast } = get();
     const err = buyMeal(world, world.partyLocation);
     if (err) setToast(err);
+    commit();
+  },
+
+  setMonsterArt: (templateKey, dataUri) => {
+    const { world, commit } = get();
+    world.monsterArt ??= {};
+    if (dataUri) world.monsterArt[templateKey] = dataUri;
+    else delete world.monsterArt[templateKey];
     commit();
   },
 

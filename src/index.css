@@ -296,6 +296,14 @@ select, input[type='text'], input[type='number'] {
 .compass { display: grid; grid-template-columns: repeat(3, 44px); gap: 4px; justify-content: center; margin: 8px 0; }
 .compass button { padding: 8px 0; }
 
+.monster-portrait {
+  border-radius: 6px;
+  flex-shrink: 0;
+  display: block;
+  object-fit: cover;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
 /* modals */
 .modal-backdrop {
   position: fixed;

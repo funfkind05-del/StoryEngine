@@ -11,6 +11,7 @@ import { combatToAuthorLog, combatToProse } from '../engine/bridge';
 import { fmtMoney, tierColor } from '../engine/rules';
 import { randomSeed } from '../engine/rng';
 import { Bar, Tag } from './common';
+import { MonsterPortrait } from './MonsterArt';
 
 // ---------- Encounter banner ----------
 export function EncounterBanner() {
@@ -44,6 +45,12 @@ export function EncounterBanner() {
     <div className="encounter-banner">
       <div className="row">
         <b style={{ color: 'var(--danger)' }}>ENCOUNTER:</b>
+        {enc.monsters.map((g) => (
+          <span key={g.templateKey} className="row" style={{ gap: 2 }}>
+            <MonsterPortrait templateKey={g.templateKey} size={34} world={world} />
+            {g.count > 1 && <span className="mono dim">×{g.count}</span>}
+          </span>
+        ))}
         <span className="grow">{enc.description}</span>
         <span className="mono dim">seed {enc.seed}</span>
       </div>
@@ -211,11 +218,18 @@ export function CombatModal() {
               <h4>Enemies</h4>
               {combat.monsters.map((m) => (
                 <div key={m.id} className="card">
-                  <div className="row">
-                    <span className="grow">{m.name} {!m.alive && <Tag tone="red">dead</Tag>} {m.fled && <Tag>fled</Tag>} {m.status.includes('stunned') && <Tag tone="gold">stunned</Tag>}</span>
-                    <span className="mono dim">{m.alive ? `${m.hp.current}/${m.hp.max}` : '—'}</span>
+                  <div className="row" style={{ flexWrap: 'nowrap' }}>
+                    <span style={{ filter: m.alive ? undefined : 'grayscale(1) brightness(0.55)' }}>
+                      <MonsterPortrait templateKey={m.templateKey} size={42} world={world} />
+                    </span>
+                    <span className="grow">
+                      <span className="row">
+                        <span className="grow">{m.name} {!m.alive && <Tag tone="red">dead</Tag>} {m.fled && <Tag>fled</Tag>} {m.status.includes('stunned') && <Tag tone="gold">stunned</Tag>}</span>
+                        <span className="mono dim">{m.alive ? `${m.hp.current}/${m.hp.max}` : '—'}</span>
+                      </span>
+                      {m.alive && <Bar value={m.hp.current} max={m.hp.max} color="var(--danger)" />}
+                    </span>
                   </div>
-                  {m.alive && <Bar value={m.hp.current} max={m.hp.max} color="var(--danger)" />}
                 </div>
               ))}
               {!over && (

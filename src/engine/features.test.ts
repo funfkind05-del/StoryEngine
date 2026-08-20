@@ -217,3 +217,13 @@ describe('migration', () => {
     expect(Object.keys(migrated.quests).length).toBeGreaterThan(0);
   });
 });
+
+describe('bestiary art', () => {
+  it('every monster template has a drawn plate', async () => {
+    const { PLATE_KEYS } = await import('../components/MonsterArt');
+    const { MONSTERS } = await import('./monsters');
+    for (const key of Object.keys(MONSTERS)) {
+      expect(PLATE_KEYS, `missing plate for ${key}`).toContain(key);
+    }
+  });
+});

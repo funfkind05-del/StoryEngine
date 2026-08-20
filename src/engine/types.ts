@@ -545,6 +545,8 @@ export interface WorldState {
   /** a companion wants a word (banner → conversation) */
   pendingMoment?: { npcId: CharacterId; hook: string; teaser: string } | null;
   lastMomentDay?: number;
+  /** author-supplied art overrides per monster template (data URIs) */
+  monsterArt?: Record<string, string>;
   counters: Record<string, number>; // id counters
   masterSeed: number;
 }
