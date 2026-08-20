@@ -20,9 +20,15 @@ const GLYPH: Record<Cardinal, string> = { north: 'N', south: 'S', east: 'E', wes
 type PatternKind = 'bones' | 'slime' | 'brands' | 'rivets' | 'flutes' | 'cracks' | 'runes' | 'bricks';
 
 interface WallTheme {
-  line: string;
-  dim: string;
-  wall: string;
+  line: string; // edge highlights & glyphs
+  dim: string; // pattern linework on surfaces
+  wall: string; // far-wall surface tone
+  side: string; // side-wall surface tone (lit)
+  sideDark: string; // side-wall tone toward the far corner
+  ceil: string; // ceiling tone
+  floor: string; // floor tone near the party
+  floorFar: string; // floor tone at the far wall
+  jamb: string; // door frame stonework
   pattern: PatternKind;
   /** flooded dungeons show a waterline on the floor */
   waterline?: boolean;
@@ -30,16 +36,38 @@ interface WallTheme {
 
 function themeFor(dungeonType: string): WallTheme {
   const t = dungeonType.toLowerCase();
-  if (t.includes('crypt')) return { line: '#c9a959', dim: '#5a4a28', wall: '#0d0b08', pattern: 'bones' };
+  if (t.includes('crypt')) return { line: '#c9a959', dim: '#7a6535', wall: '#2e2517', side: '#3a2f1d', sideDark: '#241c11', ceil: '#191309', floor: '#33291a', floorFar: '#1e1710', jamb: '#57452a', pattern: 'bones' };
   if (t.includes('sewer') || t.includes('smuggler') || t.includes('flooded')) {
-    return { line: '#6aa87f', dim: '#2e4a38', wall: '#081009', pattern: 'slime', waterline: true };
+    return { line: '#6aa87f', dim: '#4d7a5c', wall: '#17281c', side: '#1d3323', sideDark: '#101d14', ceil: '#0c1710', floor: '#16241a', floorFar: '#0d1610', jamb: '#2e4d38', pattern: 'slime', waterline: true };
   }
-  if (t.includes('temple') || t.includes('drowned')) return { line: '#7fb8a8', dim: '#35544c', wall: '#07110e', pattern: 'flutes', waterline: t.includes('drowned') };
-  if (t.includes('cult')) return { line: '#c97a4a', dim: '#5a3524', wall: '#100a06', pattern: 'brands' };
-  if (t.includes('vault') || t.includes('bank')) return { line: '#9fb0c4', dim: '#44505e', wall: '#0a0d11', pattern: 'rivets' };
-  if (t.includes('dragon') || t.includes('undercroft')) return { line: '#d98a3d', dim: '#6b431e', wall: '#120b05', pattern: 'cracks' };
-  if (t.includes('palace') || t.includes('hollow')) return { line: '#a98fd6', dim: '#4b3f66', wall: '#0c0913', pattern: 'runes' };
-  return { line: '#c9a959', dim: '#5a4a28', wall: '#0d0b08', pattern: 'bricks' };
+  if (t.includes('temple') || t.includes('drowned')) return { line: '#7fb8a8', dim: '#547e73', wall: '#182823', side: '#1f332c', sideDark: '#121e1a', ceil: '#0d1714', floor: '#17251f', floorFar: '#0e1713', jamb: '#35544c', pattern: 'flutes', waterline: t.includes('drowned') };
+  if (t.includes('cult')) return { line: '#c97a4a', dim: '#8a5432', wall: '#2b1c11', side: '#372417', sideDark: '#20150c', ceil: '#170f08', floor: '#2d1f13', floorFar: '#1a110a', jamb: '#5a3524', pattern: 'brands' };
+  if (t.includes('vault') || t.includes('bank')) return { line: '#9fb0c4', dim: '#6b7c90', wall: '#1e242c', side: '#262e38', sideDark: '#161b21', ceil: '#10141a', floor: '#20262e', floorFar: '#12161b', jamb: '#44505e', pattern: 'rivets' };
+  if (t.includes('dragon') || t.includes('undercroft')) return { line: '#d98a3d', dim: '#93601f', wall: '#2e1e0d', side: '#3b2812', sideDark: '#221708', ceil: '#180f06', floor: '#30210f', floorFar: '#1c1308', jamb: '#6b431e', pattern: 'cracks' };
+  if (t.includes('palace') || t.includes('hollow')) return { line: '#a98fd6', dim: '#71609a', wall: '#221b30', side: '#2b223c', sideDark: '#181123', ceil: '#100b18', floor: '#231c31', floorFar: '#140f1d', jamb: '#4b3f66', pattern: 'runes' };
+  return { line: '#c9a959', dim: '#7a6535', wall: '#2e2517', side: '#3a2f1d', sideDark: '#241c11', ceil: '#191309', floor: '#33291a', floorFar: '#1e1710', jamb: '#57452a', pattern: 'bricks' };
+}
+
+/** A solid stone door frame: jambs, lintel, threshold — a real door. */
+function DoorFrame({ x, y, w, h, theme, open: opening }: { x: number; y: number; w: number; h: number; theme: WallTheme; open: boolean }) {
+  const j = Math.max(4, w * 0.14); // jamb width
+  return (
+    <g>
+      <rect x={x - j} y={y - j} width={w + j * 2} height={h + j} fill={theme.jamb} stroke={theme.line} strokeWidth="0.8" />
+      {/* lintel stone */}
+      <rect x={x - j * 1.5} y={y - j * 1.6} width={w + j * 3} height={j * 1.2} fill={theme.jamb} stroke={theme.line} strokeWidth="0.8" />
+      {/* jamb block joints */}
+      <line x1={x - j} y1={y + h * 0.33} x2={x} y2={y + h * 0.33} stroke={theme.dim} strokeWidth="0.7" />
+      <line x1={x - j} y1={y + h * 0.66} x2={x} y2={y + h * 0.66} stroke={theme.dim} strokeWidth="0.7" />
+      <line x1={x + w} y1={y + h * 0.33} x2={x + w + j} y2={y + h * 0.33} stroke={theme.dim} strokeWidth="0.7" />
+      <line x1={x + w} y1={y + h * 0.66} x2={x + w + j} y2={y + h * 0.66} stroke={theme.dim} strokeWidth="0.7" />
+      {/* the opening itself */}
+      <rect x={x} y={y} width={w} height={h} fill={opening ? '#020202' : theme.sideDark} />
+      {opening && <rect x={x} y={y} width={w} height={h * 0.55} fill="url(#fpv-doorfog)" />}
+      {/* threshold step */}
+      <rect x={x - j} y={y + h} width={w + j * 2} height={3} fill={theme.jamb} opacity="0.9" />
+    </g>
+  );
 }
 
 /** Tiny stable hash so every room dresses its walls differently. */
@@ -254,7 +282,6 @@ export function FirstPersonView() {
 
   const theme = themeFor(d.dungeonType);
   const { line, dim, wall } = theme;
-  const dk = '#050403';
 
   const hostile = room.enemies === 'alive';
   const chest = room.chest && !room.chest.opened;
@@ -269,19 +296,58 @@ export function FirstPersonView() {
     <div className="fpv" style={{ position: 'relative' }}>
       <div className="fpv-frame" key={`${room.id}:${facing}`}>
       <svg viewBox="0 0 340 214" role="img" aria-label={`First-person view of ${room.name}, facing ${facing}`}>
-        <rect x="0" y="0" width="340" height="214" fill={dk} />
-        {/* ceiling / floor / side walls in perspective */}
-        <polygon points="0,0 340,0 220,64 120,64" fill={wall} stroke={dim} strokeWidth="1" />
-        <polygon points="0,214 340,214 220,150 120,150" fill={wall} stroke={dim} strokeWidth="1" />
-        <polygon points="0,0 120,64 120,150 0,214" fill={wall} stroke={dim} strokeWidth="1" />
-        <polygon points="340,0 220,64 220,150 340,214" fill={wall} stroke={dim} strokeWidth="1" />
-        {/* far wall */}
-        <rect x="120" y="64" width="100" height="86" fill={wall} stroke={line} strokeWidth="1.5" />
-        {/* perspective edge lines */}
-        <line x1="0" y1="0" x2="120" y2="64" stroke={line} strokeWidth="1.5" />
-        <line x1="340" y1="0" x2="220" y2="64" stroke={line} strokeWidth="1.5" />
-        <line x1="0" y1="214" x2="120" y2="150" stroke={line} strokeWidth="1.5" />
-        <line x1="340" y1="214" x2="220" y2="150" stroke={line} strokeWidth="1.5" />
+        <defs>
+          <linearGradient id="fpv-floorgrad" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stopColor={theme.floor} />
+            <stop offset="100%" stopColor={theme.floorFar} />
+          </linearGradient>
+          <linearGradient id="fpv-sidegrad-l" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor={theme.side} />
+            <stop offset="100%" stopColor={theme.sideDark} />
+          </linearGradient>
+          <linearGradient id="fpv-sidegrad-r" x1="1" y1="0" x2="0" y2="0">
+            <stop offset="0%" stopColor={theme.side} />
+            <stop offset="100%" stopColor={theme.sideDark} />
+          </linearGradient>
+          <linearGradient id="fpv-ceilgrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={theme.ceil} />
+            <stop offset="100%" stopColor={theme.sideDark} />
+          </linearGradient>
+          <linearGradient id="fpv-doorfog" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={theme.line} stopOpacity="0.14" />
+            <stop offset="100%" stopColor={theme.line} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <rect x="0" y="0" width="340" height="214" fill="#050403" />
+        {/* solid surfaces in perspective */}
+        <polygon points="0,0 340,0 220,64 120,64" fill="url(#fpv-ceilgrad)" />
+        <polygon points="0,214 340,214 220,150 120,150" fill="url(#fpv-floorgrad)" />
+        <polygon points="0,0 120,64 120,150 0,214" fill="url(#fpv-sidegrad-l)" />
+        <polygon points="340,0 220,64 220,150 340,214" fill="url(#fpv-sidegrad-r)" />
+        <rect x="120" y="64" width="100" height="86" fill={wall} />
+        {/* flagstone floor: courses converging on the far wall */}
+        <g stroke={dim} strokeWidth="0.6" opacity="0.55">
+          <line x1="0" y1="214" x2="130" y2="150" />
+          <line x1="85" y1="214" x2="152" y2="150" />
+          <line x1="170" y1="214" x2="170" y2="150" />
+          <line x1="255" y1="214" x2="188" y2="150" />
+          <line x1="340" y1="214" x2="210" y2="150" />
+          <path d="M 26 200 q 144 -16 288 0" fill="none" />
+          <path d="M 78 178 q 92 -10 184 0" fill="none" />
+          <path d="M 108 162 q 62 -6 124 0" fill="none" />
+        </g>
+        {/* ceiling beams */}
+        <g stroke={dim} strokeWidth="0.6" opacity="0.4">
+          <path d="M 30 12 q 140 12 280 0" fill="none" />
+          <path d="M 74 34 q 96 8 192 0" fill="none" />
+          <path d="M 104 52 q 66 5 132 0" fill="none" />
+        </g>
+        {/* edge highlights keep the depth honest */}
+        <line x1="0" y1="0" x2="120" y2="64" stroke={line} strokeWidth="1.1" opacity="0.8" />
+        <line x1="340" y1="0" x2="220" y2="64" stroke={line} strokeWidth="1.1" opacity="0.8" />
+        <line x1="0" y1="214" x2="120" y2="150" stroke={line} strokeWidth="1.1" opacity="0.8" />
+        <line x1="340" y1="214" x2="220" y2="150" stroke={line} strokeWidth="1.1" opacity="0.8" />
+        <rect x="120" y="64" width="100" height="86" fill="none" stroke={line} strokeWidth="0.9" opacity="0.7" />
         <SideAccents kind={theme.pattern} dim={dim} v={variant} />
         {/* waterline in the flooded places */}
         {theme.waterline && (
@@ -292,7 +358,8 @@ export function FirstPersonView() {
         <FarPattern kind={theme.pattern} dim={dim} v={variant} />
         {open(ahead) ? (
           <>
-            <rect className="fpv-door" x="146" y="82" width="48" height="68" fill={dk} stroke={line} strokeWidth="1.5" onClick={walk(ahead)}>
+            <DoorFrame x={146} y={82} w={48} h={68} theme={theme} open={true} />
+            <rect className="fpv-door" x="139" y="71" width="62" height="82" fill="transparent" onClick={walk(ahead)}>
               <title>Walk {GLYPH[ahead]}</title>
             </rect>
             {lockedDir === ahead && <text x="170" y="120" textAnchor="middle" fontSize="16" fill={line}>🔒</text>}
@@ -309,19 +376,29 @@ export function FirstPersonView() {
           </>
         ) : null}
 
-        {/* left wall doorway */}
+        {/* left wall doorway: stone frame in perspective */}
         {open(left) && (
           <>
-            <polygon className="fpv-door" points="34,36 86,58 86,146 34,178" fill={dk} stroke={line} strokeWidth="1.5" onClick={walk(left)}>
+            <polygon points="26,26 92,52 92,152 26,188" fill={theme.jamb} stroke={theme.line} strokeWidth="0.8" />
+            <line x1="30" y1="88" x2="86" y2="98" stroke={theme.dim} strokeWidth="0.7" />
+            <line x1="30" y1="132" x2="86" y2="128" stroke={theme.dim} strokeWidth="0.7" />
+            <polygon points="34,36 86,58 86,146 34,178" fill="#020202" />
+            <polygon points="34,36 86,58 86,84 34,72" fill="url(#fpv-doorfog)" />
+            <polygon className="fpv-door" points="26,26 92,52 92,152 26,188" fill="transparent" onClick={walk(left)}>
               <title>Walk {GLYPH[left]}</title>
             </polygon>
             {lockedDir === left && <text x="60" y="112" textAnchor="middle" fontSize="14" fill={line}>🔒</text>}
           </>
         )}
-        {/* right wall doorway */}
+        {/* right wall doorway: stone frame in perspective */}
         {open(right) && (
           <>
-            <polygon className="fpv-door" points="306,36 254,58 254,146 306,178" fill={dk} stroke={line} strokeWidth="1.5" onClick={walk(right)}>
+            <polygon points="314,26 248,52 248,152 314,188" fill={theme.jamb} stroke={theme.line} strokeWidth="0.8" />
+            <line x1="310" y1="88" x2="254" y2="98" stroke={theme.dim} strokeWidth="0.7" />
+            <line x1="310" y1="132" x2="254" y2="128" stroke={theme.dim} strokeWidth="0.7" />
+            <polygon points="306,36 254,58 254,146 306,178" fill="#020202" />
+            <polygon points="306,36 254,58 254,84 306,72" fill="url(#fpv-doorfog)" />
+            <polygon className="fpv-door" points="314,26 248,52 248,152 314,188" fill="transparent" onClick={walk(right)}>
               <title>Walk {GLYPH[right]}</title>
             </polygon>
             {lockedDir === right && <text x="280" y="112" textAnchor="middle" fontSize="14" fill={line}>🔒</text>}
