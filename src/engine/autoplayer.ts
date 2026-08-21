@@ -521,8 +521,11 @@ export function autoplayStep(world: WorldState, state: AutoplayerState, _rng: Rn
     const hall = Object.values(world.locations).find((l) => l.trainerFor === c.charClass || (l.temple && c.charClass === 'priest'));
     if (!hall) continue;
     if (world.partyLocation === hall.id) {
-      trainAt(world, hall.id, c.id);
-      return 'train';
+      // an unchecked engine error here once trained 5000 imaginary
+      // afternoons at the Hermitage — believe the refusal
+      const err = trainAt(world, hall.id, c.id);
+      if (err === null) return 'train';
+      continue;
     }
     const rTrainer = goTo(hall.id, 'to-trainer');
     if (rTrainer) return rTrainer;

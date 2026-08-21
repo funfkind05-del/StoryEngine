@@ -272,6 +272,14 @@ export const ASCENSIONS: AscensionPath[] = [
   { key: 'pale-shepherd', charClass: 'necromancer', label: 'Pale Shepherd', blurb: 'Every flock comes home eventually. You keep the gate.', attrs: { intelligence: 1, wisdom: 1 }, mana: 8, critChance: 4, ability: 'the-grey-court' },
   { key: 'pit-king', charClass: 'berserker', label: 'Pit-King', blurb: 'The crowd crowned you. The crowd is not wrong.', attrs: { strength: 2 }, hp: 12, ability: 'the-long-madness' },
   { key: 'red-saint', charClass: 'berserker', label: 'Red Saint', blurb: 'They pray to you the way you pray to nothing.', attrs: { constitution: 2 }, hp: 10, critChance: 6, ability: 'the-last-red-day' },
+  { key: 'core-formation', charClass: 'cultivator', label: 'Core Formation', blurb: 'The breath condenses. The furnace becomes a sun, pocket-sized.', attrs: { constitution: 1, wisdom: 1 }, hp: 8, mana: 8, ability: 'mountain-splitting-fist' },
+  { key: 'sword-heart', charClass: 'cultivator', label: 'Sword Heart', blurb: 'Ten thousand cuts, one intention.', attrs: { dexterity: 2 }, critChance: 6, ability: 'tribulation-lightning' },
+  { key: 'master-of-mutagens', charClass: 'alchemist', label: 'Master of Mutagens', blurb: 'You drank the early drafts. It shows. It HELPS.', attrs: { constitution: 2 }, hp: 10, ability: 'the-perfect-solvent' },
+  { key: 'the-white-alchemist', charClass: 'alchemist', label: 'The White Alchemist', blurb: 'Death keeps sending back your work, improved.', attrs: { intelligence: 2 }, mana: 12, ability: 'panacea' },
+  { key: 'tide-priest', charClass: 'tidecaller', label: 'Tide-Priest', blurb: 'The old sea takes your calls now.', attrs: { wisdom: 2 }, mana: 12, ability: 'tide-of-the-old-sea' },
+  { key: 'keeper-of-fathoms', charClass: 'tidecaller', label: 'Keeper of Fathoms', blurb: 'What the deep holds, you hold jointly.', attrs: { intelligence: 1, constitution: 1 }, hp: 8, ability: 'the-black-fathom' },
+  { key: 'gate-of-horn', charClass: 'oneiromancer', label: 'Gate of Horn', blurb: 'True dreams pass through you. Some stay.', attrs: { wisdom: 2 }, mana: 12, ability: 'wake-them-never' },
+  { key: 'gate-of-ivory', charClass: 'oneiromancer', label: 'Gate of Ivory', blurb: 'False dreams too. You stopped judging.', attrs: { intelligence: 2 }, critChance: 5, mana: 8, ability: 'the-lucid-city' },
 ];
 
 export const ASCENSION_LEVEL = 25;
@@ -322,6 +330,14 @@ export const CALLINGS: CallingPath[] = [
   { key: 'quiet-student', charClass: 'necromancer', label: 'Quiet Student', blurb: 'The dead are patient teachers.', attrs: { wisdom: 1 }, mana: 4, defense: 1 },
   { key: 'pit-dog', charClass: 'berserker', label: 'Pit Dog', blurb: 'Get up. That is the whole lesson.', attrs: { constitution: 1 }, hp: 5 },
   { key: 'red-handed', charClass: 'berserker', label: 'Red-Handed', blurb: 'The first swing settles most arguments.', attrs: { strength: 1 }, critChance: 3 },
+  { key: 'body-tempering', charClass: 'cultivator', label: 'Body Tempering', blurb: 'The flesh is the first furnace.', attrs: { constitution: 1 }, hp: 5 },
+  { key: 'spirit-refining', charClass: 'cultivator', label: 'Spirit Refining', blurb: 'Breath in. Hold the world. Breath out.', attrs: { wisdom: 1 }, mana: 5 },
+  { key: 'bombardier', charClass: 'alchemist', label: 'Bombardier', blurb: 'Chemistry, delivered at speed.', attrs: { dexterity: 1 }, critChance: 3 },
+  { key: 'physicker', charClass: 'alchemist', label: 'Physicker', blurb: 'First, do no harm. Definitions vary.', attrs: { intelligence: 1 }, mana: 5 },
+  { key: 'shorewalker', charClass: 'tidecaller', label: 'Shorewalker', blurb: 'One foot in the water, always.', attrs: { wisdom: 1 }, mana: 5 },
+  { key: 'depth-touched', charClass: 'tidecaller', label: 'Depth-Touched', blurb: 'Something below learned your name and approved.', attrs: { constitution: 1 }, hp: 4, defense: 1 },
+  { key: 'lucid', charClass: 'oneiromancer', label: 'Lucid', blurb: 'Awake in every room, including the impossible ones.', attrs: { intelligence: 1 }, mana: 5 },
+  { key: 'night-porter', charClass: 'oneiromancer', label: 'Night Porter', blurb: 'You carry things between sleepers. Tips are strange.', attrs: { wisdom: 1 }, mana: 4, evasion: 1 },
 ];
 
 export const TRANSCENDENCE_LEVEL = 40;
@@ -351,6 +367,14 @@ export const TRANSCENDENCES: CallingPath[] = [
   { key: 'the-kind-winter', charClass: 'necromancer', label: 'The Kind Winter', blurb: 'You close every eye gently. Almost every.', attrs: { intelligence: 2, wisdom: 2 }, mana: 15, hp: 10 },
   { key: 'the-red-legend', charClass: 'berserker', label: 'The Red Legend', blurb: 'Mothers name storms after you.', attrs: { strength: 3 }, hp: 20, critChance: 8 },
   { key: 'the-unkillable', charClass: 'berserker', label: 'The Unkillable', blurb: 'You have died twice. It did not take.', attrs: { constitution: 3 }, hp: 30, defense: 2 },
+  { key: 'nascent-soul', charClass: 'cultivator', label: 'Nascent Soul', blurb: 'The self that steps out when the body is done being enough.', attrs: { wisdom: 2, constitution: 2 }, hp: 15, mana: 15 },
+  { key: 'the-empty-sky', charClass: 'cultivator', label: 'The Empty Sky', blurb: 'The tribulation came. You are what walked out of it.', attrs: { strength: 2, dexterity: 2 }, critChance: 8, hp: 10 },
+  { key: 'the-philosophers-stone', charClass: 'alchemist', label: "The Philosopher's Stone", blurb: 'The Great Work was never about gold.', attrs: { intelligence: 3 }, mana: 22, hp: 8 },
+  { key: 'the-living-elixir', charClass: 'alchemist', label: 'The Living Elixir', blurb: 'Your blood is a controlled substance in four districts.', attrs: { constitution: 3 }, hp: 25, defense: 1 },
+  { key: 'the-tide-itself', charClass: 'tidecaller', label: 'The Tide Itself', blurb: 'You stopped calling it. It stopped needing to be called.', attrs: { wisdom: 3 }, mana: 22, evasion: 3 },
+  { key: 'the-old-seas-voice', charClass: 'tidecaller', label: "The Old Sea's Voice", blurb: 'When you speak, harbors listen. So do the things under them.', attrs: { wisdom: 2, charisma: 2 }, mana: 15, hp: 10 },
+  { key: 'the-waking-dream', charClass: 'oneiromancer', label: 'The Waking Dream', blurb: 'The city dreams you now, a little, everywhere.', attrs: { intelligence: 3 }, mana: 22, evasion: 3 },
+  { key: 'the-sleepless-crown', charClass: 'oneiromancer', label: 'The Sleepless Crown', blurb: 'You audited the god\u2019s dream and kept the marginalia.', attrs: { intelligence: 2, wisdom: 2 }, mana: 15, critChance: 6 },
 ];
 
 function applyPathPackage(c: Character, path: CallingPath): void {

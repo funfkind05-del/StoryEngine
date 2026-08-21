@@ -135,6 +135,26 @@ export const CLASSES: Record<CharClass, ClassDef> = {
     hpPerLevel: 7, manaPerLevel: 0, staminaPerLevel: 4, attackEvery: 1, defenseEvery: 3,
     unlocks: { 2: 'reckless-swing', 4: 'pit-roar', 6: 'blood-frenzy', 8: 'skull-splitter', 12: 'rampage', 16: 'bone-breaker', 20: 'red-mist', 25: 'giant-feller', 32: 'the-long-madness', 40: 'the-last-red-day' , 50: 'the-red-crown', 65: 'the-worlds-ending' },
   },
+  cultivator: {
+    key: 'cultivator', label: 'Cultivator', trainer: 'the Hermitage',
+    hpPerLevel: 5, manaPerLevel: 3, staminaPerLevel: 3, attackEvery: 1, defenseEvery: 2,
+    unlocks: { 1: 'flowing-qi', 2: 'iron-body-palm', 4: 'qi-lance', 6: 'sword-qi-slash', 8: 'meridian-drain', 12: 'breath-of-the-valley', 16: 'hundred-step-palm', 20: 'golden-core-burst', 25: 'dragon-sinew-strike', 28: 'spirit-sever', 32: 'mountain-splitting-fist', 40: 'tribulation-lightning', 50: 'the-immortal-ascent', 65: 'the-dao-of-the-empty-sky' },
+  },
+  alchemist: {
+    key: 'alchemist', label: 'Alchemist', trainer: 'the Physic\u2019s back room',
+    hpPerLevel: 4, manaPerLevel: 4, staminaPerLevel: 2, attackEvery: 2, defenseEvery: 3,
+    unlocks: { 1: 'acid-vial', 3: 'smoke-bomb', 5: 'fire-flask', 7: 'mutagen-draught', 8: 'shrapnel-bomb', 12: 'frost-oil', 16: 'plague-vial', 20: 'thunderclap-bomb', 25: 'elixir-of-renewal', 28: 'caustic-rain', 32: 'the-perfect-solvent', 40: 'philosophers-fire', 50: 'panacea', 65: 'the-great-work' },
+  },
+  tidecaller: {
+    key: 'tidecaller', label: 'Tidecaller', trainer: 'Saltmere\u2019s drying racks',
+    hpPerLevel: 4, manaPerLevel: 5, staminaPerLevel: 1, attackEvery: 3, defenseEvery: 3,
+    unlocks: { 1: 'brine-lash', 3: 'undertow', 5: 'drowning-grasp', 8: 'salt-spray', 12: 'riptide', 16: 'the-green-silence', 20: 'wave-break', 25: 'abyssal-call', 28: 'leviathan-coil', 32: 'the-drowned-choir', 40: 'tide-of-the-old-sea', 50: 'the-black-fathom', 65: 'the-sea-remembers' },
+  },
+  oneiromancer: {
+    key: 'oneiromancer', label: 'Oneiromancer', trainer: 'the Night Market\u2019s quietest stall',
+    hpPerLevel: 3, manaPerLevel: 5, staminaPerLevel: 1, attackEvery: 3, defenseEvery: 3,
+    unlocks: { 1: 'waking-pinch', 3: 'sandman-touch', 5: 'nightmare-thread', 8: 'dream-eater', 12: 'lull-the-room', 16: 'terror-made-flesh', 20: 'the-shared-dream', 25: 'unravel-the-real', 28: 'sleepwalkers-parade', 32: 'the-door-in-the-dream', 40: 'wake-them-never', 50: 'the-lucid-city', 65: 'the-dream-the-god-dreams' },
+  },
   commoner: {
     key: 'commoner', label: 'Commoner', trainer: 'nowhere',
     hpPerLevel: 3, manaPerLevel: 0, staminaPerLevel: 2, attackEvery: 2, defenseEvery: 3,

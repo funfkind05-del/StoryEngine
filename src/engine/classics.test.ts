@@ -604,7 +604,7 @@ describe('the expansion: classes, tomes, jewelry, streets (round 3)', () => {
       expect(CLASSES[a.charClass], a.key).toBeTruthy();
     }
     // two paths per playable class
-    for (const cls of ['fighter', 'rogue', 'mage', 'priest', 'ranger', 'bard', 'monk', 'spellblade', 'warlock', 'paladin', 'necromancer', 'berserker'] as const) {
+    for (const cls of ['fighter', 'rogue', 'mage', 'priest', 'ranger', 'bard', 'monk', 'spellblade', 'warlock', 'paladin', 'necromancer', 'berserker', 'cultivator', 'alchemist', 'tidecaller', 'oneiromancer'] as const) {
       expect(ASCENSIONS.filter((a) => a.charClass === cls), cls).toHaveLength(2);
     }
   });

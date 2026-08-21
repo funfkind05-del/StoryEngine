@@ -119,6 +119,10 @@ export function migrateWorld(world: WorldState): WorldState {
   if (world.locations['LOC_FIGHTPIT']) world.locations['LOC_FIGHTPIT'].trainerFor ??= 'berserker';
   if (world.locations['LOC_LAMPHALL']) world.locations['LOC_LAMPHALL'].trainerFor ??= 'paladin';
   if (world.locations['LOC_GRAVEROW']) world.locations['LOC_GRAVEROW'].trainerFor ??= 'necromancer';
+  if (world.locations['LOC_HERMITAGE']) world.locations['LOC_HERMITAGE'].trainerFor ??= 'cultivator';
+  if (world.locations['LOC_PHYSIC']) world.locations['LOC_PHYSIC'].trainerFor ??= 'alchemist';
+  if (world.locations['LOC_SALTMERE']) world.locations['LOC_SALTMERE'].trainerFor ??= 'tidecaller';
+  if (world.locations['LOC_NIGHTMARKET']) world.locations['LOC_NIGHTMARKET'].trainerFor ??= 'oneiromancer';
   ensurePersonalArcs(world);
   for (const c of Object.values(world.characters)) {
     c.needs ??= { hunger: 25, fatigue: 30 };

@@ -280,8 +280,11 @@ export function trainAt(world: WorldState, locId: LocationId, charId: string): s
   const c = world.characters[charId];
   if (!c) return 'Who?';
   const def = CLASSES[c.charClass];
-  if (!loc.trainerFor && !(loc.temple && c.charClass === 'priest')) return 'No trainer here.';
-  if (loc.trainerFor && loc.trainerFor !== c.charClass) return `${loc.name} trains ${CLASSES[loc.trainerFor!].label.toLowerCase()}s, not ${def.label.toLowerCase()}s.`;
+  // a temple trains priests even when another trade also keeps a
+  // master there (the Hermitage hosts both the faith and the Dao)
+  const priestHere = !!loc.temple && c.charClass === 'priest';
+  if (!loc.trainerFor && !priestHere) return 'No trainer here.';
+  if (!priestHere && loc.trainerFor && loc.trainerFor !== c.charClass) return `${loc.name} trains ${CLASSES[loc.trainerFor!].label.toLowerCase()}s, not ${def.label.toLowerCase()}s.`;
   if (!levelUpAvailable(c)) return `${c.name} has not earned enough experience yet.`;
   const discount = guildTrainingDiscount(world, locId);
   const cost = Math.round(trainingCost(c.level) * (1 - discount));

@@ -1816,7 +1816,7 @@ function SavesPanel() {
   const [bookTitle, setBookTitle] = useState('');
   const [newDeathRule, setNewDeathRule] = useState<'story' | 'classic' | 'permadeath'>('story');
   const [newResRule, setNewResRule] = useState<'safe' | 'risky'>('safe');
-  const [newClass, setNewClass] = useState<'fighter' | 'rogue' | 'mage' | 'priest' | 'ranger' | 'bard' | 'monk' | 'spellblade' | 'warlock' | 'paladin' | 'necromancer' | 'berserker'>('fighter');
+  const [newClass, setNewClass] = useState<'fighter' | 'rogue' | 'mage' | 'priest' | 'ranger' | 'bard' | 'monk' | 'spellblade' | 'warlock' | 'paladin' | 'necromancer' | 'berserker' | 'cultivator' | 'alchemist' | 'tidecaller' | 'oneiromancer'>('fighter');
   const [newBonus, setNewBonus] = useState<Record<string, number>>({});
   const bonusSpent = Object.values(newBonus).reduce((a, b) => a + b, 0);
   const CREATION_POINTS = 5;
@@ -1941,6 +1941,10 @@ function SavesPanel() {
           <option value="paladin">Paladin — the lamp against the dark</option>
           <option value="necromancer">Necromancer — the graves keep badly</option>
           <option value="berserker">Berserker — get up, that's the lesson</option>
+          <option value="cultivator">Cultivator — the flesh is the first furnace</option>
+          <option value="alchemist">Alchemist — chemistry, delivered</option>
+          <option value="tidecaller">Tidecaller — the old sea takes his calls</option>
+          <option value="oneiromancer">Oneiromancer — awake in impossible rooms</option>
         </select>
       </div>
       {classArtUrl(newClass) && (

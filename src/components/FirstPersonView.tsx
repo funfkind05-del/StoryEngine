@@ -326,6 +326,15 @@ export function FirstPersonView() {
             <stop offset="0%" stopColor={theme.line} stopOpacity="0.14" />
             <stop offset="100%" stopColor={theme.line} stopOpacity="0" />
           </linearGradient>
+          {/* painted door panels melt into the backdrop through a
+              feathered arch — no hard rectangle seams */}
+          <filter id="fpv-feather" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="3.5" />
+          </filter>
+          <mask id="fpv-doormask" maskUnits="userSpaceOnUse" x="130" y="58" width="80" height="104">
+            <rect x="130" y="58" width="80" height="104" fill="black" />
+            <path d="M 142 156 L 142 100 A 28 32 0 0 1 198 100 L 198 156 Z" fill="white" filter="url(#fpv-feather)" />
+          </mask>
         </defs>
         <rect x="0" y="0" width="340" height="214" fill="#050403" />
         {/* solid surfaces in perspective */}
@@ -376,7 +385,7 @@ export function FirstPersonView() {
         {open(ahead) ? (
           <>
             {propUrl(`door-${theme.pattern}`) ? (
-              <image href={propUrl(`door-${theme.pattern}`)} x="138" y="68" width="64" height="86" preserveAspectRatio="xMidYMid slice" />
+              <image href={propUrl(`door-${theme.pattern}`)} x="136" y="64" width="68" height="92" preserveAspectRatio="xMidYMid slice" mask="url(#fpv-doormask)" />
             ) : (
               <DoorFrame x={146} y={82} w={48} h={68} theme={theme} open={true} />
             )}
@@ -404,17 +413,11 @@ export function FirstPersonView() {
         {/* left wall doorway: stone frame in perspective */}
         {open(left) && (
           <>
-            {propUrl(`door-${theme.pattern}`) ? (
-              <image href={propUrl(`door-${theme.pattern}`)} x="24" y="30" width="70" height="150" preserveAspectRatio="xMidYMid slice" transform="skewY(14) translate(0,-16)" />
-            ) : (
-              <>
-            <polygon points="26,26 92,52 92,152 26,188" fill={theme.jamb} stroke={theme.line} strokeWidth="0.8" />
-            <line x1="30" y1="88" x2="86" y2="98" stroke={theme.dim} strokeWidth="0.7" />
-            <line x1="30" y1="132" x2="86" y2="128" stroke={theme.dim} strokeWidth="0.7" />
+            <polygon points="26,26 92,52 92,152 26,188" fill={theme.jamb} stroke={backdrop ? 'none' : theme.line} strokeWidth="0.8" opacity={backdrop ? 0.85 : 1} />
+            <line x1="30" y1="88" x2="86" y2="98" stroke={theme.dim} strokeWidth="0.7" opacity={backdrop ? 0.4 : 1} />
+            <line x1="30" y1="132" x2="86" y2="128" stroke={theme.dim} strokeWidth="0.7" opacity={backdrop ? 0.4 : 1} />
             <polygon points="34,36 86,58 86,146 34,178" fill="#020202" />
             <polygon points="34,36 86,58 86,84 34,72" fill="url(#fpv-doorfog)" />
-              </>
-            )}
             <polygon className="fpv-door" points="26,26 92,52 92,152 26,188" fill="transparent" onClick={walk(left)}>
               <title>Walk {GLYPH[left]}</title>
             </polygon>
@@ -424,17 +427,11 @@ export function FirstPersonView() {
         {/* right wall doorway: stone frame in perspective */}
         {open(right) && (
           <>
-            {propUrl(`door-${theme.pattern}`) ? (
-              <image href={propUrl(`door-${theme.pattern}`)} x="246" y="30" width="70" height="150" preserveAspectRatio="xMidYMid slice" transform="skewY(-14) translate(0,78)" />
-            ) : (
-              <>
-            <polygon points="314,26 248,52 248,152 314,188" fill={theme.jamb} stroke={theme.line} strokeWidth="0.8" />
-            <line x1="310" y1="88" x2="254" y2="98" stroke={theme.dim} strokeWidth="0.7" />
-            <line x1="310" y1="132" x2="254" y2="128" stroke={theme.dim} strokeWidth="0.7" />
+            <polygon points="314,26 248,52 248,152 314,188" fill={theme.jamb} stroke={backdrop ? 'none' : theme.line} strokeWidth="0.8" opacity={backdrop ? 0.85 : 1} />
+            <line x1="310" y1="88" x2="254" y2="98" stroke={theme.dim} strokeWidth="0.7" opacity={backdrop ? 0.4 : 1} />
+            <line x1="310" y1="132" x2="254" y2="128" stroke={theme.dim} strokeWidth="0.7" opacity={backdrop ? 0.4 : 1} />
             <polygon points="306,36 254,58 254,146 306,178" fill="#020202" />
             <polygon points="306,36 254,58 254,84 306,72" fill="url(#fpv-doorfog)" />
-              </>
-            )}
             <polygon className="fpv-door" points="314,26 248,52 248,152 314,188" fill="transparent" onClick={walk(right)}>
               <title>Walk {GLYPH[right]}</title>
             </polygon>

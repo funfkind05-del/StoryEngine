@@ -154,6 +154,10 @@ const CLASS_PROMPTS = {
   paladin: 'an armored paladin holding a burning storm-lantern high in a dark street, oil-and-scripture vigil regalia',
   necromancer: 'a calm grey-robed necromancer among cemetery bonehouses, pale motes rising from an open reliquary',
   berserker: 'a scarred pit berserker wrapped in chalk and rope-bandages, roaring in a drained cistern fighting pit',
+  cultivator: 'a serene warrior monk mid-form on a mountain hermitage terrace, faint golden qi flowing along both arms into a raised palm',
+  alchemist: 'a goggled alchemist in a stained leather apron juggling a smoking glass bomb, bandolier of bright vials, back-room laboratory glow',
+  tidecaller: 'a salt-crusted sea-caller ankle-deep in a tide pool, kelp-wrapped staff raised, a wave curling unnaturally around them',
+  oneiromancer: 'a hooded dream-mage at a night market stall, eyes closed and smiling faintly, sand and small stars drifting from their open hands',
 };
 
 async function runClasses() {

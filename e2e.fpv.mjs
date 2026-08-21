@@ -51,14 +51,18 @@ if (!info.found) throw new Error('no FPV svg found');
 if (!info.backdrop) throw new Error('no painted backdrop in corridor');
 await page.screenshot({ path: `${SCRATCH}/fpv-corridor-1.png` });
 
-// walk a few rooms hunting for a doorway view with painted door art
+// keep the lights on, then walk hunting for a doorway view
+const torchBtn = page.getByRole('button', { name: /Light torch/ });
+if (await torchBtn.isVisible().catch(() => false)) await torchBtn.click();
 let sawDoor = info.doorImgs.length > 0;
-for (let i = 0; i < 10 && !sawDoor; i++) {
+for (let i = 0; i < 14 && !sawDoor; i++) {
   const enabled = await page.locator('.compass button:enabled').all();
   if (enabled.length) await enabled[i % enabled.length].click();
   await page.waitForTimeout(150);
+  const tb = page.getByRole('button', { name: /Light torch/ });
+  if (await tb.isVisible().catch(() => false)) await tb.click().catch(() => {});
   const d = await page.evaluate(() => [...document.querySelectorAll('svg image')].filter((im) => (im.getAttribute('href') ?? '').startsWith('/props/door-')).length);
-  if (d > 0) sawDoor = true;
+  if (d > 0) { sawDoor = true; await page.screenshot({ path: `${SCRATCH}/fpv-door-ahead.png` }); }
 }
 await page.screenshot({ path: `${SCRATCH}/fpv-corridor-2.png` });
 console.log(sawDoor ? 'painted door art rendered ✓' : 'WARNING: no doorway encountered in walk');

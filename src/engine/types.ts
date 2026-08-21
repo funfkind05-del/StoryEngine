@@ -185,7 +185,7 @@ export interface Item {
 // ---------- Characters ----------
 export type Sex = 'male' | 'female';
 
-export type CharClass = 'fighter' | 'rogue' | 'mage' | 'priest' | 'ranger' | 'bard' | 'monk' | 'spellblade' | 'warlock' | 'paladin' | 'necromancer' | 'berserker' | 'commoner';
+export type CharClass = 'fighter' | 'rogue' | 'mage' | 'priest' | 'ranger' | 'bard' | 'monk' | 'spellblade' | 'warlock' | 'paladin' | 'necromancer' | 'berserker' | 'cultivator' | 'alchemist' | 'tidecaller' | 'oneiromancer' | 'commoner';
 
 export type StatusKey =
   | 'poisoned'

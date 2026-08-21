@@ -132,6 +132,13 @@ export const SKILLS: Record<string, SkillDef> = {
   'rain-of-points': { name: 'Rain of Points', stamina: 11, toHitMod: -1, dmgBonus: 5, extraTargets: 3 },
   'crane-sweep': { name: 'Crane Sweep', stamina: 5, toHitMod: 0, dmgBonus: 3, extraTargets: 1, stuns: true },
   'mountain-palm': { name: 'Mountain Palm', stamina: 11, toHitMod: 1, dmgBonus: 12 },
+  // cultivator body-arts — the Hermitage's long ladder (warrior monk with magic)
+  'iron-body-palm': { name: 'Iron Body Palm', stamina: 3, toHitMod: 1, dmgBonus: 3, stuns: true },
+  'sword-qi-slash': { name: 'Sword-Qi Slash', stamina: 5, toHitMod: 1, dmgBonus: 5, critBonus: 10 },
+  'hundred-step-palm': { name: 'Hundred-Step Palm', stamina: 8, toHitMod: 0, dmgBonus: 4, extraTargets: 2 },
+  'dragon-sinew-strike': { name: 'Dragon-Sinew Strike', stamina: 10, toHitMod: 1, dmgBonus: 12, critBonus: 15 },
+  'mountain-splitting-fist': { name: 'Mountain-Splitting Fist', stamina: 13, toHitMod: 0, dmgBonus: 18, stuns: true },
+  'the-immortal-ascent': { name: 'The Immortal Ascent', stamina: 20, toHitMod: 2, dmgBonus: 24, doubleHit: true, critBonus: 25 },
   // past the mortal ceiling — L50/L65 forms
   warmaster: { name: 'Warmaster', stamina: 16, toHitMod: 2, dmgBonus: 18, extraTargets: 3 },
   'the-standing-army': { name: 'The Standing Army', stamina: 22, toHitMod: 1, dmgBonus: 22, extraTargets: 5, stuns: true },
@@ -151,6 +158,8 @@ export interface SpellDef {
   name: string;
   mana: number;
   damage?: string;
+  /** drain arts: the caster feeds on what the spell takes (dice) */
+  selfHeal?: string;
   heal?: string;
   healAll?: boolean; // heal the whole party
   cures?: boolean; // purify
@@ -238,6 +247,58 @@ export const SPELLS: Record<string, SpellDef> = {
   'glyph-of-ruin': { name: 'Glyph of Ruin', mana: 22, damage: '4d8+4' },
   'creeping-doubt': { name: 'Creeping Doubt', mana: 8, damage: '1d8+1', stunChance: 30 },
   'tithe-of-flesh': { name: 'Tithe of Flesh', mana: 22, damage: '5d8+2' },
+  // cultivator qi-arts — breath, meridian, and heaven's weather
+  'flowing-qi': { name: 'Flowing Qi', mana: 3, heal: '1d6+2' },
+  'qi-lance': { name: 'Qi Lance', mana: 5, damage: '2d6+1' },
+  'meridian-drain': { name: 'Meridian Drain', mana: 8, damage: '2d8', selfHeal: '1d6' },
+  'breath-of-the-valley': { name: 'Breath of the Valley', mana: 12, heal: '1d8+4', healAll: true },
+  'golden-core-burst': { name: 'Golden Core Burst', mana: 15, damage: '3d6+3', hitsAll: true },
+  'spirit-sever': { name: 'Spirit-Sever', mana: 18, damage: '4d8+4', stunChance: 25 },
+  'tribulation-lightning': { name: 'Tribulation Lightning', mana: 38, damage: '8d8+10', stunChance: 30, selfHeal: '2d6' },
+  'the-dao-of-the-empty-sky': { name: 'The Dao of the Empty Sky', mana: 56, damage: '10d10+12', hitsAll: true, selfHeal: '3d6' },
+  // alchemist thrown-work — the Physic's back room
+  'acid-vial': { name: 'Acid Vial', mana: 4, damage: '1d8+1' },
+  'smoke-bomb': { name: 'Smoke Bomb', mana: 5, damage: '1d4', stunChance: 40 },
+  'fire-flask': { name: 'Fire Flask', mana: 7, damage: '2d6+2' },
+  'mutagen-draught': { name: 'Mutagen Draught', mana: 8, heal: '2d8+2' },
+  'shrapnel-bomb': { name: 'Shrapnel Bomb', mana: 10, damage: '2d6', hitsAll: true },
+  'frost-oil': { name: 'Frost Oil', mana: 11, damage: '2d6', stunChance: 35 },
+  'plague-vial': { name: 'Plague Vial', mana: 14, damage: '4d6+2' },
+  'thunderclap-bomb': { name: 'Thunderclap Bomb', mana: 16, damage: '3d6+2', hitsAll: true, stunChance: 25 },
+  'elixir-of-renewal': { name: 'Elixir of Renewal', mana: 18, heal: '2d8+6', healAll: true },
+  'caustic-rain': { name: 'Caustic Rain', mana: 22, damage: '4d6+4', hitsAll: true },
+  'the-perfect-solvent': { name: 'The Perfect Solvent', mana: 26, damage: '8d6+6' },
+  'philosophers-fire': { name: "Philosopher's Fire", mana: 34, damage: '6d8+8', hitsAll: true },
+  panacea: { name: 'Panacea', mana: 40, heal: '4d8+14', healAll: true, cures: true },
+  'the-great-work': { name: 'The Great Work', mana: 55, damage: '10d10+12', hitsAll: true },
+  // tidecaller sea-work — Saltmere's older prayers
+  'brine-lash': { name: 'Brine Lash', mana: 4, damage: '1d8+1' },
+  undertow: { name: 'Undertow', mana: 6, damage: '1d6', stunChance: 40 },
+  'drowning-grasp': { name: 'Drowning Grasp', mana: 8, damage: '2d6+1', selfHeal: '1d4' },
+  'salt-spray': { name: 'Salt Spray', mana: 10, damage: '1d6+2', hitsAll: true },
+  riptide: { name: 'Riptide', mana: 12, damage: '3d6+2' },
+  'the-green-silence': { name: 'The Green Silence', mana: 15, damage: '2d6', stunChance: 50 },
+  'wave-break': { name: 'Wave-Break', mana: 18, damage: '3d6+2', hitsAll: true },
+  'abyssal-call': { name: 'Abyssal Call', mana: 22, damage: '5d6+5', selfHeal: '1d8' },
+  'leviathan-coil': { name: 'Leviathan Coil', mana: 26, damage: '4d8+6', stunChance: 30 },
+  'the-drowned-choir': { name: 'The Drowned Choir', mana: 30, damage: '5d6+5', hitsAll: true },
+  'tide-of-the-old-sea': { name: 'Tide of the Old Sea', mana: 38, damage: '7d8+8', hitsAll: true },
+  'the-black-fathom': { name: 'The Black Fathom', mana: 45, damage: '9d8+10', selfHeal: '2d8' },
+  'the-sea-remembers': { name: 'The Sea Remembers', mana: 58, damage: '10d10+12', hitsAll: true, stunChance: 25 },
+  // oneiromancer dream-work — the Night Market's quietest stall
+  'waking-pinch': { name: 'Waking Pinch', mana: 3, damage: '1d6', stunChance: 30 },
+  'sandman-touch': { name: "Sandman's Touch", mana: 6, damage: '1d4', stunChance: 55 },
+  'nightmare-thread': { name: 'Nightmare-Thread', mana: 8, damage: '2d6+2' },
+  'dream-eater': { name: 'Dream-Eater', mana: 10, damage: '2d8', selfHeal: '1d6' },
+  'lull-the-room': { name: 'Lull the Room', mana: 14, damage: '1d6', hitsAll: true, stunChance: 35 },
+  'terror-made-flesh': { name: 'Terror Made Flesh', mana: 16, damage: '4d6+2' },
+  'the-shared-dream': { name: 'The Shared Dream', mana: 18, heal: '2d8+4', healAll: true },
+  'unravel-the-real': { name: 'Unravel the Real', mana: 22, damage: '5d6+4' },
+  'sleepwalkers-parade': { name: "Sleepwalkers' Parade", mana: 26, damage: '3d6+2', hitsAll: true, stunChance: 30 },
+  'the-door-in-the-dream': { name: 'The Door in the Dream', mana: 30, damage: '6d6+6', selfHeal: '1d8' },
+  'wake-them-never': { name: 'Wake Them Never', mana: 38, damage: '6d8+8', stunChance: 45 },
+  'the-lucid-city': { name: 'The Lucid City', mana: 45, damage: '8d8+8', hitsAll: true, stunChance: 30 },
+  'the-dream-the-god-dreams': { name: 'The Dream the God Dreams', mana: 60, damage: '10d10+14', hitsAll: true, stunChance: 35 },
   // past the mortal ceiling — L50/L65 workings
   'star-pull': { name: 'Star-Pull', mana: 40, damage: '8d8+10', hitsAll: true },
   'the-first-word': { name: 'The First Word', mana: 55, damage: '12d10+12' },
@@ -530,6 +591,13 @@ function resolveCharacterAction(
         for (const m of targets) {
           const dmg = rng.roll(spell.damage) + Math.floor(c.skills.magic / 2);
           applyDamageToMonster(world, combat, c, m, dmg, spell.name, 'hit', rng, record, undefined, spell.stunChance !== undefined && rng.chance(spell.stunChance));
+          if (spell.selfHeal && c.hp.current > 0 && c.hp.current < c.hp.max) {
+            const drank = Math.min(rng.roll(spell.selfHeal), c.hp.max - c.hp.current);
+            if (drank > 0) {
+              c.hp.current += drank;
+              record({ round, actor: c.id, actorName: c.name, action: 'spell', detail: spell.name, result: 'heal', damage: drank, text: `${c.name} drank back ${drank} through ${spell.name} — what it takes, it gives.` });
+            }
+          }
           if (combat.outcome !== 'ongoing') break;
         }
       }
