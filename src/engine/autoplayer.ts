@@ -163,10 +163,21 @@ function equipBest(world: WorldState): void {
   }
 }
 
+function campaignTargetId(world: WorldState): string | null {
+  const q = Object.values(world.quests).find((x) => x.isMain && x.status === 'active'
+    && x.objectives.some((o) => o.kind === 'clear-boss' && !o.done));
+  const obj = q?.objectives.find((o) => o.kind === 'clear-boss' && !o.done);
+  return obj && 'dungeonId' in obj ? obj.dungeonId : null;
+}
+
 function pickTargetDungeon(world: WorldState, state?: AutoplayerState): string | null {
+  const spineId = campaignTargetId(world);
   const avoided = (id: string) => {
     const day = state?.sweepDoneDay?.[id];
-    return day !== undefined && world.time.day - day < 10;
+    // the spine's own dungeon gets CAMPED ON, not exiled: back in two
+    // days to spend the daily riddle-guess and reroll the searches
+    const wait = id === spineId ? 2 : 10;
+    return day !== undefined && world.time.day - day < wait;
   };
   const lvl = avgLevel(world);
   // the spine's clear-boss target outranks farming, once we're ready:
@@ -370,8 +381,9 @@ export function autoplayStep(world: WorldState, state: AutoplayerState, _rng: Rn
         // every visit turned the early game into wall-fondling
         state.sweepDoneDay ??= {};
         const lastDone = state.sweepDoneDay[d.id];
-        if (lastDone !== undefined && world.time.day - lastDone < 10) return null;
-        if (lastDone !== undefined && world.time.day - lastDone >= 10) {
+        const wait = campaignTargetId(world) === d.id ? 2 : 10;
+        if (lastDone !== undefined && world.time.day - lastDone < wait) return null;
+        if (lastDone !== undefined && world.time.day - lastDone >= wait) {
           delete state.sweepDoneDay[d.id];
           for (const k of Object.keys(state.sweepSearched ?? {})) if (k.startsWith(`${d.id}:`)) delete state.sweepSearched![k];
         }
