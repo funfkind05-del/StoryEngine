@@ -35,6 +35,42 @@ WORLD STATE → SIMULATION EVENT → EVENT LOG → NARRATIVE BRIDGE → PROSE DR
 Prose editing never mutates simulation state. Author overrides are explicit
 and logged as events.
 
+
+## The 2026-08 expansion (rounds 9–22, bot-driven)
+
+The autoplayer (`src/engine/autoplayer.ts`) plays Blackwall to WIN —
+and every wall it hits becomes a fix. Highlights landed this cycle:
+
+- **16 classes** with 14-rung ability kits to level 65 (cap 100), incl.
+  cultivator (warrior monk with qi magic), alchemist, tidecaller,
+  oneiromancer. Three evolutions per career: Calling (10), Ascension
+  (25), Transcendence (40). Six races at creation.
+- **Elements**: 46 typed spells vs 46 tagged monsters (undead dread
+  holy, dragons shrug fire, golems conduct shock…). **Drain arts**
+  feed the caster. **Scrolls** let anyone cast, once. **Cursed gear**
+  sticks until the temple lifts it. Set-crafting stations with
+  2-piece family bonuses; shop repair; field casting of mending magic.
+- **Campaign arc I+II** (16 stages): doom clock that breathes, spine
+  banner nudges, riddle-doors that yield to lorebooks instantly or to
+  wisdom eventually (one guess a day — no more softlock chains).
+- **The hearth** (the Sims layer): move-ins, stage-gated evenings,
+  spouse ledgers pooling money, wants, resident ambient life, a
+  co-resident relationship web, children with milestone birthdays and
+  a coming-of-age at sixteen, trophies over the mantel.
+- **Ideogram art pipeline** (`tools/genart.mjs`): 85 monster plates,
+  16 class portraits, cast portraits, dungeon backdrops, door/prop
+  art composited into the first-person view.
+- **Verification harnesses**: `tools/campaignrun.mjs` (full-spine bot
+  runs with stage pacing, economy ledgers, and self-autopsy on
+  stalls), `tools/autodiag.mjs`, `tools/deepfight.mjs`,
+  `tools/prosecheck.mjs` (compile a bot-played world and read it),
+  heavy burns (`BURN_ITERS=40000 BURN_SEEDS=5 npx vitest run
+  src/engine/burn.test.ts`), and `AUTO_STEPS=12000 npx vitest run
+  src/engine/autoplay.test.ts` as the playability bar.
+- **LLM**: any OpenAI-compatible endpoint; default is the opencode
+  prose agent via the `/oclm/v1` dev-server bridge
+  (`npm run llm-server`).
+
 ## Core loops
 
 - **Write**: scenes carry an invisible header (POV, day, time, location,
