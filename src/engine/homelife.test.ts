@@ -13,7 +13,7 @@ import { giveGift } from './romance';
 import { SET_FAMILIES, affixMod, rollGearMods, setBonusMod } from './progression';
 import { SET_RECIPES, craftSetPiece } from './crafting';
 import { addToContainer, makeItem, performTempleService } from './rules';
-import { repairAtShop, takeFromParty } from './services';
+import { repairAtShop, takeFromParty, useConsumable } from './services';
 import { SPELLS, autoResolve, fieldCast, fieldCastable, resolveRound, startCombat } from './combat';
 import { answerRiddle, enterDungeon } from './dungeon';
 import { MONSTERS } from './monsters';
@@ -164,6 +164,40 @@ describe('the party pool shares out', () => {
     }
     const res = takeFromParty(w, back.id, lyra.id);
     if (res !== null) expect(res).toMatch(/pack is full/);
+  });
+});
+
+describe('scrolls: anyone can read one, once', () => {
+  it('a fighter casts Fireball from a scroll in combat — no mana, parchment consumed', () => {
+    const w = buildSeedWorld();
+    const mc = w.characters[w.mcId]; // fighter, no spells, no mana to speak of
+    mc.mana.current = 0;
+    const scroll = makeItem(w, 'scroll-fireball', 1);
+    addToContainer(w, scroll, mc);
+    const combat = startCombat(w, { seed: 5, description: 'rats', monsters: [{ templateKey: 'giant-rat', count: 3 }], source: 'city', locationId: w.partyLocation });
+    resolveRound(w, [
+      { actor: w.mcId, type: 'item', itemId: scroll.id },
+      { actor: 'CHAR_LYRA', type: 'defend' },
+    ]);
+    expect(combat.log.some((l) => l.text.includes('broke the wax'))).toBe(true);
+    expect(combat.log.some((l) => l.detail === 'Fireball')).toBe(true);
+    expect(combat.monsters.some((m) => m.hp.current < m.hp.max || !m.alive)).toBe(true);
+    expect(mc.inventory.includes(scroll.id) ? (scroll.qty ?? 1) : 0).toBe(0);
+  });
+
+  it('a mending scroll works cold; a war scroll refuses outside battle', () => {
+    const w = buildSeedWorld();
+    const mc = w.characters[w.mcId];
+    mc.hp.current = 5;
+    const mend = makeItem(w, 'scroll-mend-wounds', 1);
+    addToContainer(w, mend, mc);
+    const res = useConsumable(w, mend.id, mc.id);
+    expect(res).toBeNull();
+    expect(mc.hp.current).toBeGreaterThan(5);
+    const fire = makeItem(w, 'scroll-firebolt', 1);
+    addToContainer(w, fire, mc);
+    useConsumable(w, fire.id, mc.id);
+    expect(w.events.some((e) => e.summary.includes('nothing to bite'))).toBe(true);
   });
 });
 

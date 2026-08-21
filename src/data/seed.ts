@@ -203,6 +203,9 @@ export function buildSeedWorld(): WorldState {
       { proto: 'antidote', qty: 4, price: 60 },
       { proto: 'purification-elixir', qty: 1, price: 150 },
       { proto: 'stoneblood-tonic', qty: 1, price: 120 },
+      { proto: 'scroll-mend-wounds', qty: 3, price: 100 },
+      { proto: 'scroll-firebolt', qty: 2, price: 80 },
+      { proto: 'scroll-sanctuary', qty: 1, price: 140 },
     ] } }),
     loc({ id: 'LOC_DRYGOODS', mapPos: { x: 58, y: 54 }, name: 'The Dry Goods', type: 'shop', district: 'Ironmarket', parent: 'LOC_IRONMARKET', description: 'A general store: rope, tallow, torches, bread that keeps.', atmosphere: 'Cluttered, honest.', services: ['supplies'], dangerRating: 1, connections: ['LOC_IRONMARKET_SQ'], factionInfluence: { FAC_COINGUILD: 5, FAC_WATCH: 4 }, shop: { buys: true, buyRate: 0.4, restockDay: 1, stock: [
       { proto: 'torch', qty: 20, price: 2 },

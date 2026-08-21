@@ -78,6 +78,7 @@ const TABLES: Record<string, { moneyDice: string; entries: LootEntry[] }> = {
   cult: {
     moneyDice: '4d10',
     entries: [
+      { chance: 0.06, make: (w, r) => makeProtoItem(w, r.pick(['scroll-firebolt', 'scroll-smite', 'scroll-frost-grasp']), 1) },
       { chance: 0.3, make: (w) => item(w, { name: 'Ash-Marked Robe', kind: 'armor', slot: 'armor', tier: 'common', defense: 1, durability: { current: 40, max: 60 }, value: 120 }) },
       { chance: 0.18, make: (w) => item(w, { name: 'Mana Draught', kind: 'potion', slot: 'none', tier: 'common', effectKey: 'mana-30', stackable: true, qty: 1, proto: 'mana-draught', value: 90 }) },
       { chance: 0.08, make: (w) => item(w, { name: 'Cipher of the Circle', kind: 'treasure', slot: 'none', tier: 'rare', value: 700 }) },

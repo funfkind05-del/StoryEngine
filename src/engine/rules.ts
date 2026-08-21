@@ -280,6 +280,13 @@ export const ITEM_PROTOS: Record<string, ItemProto> = {
   'grimoire-wither': { key: 'grimoire-wither', name: 'Grimoire of the Thin Places', kind: 'misc', slot: 'none', tier: 'rare', effectKey: 'teach-wither', value: 1000 },
   'folio-spark-edge': { key: 'folio-spark-edge', name: 'Folio of the Edged Hall', kind: 'misc', slot: 'none', tier: 'rare', effectKey: 'teach-spark-edge', value: 950 },
   // enchanted jewelry: ships with its magic already awake
+  // scrolls: one working, sealed in wax — anyone can read one, once.
+  'scroll-firebolt': { key: 'scroll-firebolt', name: 'Scroll of Firebolt', kind: 'potion', slot: 'none', tier: 'common', effectKey: 'cast-firebolt', stackable: true, value: 80 },
+  'scroll-frost-grasp': { key: 'scroll-frost-grasp', name: 'Scroll of Frost-Grasp', kind: 'potion', slot: 'none', tier: 'common', effectKey: 'cast-frost-grasp', stackable: true, value: 90 },
+  'scroll-mend-wounds': { key: 'scroll-mend-wounds', name: 'Scroll of Mending', kind: 'potion', slot: 'none', tier: 'common', effectKey: 'cast-mend-wounds', stackable: true, value: 100 },
+  'scroll-sanctuary': { key: 'scroll-sanctuary', name: 'Scroll of Sanctuary', kind: 'potion', slot: 'none', tier: 'uncommon', effectKey: 'cast-sanctuary', stackable: true, value: 140 },
+  'scroll-smite': { key: 'scroll-smite', name: 'Scroll of Smite', kind: 'potion', slot: 'none', tier: 'uncommon', effectKey: 'cast-smite', stackable: true, value: 160 },
+  'scroll-fireball': { key: 'scroll-fireball', name: 'Scroll of Fireball', kind: 'potion', slot: 'none', tier: 'rare', effectKey: 'cast-fireball', stackable: true, value: 260 },
   'boss-trophy': { key: 'boss-trophy', name: 'Trophy', kind: 'treasure', slot: 'none', tier: 'rare', value: 350 },
   'iron-band': { key: 'iron-band', name: 'Iron Band', kind: 'jewelry', slot: 'ring', tier: 'common', value: 120 },
   'ring-of-the-fox': { key: 'ring-of-the-fox', name: 'Ring of the Fox', kind: 'jewelry', slot: 'ring', tier: 'rare', value: 700, affix: { name: 'of the Fox', stat: 'evasion', amount: 2 } },
@@ -432,6 +439,23 @@ export function consumeItem(world: WorldState, item: Item, target: Character, rn
     const amount = parseInt(item.effectKey.slice(5), 10) || 20;
     eatFood(target, amount);
     lines.push(`${target.name} ate the ${item.name.toLowerCase()}${target.needs.hunger <= 10 ? ' and is well fed' : ''}.`);
+  }
+  if (item.effectKey?.startsWith('cast-')) {
+    // scrolls read cold: mending workings land here; war scrolls only
+    // answer in battle (the combat item action handles those)
+    const spellKey = item.effectKey.slice(5);
+    lines.push(`${target.name} broke the wax on ${item.name} and read the working aloud — the parchment burned away as the words left it.`);
+    if (spellKey === 'mend-wounds') {
+      const healed = Math.min(rng.roll('1d8+2'), target.hp.max - target.hp.current);
+      target.hp.current += healed;
+      lines.push(healed > 0 ? `${target.name}'s wounds closed by ${healed}.` : 'There was nothing to mend; the working faded politely.');
+    } else if (spellKey === 'sanctuary') {
+      target.tempBonuses.push({ stat: 'defense', amount: 2, roundsLeft: 10, source: 'Scroll of Sanctuary' });
+      lines.push('A quiet ward settled over the reader (+2 defense for a while).');
+    } else {
+      lines.push('The working is a battle-working; outside a fight the words had nothing to bite.');
+      return { lines };
+    }
   }
   if (item.effectKey?.startsWith('teach-')) {
     const abilityKey = item.effectKey.slice(6);

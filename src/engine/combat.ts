@@ -532,6 +532,17 @@ function resolveCharacterAction(
     }
     case 'item': {
       const item = action.itemId ? world.items[action.itemId] : null;
+      // scrolls: the words do the work — no mana, no training, one use
+      if (item && item.effectKey?.startsWith('cast-')) {
+        const spellKey = item.effectKey.slice(5);
+        const spell = SPELLS[spellKey];
+        if (spell) {
+          removeUnits(world, item, 1);
+          record({ round, actor: c.id, actorName: c.name, action: 'item', detail: item.name, result: 'info', text: `${c.name} broke the wax on ${item.name} and read the working aloud — the parchment burned to nothing as the words left it.` });
+          resolveCharacterAction(world, combat, c, { actor: c.id, type: 'spell', spellKey, target: action.target, fromScroll: true } as PlannedAction, rng, record);
+          return;
+        }
+      }
       if (item && item.kind === 'potion') {
         const targetChar = action.target ? world.characters[action.target] ?? c : c;
         const remainingBefore = item.qty ?? 1;
@@ -545,7 +556,8 @@ function resolveCharacterAction(
     }
     case 'spell': {
       const spell = action.spellKey ? SPELLS[action.spellKey] : null;
-      if (!spell || c.mana.current < spell.mana) {
+      const fromScroll = (action as PlannedAction & { fromScroll?: boolean }).fromScroll === true;
+      if (!spell || (!fromScroll && c.mana.current < spell.mana)) {
         record({ round, actor: c.id, actorName: c.name, action: 'spell', detail: spell?.name ?? 'unknown spell', result: 'info', text: `${c.name} tried to cast but lacked the mana.` });
         return;
       }
@@ -553,7 +565,7 @@ function resolveCharacterAction(
         record({ round, actor: c.id, actorName: c.name, action: 'spell', detail: spell.name, result: 'info', text: `${c.name} mouthed the words of ${spell.name}, but no sound came.` });
         return;
       }
-      c.mana.current -= spell.mana;
+      if (!fromScroll) c.mana.current -= spell.mana;
       trainSkill(world, c, spell.heal || spell.cures ? 'healing' : 'magic');
       if (spell.heal && spell.healAll) {
         const healedNames: string[] = [];
