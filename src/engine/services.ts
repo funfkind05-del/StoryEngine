@@ -176,7 +176,7 @@ export function buyTempleService(world: WorldState, locId: LocationId, svcKey: s
     }
     target.remains = undefined;
   }
-  const line = performTempleService(svc.key, target);
+  const line = performTempleService(svc.key, target, world);
   logEvent(world, 'temple.service', { service: svc.key, target: target.id, price }, `${svc.label} at ${loc.name} for ${fmtMoney(price)}: ${line}`, { location: locId, witnesses: partyMembers(world).map((c) => c.id) });
   return null;
 }

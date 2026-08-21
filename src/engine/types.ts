@@ -168,6 +168,8 @@ export interface Item {
   affix2?: { name: string; stat: 'attack' | 'defense' | 'critChance' | 'evasion' | 'initiative'; amount: number };
   /** crafted-set family: 2+ equipped pieces wake the family bonus */
   setKey?: string;
+  /** cursed gear will not come off until a temple lifts it */
+  cursed?: boolean;
   /** enchantment present but unread — can't be equipped until identified */
   unidentified?: boolean;
   /** named uniques carry a history worth putting in a book */

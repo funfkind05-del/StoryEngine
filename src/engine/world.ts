@@ -15,7 +15,7 @@ import type {
   WorldTime,
 } from './types';
 import { Rng } from './rng';
-import { CLASSES, advanceNeeds, calendarLabel, needsBlocksHpRegen, needsBlocksStaminaRegen, sleepOff, tickStatusesOverTime, weatherFor, xpForLevel as xpForLevelRule } from './rules';
+import { CLASSES, RACES, advanceNeeds, calendarLabel, needsBlocksHpRegen, needsBlocksStaminaRegen, sleepOff, tickStatusesOverTime, weatherFor, xpForLevel as xpForLevelRule } from './rules';
 import { expireWorldEvents, maybeSpawnWorldEvent } from './worldEvents';
 import { CITY_LORE_AT, loreById } from './codex';
 import { festivalToday } from './festivals';
@@ -399,10 +399,22 @@ export function advanceUntilMorning(world: WorldState, quality: 'bed' | 'rough' 
  * unlocks; bonus attribute points apply with the trainer's side
  * effects (CON→HP, INT→mana).
  */
-export function remakeMc(world: WorldState, charClass: CharClass, bonus: Partial<Attributes>): void {
+export function remakeMc(world: WorldState, charClass: CharClass, bonus: Partial<Attributes>, raceKey?: string): void {
   const mc = world.characters[world.mcId];
   const def = CLASSES[charClass];
   mc.charClass = charClass;
+  const race = raceKey ? RACES[raceKey] : undefined;
+  if (race) {
+    mc.race = race.key;
+    for (const [attr, amt] of Object.entries(race.attrs)) mc.attributes[attr as keyof Attributes] += amt ?? 0;
+    if (race.hp) { mc.hp.max += race.hp; mc.hp.current = mc.hp.max; }
+    if (race.mana) { mc.mana.max += race.mana; mc.mana.current = mc.mana.max; }
+    if (race.evasion) mc.evasion += race.evasion;
+    if (race.defense) mc.defense += race.defense;
+    if (race.critChance) mc.critChance += race.critChance;
+    if (race.initiative) mc.initiative += race.initiative;
+    mc.permanentBonuses.push(`${race.label} blood — ${race.blurb}`);
+  }
   mc.abilities = Object.entries(def.unlocks)
     .filter(([lvl]) => parseInt(lvl, 10) <= mc.level)
     .map(([, key]) => key);

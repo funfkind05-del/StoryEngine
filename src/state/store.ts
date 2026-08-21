@@ -315,7 +315,7 @@ interface AppState {
   deleteSnapshot: (snapId: string) => void;
   doExport: () => void;
   doImport: (file: File) => Promise<void>;
-  resetWorld: (opts?: { deathRule?: WorldState['deathRule']; resurrectionRule?: 'safe' | 'risky'; mcClass?: import('../engine/types').CharClass; mcBonus?: Partial<import('../engine/types').Attributes> }) => void;
+  resetWorld: (opts?: { deathRule?: WorldState['deathRule']; resurrectionRule?: 'safe' | 'risky'; mcClass?: import('../engine/types').CharClass; mcBonus?: Partial<import('../engine/types').Attributes>; mcRace?: string }) => void;
 }
 
 function initial(): { world: WorldState; snapshots: Snapshot[] } {
@@ -1572,9 +1572,15 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   unequip: (itemId) => {
-    const { world, commit } = get();
+    const { world, commit, setToast } = get();
     const item = world.items[itemId];
     if (!item?.equippedBy) return;
+    if (item.cursed) {
+      setToast(`${item.name} will not come off. The temple lifts such things — for a fee.`);
+      if (item.unidentified) { item.unidentified = false; logEvent(world, 'curse.revealed', { item: item.id }, `${item.name} is CURSED — it has grown into the grip of ${world.characters[item.equippedBy]?.name ?? 'its bearer'} and will not come off.`); }
+      commit();
+      return;
+    }
     const owner = world.characters[item.equippedBy];
     if (owner && item.slot !== 'none' && owner.equipment[item.slot] === item.id) {
       delete owner.equipment[item.slot];
@@ -1694,7 +1700,7 @@ export const useStore = create<AppState>((set, get) => ({
     world.masterSeed = randomSeed();
     if (opts?.deathRule) world.deathRule = opts.deathRule;
     if (opts?.resurrectionRule) world.resurrectionRule = opts.resurrectionRule;
-    if (opts?.mcClass || opts?.mcBonus) remakeMc(world, opts?.mcClass ?? 'fighter', opts?.mcBonus ?? {});
+    if (opts?.mcClass || opts?.mcBonus || opts?.mcRace) remakeMc(world, opts?.mcClass ?? 'fighter', opts?.mcBonus ?? {}, opts?.mcRace);
     logEvent(world, 'world.created', {}, `The chronicle of Blackwall City begins. (${world.deathRule} death, ${world.resurrectionRule ?? 'safe'} resurrection)`);
     const snapshots = [makeSnapshot(world, 'manual', 'World created')];
     persistProject(world, snapshots);

@@ -3,15 +3,16 @@
 
 import { describe, expect, it } from 'vitest';
 import { buildSeedWorld } from '../data/seed';
+import { Rng } from './rng';
 import { dailyHomeLife, fulfillWant } from './homelife';
 import { buyFirstHome } from './household';
 import { HOUSEHOLD_ALLOWANCE, inviteToLive, spouseLedger } from './hearth';
-import { relationshipBetween, travelTo } from './world';
+import { relationshipBetween, remakeMc, travelTo } from './world';
 import { dailyFamilyTick, COMING_OF_AGE } from './family';
 import { giveGift } from './romance';
-import { SET_FAMILIES, affixMod, setBonusMod } from './progression';
+import { SET_FAMILIES, affixMod, rollGearMods, setBonusMod } from './progression';
 import { SET_RECIPES, craftSetPiece } from './crafting';
-import { addToContainer, makeItem } from './rules';
+import { addToContainer, makeItem, performTempleService } from './rules';
 import { takeFromParty } from './services';
 import { SPELLS, autoResolve, fieldCast, fieldCastable, startCombat } from './combat';
 import { enterDungeon } from './dungeon';
@@ -162,6 +163,53 @@ describe('the party pool shares out', () => {
     }
     const res = takeFromParty(w, back.id, lyra.id);
     if (res !== null) expect(res).toMatch(/pack is full/);
+  });
+});
+
+describe('races and curses (the classics round)', () => {
+  it('race choice at creation moves the sheet and leaves a mark', () => {
+    const w = buildSeedWorld();
+    const before = { hp: w.characters[w.mcId].hp.max, con: w.characters[w.mcId].attributes.constitution };
+    remakeMc(w, 'fighter', {}, 'dwarf');
+    const mc = w.characters[w.mcId];
+    expect(mc.race).toBe('dwarf');
+    expect(mc.attributes.constitution).toBe(before.con + 2);
+    expect(mc.hp.max).toBe(before.hp + 6);
+    expect(mc.permanentBonuses.some((b) => b.includes('Dwarf blood'))).toBe(true);
+  });
+
+  it('cursed gear hides, sticks, and lets go at the temple', () => {
+    const w = buildSeedWorld();
+    const mc = w.characters[w.mcId];
+    const it = makeItem(w, 'iron-longsword', 1);
+    it.cursed = true;
+    it.unidentified = true;
+    it.affix = { name: 'of the False Warlord', stat: 'attack', amount: -2 };
+    addToContainer(w, it, mc);
+    mc.equipment['main-hand'] = it.id;
+    it.equippedBy = mc.id;
+    // the temple frees it
+    const msg = performTempleService('remove-curse', mc, w);
+    expect(msg).toMatch(/released/);
+    expect(it.cursed).toBe(false);
+    expect(it.unidentified).toBe(false);
+  });
+
+  it('about one drop in sixteen is cursed, and always hides as unidentified', () => {
+    const w = buildSeedWorld();
+    const rng = new Rng(42);
+    let cursed = 0;
+    for (let i = 0; i < 400; i++) {
+      const it = makeItem(w, 'iron-longsword', 1);
+      rollGearMods(rng, it, 1);
+      if (it.cursed) {
+        cursed++;
+        expect(it.unidentified).toBe(true);
+        expect((it.affix?.amount ?? 0)).toBeLessThan(0);
+      }
+    }
+    expect(cursed).toBeGreaterThan(8);
+    expect(cursed).toBeLessThan(60);
   });
 });
 

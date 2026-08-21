@@ -63,6 +63,31 @@ export function veterancyPayMult(level: number): number {
   return 1 + 0.55 * l + 0.02 * l * l;
 }
 
+// ---------- Races ----------
+// The classics never made everyone human. Attribute leans plus one
+// small permanent knack each — chosen at creation, worn for 20 books.
+export interface RaceDef {
+  key: string;
+  label: string;
+  blurb: string;
+  attrs: Partial<Record<'strength' | 'dexterity' | 'constitution' | 'intelligence' | 'wisdom' | 'charisma', number>>;
+  hp?: number;
+  mana?: number;
+  evasion?: number;
+  defense?: number;
+  critChance?: number;
+  initiative?: number;
+}
+
+export const RACES: Record<string, RaceDef> = {
+  human: { key: 'human', label: 'Human', blurb: 'Blackwall standard issue. Adaptable, insurable, everywhere.', attrs: { charisma: 1 }, hp: 2 },
+  dwarf: { key: 'dwarf', label: 'Dwarf', blurb: 'Stone remembers, and so do they. Harrow vouches.', attrs: { constitution: 2, charisma: -1 }, hp: 6, defense: 1 },
+  elf: { key: 'elf', label: 'Elf', blurb: 'Older than the cordon, too polite to say so.', attrs: { dexterity: 1, intelligence: 1, constitution: -1 }, mana: 6, evasion: 1 },
+  gnome: { key: 'gnome', label: 'Gnome', blurb: 'Small hands, smaller patience, immaculate ledgers.', attrs: { intelligence: 2, strength: -1 }, mana: 8 },
+  'half-orc': { key: 'half-orc', label: 'Half-Orc', blurb: 'The Pit loves them. The Watch watches them. Both are right.', attrs: { strength: 2, intelligence: -1 }, hp: 4, critChance: 2 },
+  saltborn: { key: 'saltborn', label: 'Saltborn', blurb: 'Tidecourt blood: webbed rumors, brine-proof lungs, sea-grey eyes.', attrs: { wisdom: 1, constitution: 1, charisma: -1 }, hp: 2, initiative: 1 },
+};
+
 // ---------- Classes ----------
 export interface ClassDef {
   key: CharClass;
@@ -735,7 +760,7 @@ export function templePrice(world: WorldState, svc: TempleService, payer: Charac
   return mult === Infinity ? Infinity : Math.round(svc.basePrice * mult);
 }
 
-export function performTempleService(svcKey: string, target: Character): string {
+export function performTempleService(svcKey: string, target: Character, world?: WorldState): string {
   switch (svcKey) {
     case 'minor-healing':
       target.hp.current = Math.min(target.hp.max, target.hp.current + Math.ceil(target.hp.max / 2));
@@ -749,9 +774,17 @@ export function performTempleService(svcKey: string, target: Character): string 
     case 'cure-disease':
       cureStatus(target, 'diseased');
       return `${target.name}'s disease was cured.`;
-    case 'remove-curse':
+    case 'remove-curse': {
       cureStatus(target, 'cursed');
-      return `The curse on ${target.name} was lifted.`;
+      let freed = 0;
+      for (const iid of Object.values(target.equipment)) {
+        const it = iid && world ? world.items[iid] : null;
+        if (it?.cursed) { it.cursed = false; it.unidentified = false; freed++; }
+      }
+      return freed > 0
+        ? `The curse on ${target.name} was lifted — and ${freed} piece${freed > 1 ? 's' : ''} of gear released ${freed > 1 ? 'their' : 'its'} grip.`
+        : `The curse on ${target.name} was lifted.`;
+    }
     case 'mend-injuries': {
       const treated = treatInjuries(target);
       return treated.length

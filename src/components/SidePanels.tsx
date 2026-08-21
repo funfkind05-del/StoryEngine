@@ -24,6 +24,7 @@ import {
   templePrice,
   tierColor,
   trainingCost,
+  RACES,
 } from '../engine/rules';
 import { Bar, RelBar, Tag } from './common';
 import { activeQuests, describeReward, objectiveDone, objectiveLabel, offeredQuestsAt, questProgress } from '../engine/quests';
@@ -1836,6 +1837,7 @@ function SavesPanel() {
   const [bookTitle, setBookTitle] = useState('');
   const [newDeathRule, setNewDeathRule] = useState<'story' | 'classic' | 'permadeath'>('story');
   const [newResRule, setNewResRule] = useState<'safe' | 'risky'>('safe');
+  const [newRace, setNewRace] = useState('human');
   const [newClass, setNewClass] = useState<'fighter' | 'rogue' | 'mage' | 'priest' | 'ranger' | 'bard' | 'monk' | 'spellblade' | 'warlock' | 'paladin' | 'necromancer' | 'berserker' | 'cultivator' | 'alchemist' | 'tidecaller' | 'oneiromancer'>('fighter');
   const [newBonus, setNewBonus] = useState<Record<string, number>>({});
   const bonusSpent = Object.values(newBonus).reduce((a, b) => a + b, 0);
@@ -1947,6 +1949,12 @@ function SavesPanel() {
         </select>
       </div>
       <div className="row small">
+        <label className="grow">And what blood?</label>
+        <select value={newRace} onChange={(e) => setNewRace(e.target.value)}>
+          {Object.values(RACES).map((r) => <option key={r.key} value={r.key} title={r.blurb}>{r.label} — {r.blurb}</option>)}
+        </select>
+      </div>
+      <div className="row small">
         <label className="grow">And who is Kael?</label>
         <select value={newClass} onChange={(e) => setNewClass(e.target.value as typeof newClass)}>
           <option value="fighter">Fighter — the sword remembers</option>
@@ -1985,7 +1993,7 @@ function SavesPanel() {
       <div className="row">
         <button
           className="danger"
-          onClick={() => { if (confirm(`Reset the entire world and manuscript (${newClass} Kael, ${newDeathRule} death, ${newResRule} resurrection)? Export first if you care about this one.`)) resetWorld({ deathRule: newDeathRule, resurrectionRule: newResRule, mcClass: newClass, mcBonus: newBonus }); }}
+          onClick={() => { if (confirm(`Reset the entire world and manuscript (${newClass} Kael, ${newDeathRule} death, ${newResRule} resurrection)? Export first if you care about this one.`)) resetWorld({ deathRule: newDeathRule, resurrectionRule: newResRule, mcClass: newClass, mcBonus: newBonus, mcRace: newRace }); }}
         >
           Begin a new chronicle (reset world)
         </button>

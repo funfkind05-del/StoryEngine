@@ -90,6 +90,16 @@ export function rollGearMods(rng: Rng, item: Item, luck = 1): void {
       break;
     }
   }
+  // the classics' oldest trap: some enchantments hate their bearer.
+  // Cursed gear hides behind 'unidentified' and will not come off.
+  if (rng.chance(0.06)) {
+    const affix = rng.pick(AFFIXES);
+    item.affix = { name: affix.name.replace('of the', 'of the False'), stat: affix.stat, amount: -Math.max(1, affix.amount) };
+    item.cursed = true;
+    item.unidentified = true;
+    item.value = Math.max(5, Math.round(item.value * 0.4));
+    return;
+  }
   // affix
   if (rng.chance(Math.min(0.5, 0.12 * luck))) {
     const affix = rng.pick(AFFIXES);
