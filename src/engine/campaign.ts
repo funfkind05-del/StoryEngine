@@ -313,7 +313,7 @@ export function ensureCampaign(world: WorldState) {
 // too long, the Ash Circle advances — the world degrades in stages,
 // loudly, until the party moves. Toggleable (world.doomEnabled).
 
-export const DOOM_STAGE_DAYS = 30; // idle days per doom advance
+export const DOOM_STAGE_DAYS = 30; // idle days before the FIRST advance
 export const DOOM_MAX = 4;
 
 export function doomTick(world: WorldState) {
@@ -322,7 +322,10 @@ export function doomTick(world: WorldState) {
   if (!open) return; // spine finished — the clock stops
   world.doom ??= { stage: 0, lastAdvanceDay: open.offeredDay };
   const idleSince = Math.max(world.doom.lastAdvanceDay, open.offeredDay);
-  if (world.time.day - idleSince < DOOM_STAGE_DAYS || world.doom.stage >= DOOM_MAX) return;
+  // each advance waits longer than the last: pressure that breathes
+  // instead of pinning at 4 by mid-game (bot runs maxed doom by day 160)
+  const waitDays = DOOM_STAGE_DAYS + world.doom.stage * 15;
+  if (world.time.day - idleSince < waitDays || world.doom.stage >= DOOM_MAX) return;
   world.doom.stage += 1;
   world.doom.lastAdvanceDay = world.time.day;
   const stage = world.doom.stage;
@@ -334,6 +337,14 @@ export function doomTick(world: WorldState) {
     const cleared = Object.values(world.dungeons).find((d) => d.bossDefeated && d.id !== 'DUN_DEEP_001');
     if (cleared) {
       cleared.bossDefeated = false;
+      // the stirred thing gets a BODY — a flag without a warden made
+      // the dungeon eternally 'open' and unkillable (bot-found wedge)
+      const bossRoom = Object.values(cleared.rooms).find((r) => r.isBossRoom);
+      if (bossRoom) {
+        bossRoom.enemies = 'alive';
+        bossRoom.encounterKey = cleared.bossKey;
+        bossRoom.clearedDay = undefined;
+      }
       logEvent(world, 'doom', { stage, dungeon: cleared.id }, `THE CIRCLE MOVES: something stirs again in ${cleared.name}. What the party put down has been... encouraged back up.`);
     } else {
       logEvent(world, 'doom', { stage }, 'THE CIRCLE MOVES: the under-river runs warm for a week straight. The sewermen stop going below the second gallery.');

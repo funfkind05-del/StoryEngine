@@ -159,6 +159,16 @@ function equipBest(world: WorldState): void {
 
 function pickTargetDungeon(world: WorldState): string | null {
   const lvl = avgLevel(world);
+  // the spine's clear-boss target outranks farming, once we're ready:
+  // grinding the 'lowest open' dungeon while Sella waits is how the
+  // Circle got four quiet months (bot-found wedge)
+  const mainBoss = Object.values(world.quests).find((q) => q.isMain && q.status === 'active'
+    && q.objectives.some((o) => o.kind === 'clear-boss' && !o.done));
+  if (mainBoss) {
+    const obj = mainBoss.objectives.find((o) => o.kind === 'clear-boss' && !o.done);
+    const target = obj && 'dungeonId' in obj ? world.dungeons[obj.dungeonId] : null;
+    if (target && lvl >= (parseInt(target.recommendedLevel, 10) || 1) - 1) return target.id;
+  }
   const open = Object.values(world.dungeons)
     .filter((d) => !d.bossDefeated)
     .map((d) => {
@@ -523,8 +533,10 @@ export function autoplayStep(world: WorldState, state: AutoplayerState, _rng: Rn
     }
   }
 
-  // train anyone who can afford it
-  for (const c of partyMembers(world)) {
+  // train anyone who can afford it — LOWEST level first, because the
+  // dungeon gates check the party's average, not its best man
+  const trainees = [...partyMembers(world)].sort((a, b) => a.level - b.level);
+  for (const c of trainees) {
     if (!levelUpAvailable(c)) continue;
     if (mc.money < trainingCost(c.level)) continue;
     const hall = Object.values(world.locations).find((l) => l.trainerFor === c.charClass || (l.temple && c.charClass === 'priest'));
@@ -641,6 +653,14 @@ export function autoplayStep(world: WorldState, state: AutoplayerState, _rng: Rn
   if (readyQuest && readyQuest.giverLocation !== world.partyLocation) {
     const rTurn = goTo(readyQuest.giverLocation, 'to-turnin');
     if (rTurn) return rTurn;
+  }
+
+  // the spine does not wait: an offered MAIN quest is worth the walk
+  // (leaving it lying is how the Circle gets its thirty quiet days)
+  const mainOffer = Object.values(world.quests).find((q) => q.isMain && q.status === 'offered');
+  if (mainOffer && mainOffer.giverLocation !== world.partyLocation) {
+    const rMain = goTo(mainOffer.giverLocation, 'to-spine');
+    if (rMain) return rMain;
   }
 
   // otherwise: to the hunting grounds

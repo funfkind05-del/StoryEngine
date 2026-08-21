@@ -57,7 +57,10 @@ export function trainingCost(currentLevel: number): number {
  * with 30k XP banked. Deeper monsters carry more; boards pay
  * veterans for harder work. */
 export function veterancyPayMult(level: number): number {
-  return 1 + 0.55 * Math.max(0, level - 1);
+  const l = Math.max(0, level - 1);
+  // gently superlinear: the deep books pay for five-person training
+  // bills (the bot banked 1.9M xp at L52 because they didn't)
+  return 1 + 0.55 * l + 0.02 * l * l;
 }
 
 // ---------- Classes ----------

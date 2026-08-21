@@ -15,6 +15,7 @@ import { addToContainer, makeItem } from './rules';
 import { takeFromParty } from './services';
 import { SPELLS, autoResolve, fieldCast, fieldCastable, startCombat } from './combat';
 import { enterDungeon } from './dungeon';
+import { doomTick } from './campaign';
 import type { Character } from './types';
 
 function homeWithResidents(n: 1 | 2) {
@@ -161,6 +162,26 @@ describe('the party pool shares out', () => {
     }
     const res = takeFromParty(w, back.id, lyra.id);
     if (res !== null) expect(res).toMatch(/pack is full/);
+  });
+});
+
+describe('the Circle resurrects wardens with bodies', () => {
+  it('doom stage 2 restores the boss room to alive — no more unkillable open dungeons', () => {
+    const w = buildSeedWorld();
+    enterDungeon(w, 'DUN_OLDQUARTER_001');
+    const d = w.dungeons['DUN_OLDQUARTER_001'];
+    d.bossDefeated = true;
+    const bossRoom = Object.values(d.rooms).find((r) => r.isBossRoom)!;
+    bossRoom.enemies = 'dead';
+    bossRoom.clearedDay = 1;
+    // idle main quest + 30 days → doom advances to 1, then 2
+    w.doom = { stage: 1, lastAdvanceDay: 1 };
+    w.time.day = 50; // stage 1→2 waits 30+15 idle days now
+    doomTick(w);
+    expect(w.doom!.stage).toBe(2);
+    expect(d.bossDefeated).toBe(false);
+    expect(bossRoom.enemies).toBe('alive');
+    expect(bossRoom.encounterKey).toBe(d.bossKey);
   });
 });
 

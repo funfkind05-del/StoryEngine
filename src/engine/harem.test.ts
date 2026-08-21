@@ -150,9 +150,10 @@ describe("the Circle's clock", () => {
     // no double-advance same window
     doomTick(w);
     expect(w.doom?.stage).toBe(1);
-    // stage 2 revives a cleared dungeon if any
+    // stage 2 revives a cleared dungeon if any (each advance waits
+    // 15 more days than the last)
     w.dungeons['DUN_OLDQUARTER_001'].bossDefeated = true;
-    w.time.day += DOOM_STAGE_DAYS;
+    w.time.day += DOOM_STAGE_DAYS + 15;
     doomTick(w);
     expect(w.doom?.stage).toBe(2);
     expect(w.dungeons['DUN_OLDQUARTER_001'].bossDefeated).toBe(false);
