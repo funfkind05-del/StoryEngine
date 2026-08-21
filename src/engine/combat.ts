@@ -18,7 +18,7 @@ import type {
   WorldState,
 } from './types';
 import { MONSTERS } from './monsters';
-import { Rng } from './rng';
+import { Rng, randomSeed } from './rng';
 import { addMinutes, grantXp, logEvent, nextId, partyMembers, reactToAct } from './world';
 import {
   addToContainer,
@@ -910,6 +910,76 @@ function finishCombat(world: WorldState, combat: CombatState) {
     `Combat ended in ${combat.outcome} after ${combat.round} round${combat.round > 1 ? 's' : ''} (${combat.encounterDesc}).`,
     { seed: combat.seed, location: combat.locationId, witnesses: combat.partyIds },
   );
+}
+
+
+// ---------- field casting ----------
+// A spell known in battle is known in the corridor outside it. Only
+// mending magic works cold: heals, party heals, and purifications —
+// hurling fire at nothing trains nobody.
+
+/** Which of a character's spells can be cast outside combat. */
+export function fieldCastable(c: Character): string[] {
+  return c.abilities.filter((k) => {
+    const sp = SPELLS[k];
+    return !!sp && (!!sp.heal || !!sp.cures) && !sp.damage;
+  });
+}
+
+/** Cast a mending spell outside combat. Heals target the party's most
+ * wounded (or the named target); cures strip treatable statuses. */
+export function fieldCast(world: WorldState, casterId: string, spellKey: string, targetId?: string): string | null {
+  if (world.combat?.active) return 'Not while blades are out — cast it in the fight.';
+  const c = world.characters[casterId];
+  const spell = SPELLS[spellKey];
+  if (!c || !c.alive) return 'Who?';
+  if (!spell || !c.abilities.includes(spellKey)) return `${c?.name ?? 'Nobody'} does not know that working.`;
+  if (!spell.heal && !spell.cures) return 'That working only answers in battle.';
+  if (c.mana.current < spell.mana) return `${c.name} needs ${spell.mana}✦ and has ${c.mana.current}.`;
+  const party = partyMembers(world);
+  const rng = new Rng(randomSeed());
+  if (spell.heal && spell.healAll) {
+    if (party.every((a) => a.hp.current >= a.hp.max)) return 'Nobody is carrying a wound worth the breath.';
+    c.mana.current -= spell.mana;
+    addMinutes(world, 10);
+    trainSkill(world, c, 'healing');
+    const healedNames: string[] = [];
+    for (const ally of party) {
+      if (!ally.alive || ally.hp.current >= ally.hp.max) continue;
+      const healed = Math.min(rng.roll(spell.heal) + Math.floor(c.skills.magic / 2), ally.hp.max - ally.hp.current);
+      ally.hp.current += healed;
+      healedNames.push(`${ally.name} +${healed}`);
+    }
+    logEvent(world, 'spell.field', { caster: c.id, spell: spellKey }, `${c.name} cast ${spell.name} over the party while the world held still: ${healedNames.join(', ')}.`, { location: world.partyLocation, witnesses: party.map((x) => x.id) });
+    return null;
+  }
+  if (spell.heal) {
+    const target = targetId
+      ? world.characters[targetId]
+      : [...party].filter((a) => a.alive && a.hp.current < a.hp.max).sort((a, b) => a.hp.current / a.hp.max - b.hp.current / b.hp.max)[0];
+    if (!target || !target.alive) return 'No one to mend.';
+    if (target.hp.current >= target.hp.max) return `${target.name} is whole already.`;
+    c.mana.current -= spell.mana;
+    addMinutes(world, 10);
+    trainSkill(world, c, 'healing');
+    const healed = Math.min(rng.roll(spell.heal) + Math.floor(c.skills.magic / 2), target.hp.max - target.hp.current);
+    target.hp.current += healed;
+    logEvent(world, 'spell.field', { caster: c.id, spell: spellKey, target: target.id }, `${c.name} laid ${spell.name} over ${target.id === c.id ? 'their own wounds' : `${target.name}'s wounds`}: +${healed} hp, unhurried, done properly.`, { location: world.partyLocation, witnesses: party.map((x) => x.id) });
+    return null;
+  }
+  // cures
+  const CURABLE = ['poisoned', 'diseased', 'cursed', 'bleeding', 'burning'];
+  const target = targetId
+    ? world.characters[targetId]
+    : party.find((a) => a.alive && a.statuses.some((st) => CURABLE.includes(st.key)));
+  if (!target || !target.statuses.some((st) => CURABLE.includes(st.key))) return 'Nothing here needs purifying.';
+  c.mana.current -= spell.mana;
+  addMinutes(world, 10);
+  trainSkill(world, c, 'healing');
+  const cured = target.statuses.filter((st) => CURABLE.includes(st.key)).map((st) => st.key);
+  for (const key of cured) cureStatus(target, key as never);
+  logEvent(world, 'spell.field', { caster: c.id, spell: spellKey, target: target.id, cured }, `${c.name} spoke ${spell.name} over ${target.name} — ${cured.join(', ')} burned away like fog off the morning.`, { location: world.partyLocation, witnesses: party.map((x) => x.id) });
+  return null;
 }
 
 /** Sensible auto-play for one party member's round. */

@@ -40,6 +40,7 @@ import { CARRIAGE_STOPS } from '../engine/services';
 import { RECIPES, canCraft } from '../engine/crafting';
 import { AFFIXES, SET_FAMILIES, ascensionOptions, callingOptions, transcendenceOptions } from '../engine/progression';
 import { HEARTH_ACTIVITIES } from '../engine/hearth';
+import { SPELLS, fieldCastable } from '../engine/combat';
 import { classArtUrl, propUrl } from '../engine/artFiles';
 import { COMPANION_ARCS } from '../engine/companions';
 import { FirstPersonView } from './FirstPersonView';
@@ -804,6 +805,7 @@ function PartyPanel() {
   const ascend = useStore((s) => s.ascend);
   const answerCalling = useStore((s) => s.answerCalling);
   const transcend = useStore((s) => s.transcend);
+  const fieldCastAct = useStore((s) => s.fieldCastAct);
   const setRow = useStore((s) => s.setRow);
   const party = Object.values(world.characters).filter((c) => c.inParty && c.alive);
   return (
@@ -850,6 +852,18 @@ function PartyPanel() {
               {transcendenceOptions(c).map((path) => (
                 <button key={path.key} onClick={() => transcend(c.id, path.key)} title={`${path.blurb} (${fmtMoney(8000)}, at the class hall)`}>{path.label}</button>
               ))}
+            </div>
+          )}
+          {!world.combat && fieldCastable(c).length > 0 && (
+            <div className="row small">
+              {fieldCastable(c).map((k) => {
+                const sp = SPELLS[k];
+                return (
+                  <button key={k} disabled={c.mana.current < sp.mana} onClick={() => fieldCastAct(c.id, k)} title={`${sp.heal ? (sp.healAll ? 'Mends the whole party' : 'Mends the most wounded') : 'Purifies afflictions'} — ${sp.mana}✦, 10 min`}>
+                    ✨ {sp.name} ({sp.mana}✦)
+                  </button>
+                );
+              })}
             </div>
           )}
           {(world.wants ?? []).filter((wnt) => wnt.charId === c.id).map((wnt) => (

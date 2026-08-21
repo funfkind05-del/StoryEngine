@@ -12,7 +12,7 @@ import { giveGift } from './romance';
 import { SET_FAMILIES, affixMod, setBonusMod } from './progression';
 import { SET_RECIPES, craftSetPiece } from './crafting';
 import { addToContainer, makeItem } from './rules';
-import { autoResolve, startCombat } from './combat';
+import { SPELLS, autoResolve, fieldCast, fieldCastable, startCombat } from './combat';
 import { enterDungeon } from './dungeon';
 import type { Character } from './types';
 
@@ -137,6 +137,42 @@ describe('children grow up', () => {
     dailyFamilyTick(w);
     expect(child.charClass).not.toBe('commoner');
     expect(w.events.some((e) => e.kind === 'family.coming-of-age')).toBe(true);
+  });
+});
+
+describe('field casting', () => {
+  it('a priest mends the party between fights — mana spent, wounds closed, refusals honest', () => {
+    const w = buildSeedWorld();
+    const yvenne = w.characters['CHAR_YVENNE'];
+    yvenne.inParty = true;
+    yvenne.location = w.partyLocation;
+    expect(fieldCastable(yvenne)).toContain('mend-wounds');
+    const kael = w.characters[w.mcId];
+    // whole party: nothing to mend
+    expect(fieldCast(w, yvenne.id, 'mend-wounds')).toMatch(/whole already|No one to mend/);
+    kael.hp.current = 3;
+    const manaBefore = yvenne.mana.current;
+    expect(fieldCast(w, yvenne.id, 'mend-wounds')).toBeNull();
+    expect(kael.hp.current).toBeGreaterThan(3);
+    expect(yvenne.mana.current).toBe(manaBefore - SPELLS['mend-wounds'].mana);
+    expect(w.events.some((e) => e.kind === 'spell.field')).toBe(true);
+    // out of breath: refused
+    yvenne.mana.current = 0;
+    kael.hp.current = 3;
+    expect(fieldCast(w, yvenne.id, 'mend-wounds')).toMatch(/needs/);
+    // damage spells never cast cold
+    expect(fieldCast(w, w.mcId, 'firebolt')).toMatch(/does not know|only answers in battle/);
+  });
+
+  it('purify strips afflictions in the field', () => {
+    const w = buildSeedWorld();
+    const yvenne = w.characters['CHAR_YVENNE'];
+    yvenne.inParty = true;
+    yvenne.abilities.push('purify');
+    const kael = w.characters[w.mcId];
+    kael.statuses.push({ key: 'poisoned', appliedDay: w.time.day, minutesUntreated: 0 } as never);
+    expect(fieldCast(w, yvenne.id, 'purify')).toBeNull();
+    expect(kael.statuses.some((st) => st.key === 'poisoned')).toBe(false);
   });
 });
 

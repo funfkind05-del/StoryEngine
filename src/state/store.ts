@@ -15,7 +15,7 @@ import { buildSeedWorld } from '../data/seed';
 import { advanceUntilMorning, logEvent, nextId, partyMembers, tick, travelTo } from '../engine/world';
 import { SONGS, answerRiddle, campInDungeon, disarmTrap, enterDungeon, exitDungeon, isDark, lightTorch, moveInDungeon, searchRoom, startSong, stopSong, takeKey, type MoveDir } from '../engine/dungeon';
 import { generateDungeonEncounter, rollCityEncounter } from '../engine/encounter';
-import { closeCombat, resolveRound, startCombat, takeLoot } from '../engine/combat';
+import { fieldCast, closeCombat, resolveRound, startCombat, takeLoot } from '../engine/combat';
 import { openChest } from '../engine/loot';
 import { loadProject, makeSnapshot, persistProject, pruneSnapshots, restoreSnapshot, exportProject, importProject, clearProject } from '../engine/saves';
 import { promoteNpc } from '../engine/npc';
@@ -244,6 +244,7 @@ interface AppState {
   ascend: (charId: string, pathKey: string) => void;
   answerCalling: (charId: string, pathKey: string) => void;
   transcend: (charId: string, pathKey: string) => void;
+  fieldCastAct: (casterId: string, spellKey: string, targetId?: string) => void;
   compactLog: () => void;
 
   // companion moments
@@ -1075,6 +1076,13 @@ export const useStore = create<AppState>((set, get) => ({
     if (err) setToast(err);
     else sfx('levelup');
     commit({ autosave: err ? undefined : 'Transcendence' });
+  },
+
+  fieldCastAct: (casterId, spellKey, targetId) => {
+    const { world, commit, setToast } = get();
+    const err = fieldCast(world, casterId, spellKey, targetId);
+    if (err) setToast(err);
+    commit();
   },
 
   compactLog: () => {

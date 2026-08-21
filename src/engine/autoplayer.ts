@@ -7,7 +7,7 @@
 
 import type { Character, PendingEncounter, WorldState } from './types';
 import { Rng } from './rng';
-import { autoRound, closeCombat, startCombat, takeLoot } from './combat';
+import { SPELLS, fieldCast, fieldCastable, autoRound, closeCombat, startCombat, takeLoot } from './combat';
 import { generateDungeonEncounter, rollCityEncounter } from './encounter';
 import {
   answerRiddle,
@@ -203,6 +203,15 @@ export function autoplayStep(world: WorldState, state: AutoplayerState, _rng: Rn
     if (mc.money >= due) arrestPay(world);
     else arrestSurrender(world);
     return 'arrest';
+  }
+
+  // mend when hurt: a healer's breath is cheaper than a potion
+  if (!world.combat && partyMembers(world).some((c) => c.hp.current < c.hp.max * 0.7)) {
+    for (const healer of partyMembers(world)) {
+      const spells = fieldCastable(healer).filter((k) => !SPELLS[k].cures);
+      const best = spells.sort((a, b) => SPELLS[b].mana - SPELLS[a].mana).find((k) => healer.mana.current >= SPELLS[k].mana);
+      if (best && fieldCast(world, healer.id, best) === null) return 'field-heal';
+    }
   }
 
   // drink when hurt
