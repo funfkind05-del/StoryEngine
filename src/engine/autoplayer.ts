@@ -26,10 +26,10 @@ import {
 } from './dungeon';
 import { partyMembers, travelTo } from './world';
 import { openChest } from './loot';
-import { buyFromShop, buyMeal, buyTempleService, poorRelief, restAtInn, restockShops, sellToShop, trainAt, useConsumable } from './services';
+import { buyFromShop, buyMeal, buyTempleService, poorRelief, restAtInn, repairAtShop, restockShops, sellToShop, trainAt, useConsumable } from './services';
 import { arrestPay, arrestSurrender } from './crime';
 import { acceptQuest, checkQuests, refreshJobs, turnInQuest } from './quests';
-import { levelUpAvailable, trainingCost } from './rules';
+import { ITEM_PROTOS, levelUpAvailable, trainingCost } from './rules';
 import { advanceUntilMorning } from './world';
 
 export interface AutoplayerState {
@@ -530,6 +530,36 @@ export function autoplayStep(world: WorldState, state: AutoplayerState, _rng: Rn
         const rTemple = goTo(temple.id, 'to-mend');
         if (rTemple) return rTemple;
       }
+    }
+  }
+
+  // broken steel loses fights a L47 party has no business losing:
+  // repair equipped gear at any smith, and never delve bare-handed
+  const battered = partyMembers(world).flatMap((c) => Object.values(c.equipment))
+    .map((iid) => (iid ? world.items[iid] : null))
+    .filter((it) => it?.durability && (it.broken || it.durability.current < it.durability.max * 0.35));
+  if (battered.length > 0) {
+    const smith = Object.values(world.locations).find((l) => l.services.includes('repair'));
+    if (smith && world.partyLocation === smith.id) {
+      const it = battered[0]!;
+      const cost = Math.max(10, it.durability!.max - it.durability!.current);
+      if (mc.money >= cost && repairAtShop(world, smith.id, it.id) === null) return 'repair';
+    } else if (smith && battered.some((it) => it!.broken) && mc.money >= 60) {
+      const rSmith = goTo(smith.id, 'to-smith');
+      if (rSmith) return rSmith;
+    }
+  }
+  // a member with no working weapon buys one off the rack
+  const unarmed = partyMembers(world).find((c) => {
+    const wid = c.equipment['main-hand'];
+    const wpn = wid ? world.items[wid] : null;
+    return !wpn || wpn.broken;
+  });
+  if (unarmed && loc?.shop?.stock.some((e) => e.qty > 0 && ITEM_PROTOS[e.proto]?.kind === 'weapon')) {
+    const idx = loc.shop.stock.findIndex((e) => e.qty > 0 && ITEM_PROTOS[e.proto]?.kind === 'weapon' && e.price <= mc.money * 0.5);
+    if (idx >= 0 && buyFromShop(world, loc.id, idx, unarmed) === null) {
+      equipBest(world);
+      return 'buy-weapon';
     }
   }
 

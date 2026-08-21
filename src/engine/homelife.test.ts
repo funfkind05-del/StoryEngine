@@ -13,7 +13,7 @@ import { giveGift } from './romance';
 import { SET_FAMILIES, affixMod, rollGearMods, setBonusMod } from './progression';
 import { SET_RECIPES, craftSetPiece } from './crafting';
 import { addToContainer, makeItem, performTempleService } from './rules';
-import { takeFromParty } from './services';
+import { repairAtShop, takeFromParty } from './services';
 import { SPELLS, autoResolve, fieldCast, fieldCastable, startCombat } from './combat';
 import { enterDungeon } from './dungeon';
 import { doomTick } from './campaign';
@@ -163,6 +163,23 @@ describe('the party pool shares out', () => {
     }
     const res = takeFromParty(w, back.id, lyra.id);
     if (res !== null) expect(res).toMatch(/pack is full/);
+  });
+});
+
+describe('the smith mends what he sells', () => {
+  it('shop repair fixes broken gear for coin; non-smiths refuse', () => {
+    const w = buildSeedWorld();
+    const mc = w.characters[w.mcId];
+    mc.money = 500;
+    const sword = makeItem(w, 'iron-longsword', 1);
+    addToContainer(w, sword, mc);
+    sword.durability = { current: 0, max: 120 };
+    sword.broken = true;
+    expect(repairAtShop(w, 'LOC_DOCK_0042', sword.id)).toMatch(/Nobody here works metal/);
+    expect(repairAtShop(w, 'LOC_FORGE', sword.id)).toBeNull();
+    expect(sword.broken).toBe(false);
+    expect(sword.durability.current).toBe(120);
+    expect(mc.money).toBe(500 - 120);
   });
 });
 

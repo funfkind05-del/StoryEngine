@@ -56,7 +56,7 @@ import { craft, craftSetPiece, enchantItem, gatherResource } from '../engine/cra
 import { pickLock, takeLorebook, useShrine } from '../engine/dungeon';
 import { engageWorldEvent } from '../engine/worldEvents';
 import { hearthTime, inviteToLive } from '../engine/hearth';
-import { adoptStray, buyMount, fulfillWrit, goFishing, rideCarriage } from '../engine/services';
+import { adoptStray, buyMount, fulfillWrit, goFishing, repairAtShop, rideCarriage } from '../engine/services';
 import { checkAchievements } from '../engine/achievements';
 import { giveGift, spendTimeWith } from '../engine/romance';
 import { autoResolve, autoRound } from '../engine/combat';
@@ -245,6 +245,7 @@ interface AppState {
   answerCalling: (charId: string, pathKey: string) => void;
   transcend: (charId: string, pathKey: string) => void;
   fieldCastAct: (casterId: string, spellKey: string, targetId?: string) => void;
+  shopRepair: (itemId: string) => void;
   compactLog: () => void;
 
   // companion moments
@@ -1082,6 +1083,14 @@ export const useStore = create<AppState>((set, get) => ({
     const { world, commit, setToast } = get();
     const err = fieldCast(world, casterId, spellKey, targetId);
     if (err) setToast(err);
+    commit();
+  },
+
+  shopRepair: (itemId) => {
+    const { world, commit, setToast } = get();
+    const err = repairAtShop(world, world.partyLocation, itemId);
+    if (err) setToast(err);
+    else sfx('coin');
     commit();
   },
 

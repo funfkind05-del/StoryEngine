@@ -919,6 +919,7 @@ function ItemCard({ iid, ownerChar }: { iid: string; ownerChar?: string }) {
   const homeDeposit = useStore((s) => s.homeDeposit);
   const homeWithdraw = useStore((s) => s.homeWithdraw);
   const identify = useStore((s) => s.identifyItem);
+  const shopRepair = useStore((s) => s.shopRepair);
   const it = world.items[iid];
   if (!it) return null;
   const equipped = !!ownerChar && it.equippedBy === ownerChar;
@@ -957,6 +958,9 @@ function ItemCard({ iid, ownerChar }: { iid: string; ownerChar?: string }) {
         })()}
         {atHome && !equipped && !inHome && <button onClick={() => homeDeposit(iid)}>→ storage</button>}
         {inHome && <button onClick={() => homeWithdraw(iid)}>take out</button>}
+        {loc?.services.includes('repair') && it.durability && it.durability.current < it.durability.max && (
+          <button onClick={() => shopRepair(iid)} title="The smith makes it whole.">🔧 Repair ({fmtMoney(Math.max(10, it.durability.max - it.durability.current))})</button>
+        )}
         {ownerChar && !equipped && loc?.shop?.buys && (
           <button onClick={() => shopSell(iid)}>Sell ({fmtMoney(Math.max(1, Math.floor(it.value * (loc.shop.buyRate ?? 0.5) * (it.broken ? 0.2 : 1))))})</button>
         )}

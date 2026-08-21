@@ -101,6 +101,26 @@ export function restockShops(world: WorldState) {
   }
 }
 
+/** Smiths mend what they sell: repair at any 'repair'-service shop. */
+export function repairAtShop(world: WorldState, locId: LocationId, itemId: string): string | null {
+  const loc = world.locations[locId];
+  if (!loc?.services.includes('repair')) return 'Nobody here works metal.';
+  const item = world.items[itemId];
+  if (!item?.durability) return 'Nothing to mend there.';
+  if (item.durability.current >= item.durability.max) return `${item.name} is sound.`;
+  const missing = item.durability.max - item.durability.current;
+  const cost = Math.max(10, missing);
+  const mc = world.characters[world.mcId];
+  if (mc.money < cost) return `The smith wants ${fmtMoney(cost)}.`;
+  mc.money -= cost;
+  addMinutes(world, 60);
+  item.durability.current = item.durability.max;
+  item.broken = false;
+  item.history.push(`Repaired at ${loc.name} on Day ${world.time.day}`);
+  logEvent(world, 'shop.repair', { item: item.name, cost, shop: locId }, `${item.name} was made whole at ${loc.name} (${fmtMoney(cost)}).`, { location: locId });
+  return null;
+}
+
 // ---------- Inns & rest ----------
 export function restAtInn(world: WorldState, locId: LocationId, roomIdx: number): string | null {
   const loc = world.locations[locId];
