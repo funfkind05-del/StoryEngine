@@ -330,7 +330,12 @@ export function autoplayStep(world: WorldState, state: AutoplayerState, _rng: Rn
       const answerableRiddle = !!(r.riddleDoor && !r.riddleDoor.opened && (
         (world.codex ?? []).includes(r.riddleDoor.loreId) || r.riddleDoor.lastGuessDay !== world.time.day
       ));
-      return r.enemies === 'alive' || !r.explored || !!(r.chest && !r.chest.opened) || !!(r.key && !r.key.taken) || !!(r.lorebook && !r.lorebook.taken) || answerableRiddle;
+      // a locked door someone should be WORKING ON is an objective too:
+      // the generation invariant routes honest paths through locks, and
+      // a lock nobody walks to is a wall forever (run 10, stage 7,
+      // 176k steps). Standing there, room-work picks at it.
+      const pickableLock = !!(r.lockedDoor && !r.lockedDoor.opened && !d.keysHeld?.includes(r.id));
+      return r.enemies === 'alive' || !r.explored || !!(r.chest && !r.chest.opened) || !!(r.key && !r.key.taken) || !!(r.lorebook && !r.lorebook.taken) || answerableRiddle || pickableLock;
     };
     // sixty walks without a fight, a find, or a descent means the floor
     // is milked — respawn-chasing here starves the whole run
