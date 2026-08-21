@@ -180,6 +180,35 @@ describe('the party pool shares out', () => {
   });
 });
 
+describe('every warden can be reached honestly', () => {
+  it('all floors path to their stairs/boss without secret doors, across many worlds', () => {
+    for (let trial = 0; trial < 12; trial++) {
+      const w = buildSeedWorld();
+      for (const dunId of Object.keys(w.dungeons)) {
+        enterDungeon(w, dunId);
+        const d = w.dungeons[dunId];
+        for (let floor = 1; floor <= d.floors; floor++) {
+          const rooms = Object.values(d.rooms).filter((r) => r.floor === floor);
+          const entry = rooms.find((r) => (floor === 1 ? r.isStairsUp : r.connections.up)) ?? rooms[0];
+          const goal = rooms.find((r) => r.isBossRoom || r.connections.down);
+          if (!entry || !goal) continue;
+          const seen = new Set([entry.id]);
+          const q = [entry.id];
+          while (q.length) {
+            const cur = q.shift()!;
+            for (const to of Object.values(d.rooms[cur].connections)) {
+              if (to && d.rooms[to]?.floor === floor && !seen.has(to)) { seen.add(to); q.push(to); }
+            }
+          }
+          expect(seen.has(goal.id), `${dunId} floor ${floor} trial ${trial}`).toBe(true);
+        }
+        w.currentDungeon = null;
+        w.currentRoom = null;
+      }
+    }
+  }, 120000);
+});
+
 describe('scrolls: anyone can read one, once', () => {
   it('a fighter casts Fireball from a scroll in combat — no mana, parchment consumed', () => {
     const w = buildSeedWorld();

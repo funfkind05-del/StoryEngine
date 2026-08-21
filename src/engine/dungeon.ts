@@ -329,6 +329,40 @@ export function generateDungeon(world: WorldState, dungeonId: string): Dungeon {
       }
     }
   }
+  // THE INVARIANT (bot-proven, run 9: a warden nobody could reach for
+  // five simulated years): every floor's onward path — stairs down,
+  // or the warden on the deepest floor — must be walkable WITHOUT
+  // secret doors. Locked and riddle doors are openable and count as
+  // open here; a secret door is a bonus shortcut, never the only way.
+  for (let floor = 1; floor <= d.floors; floor++) {
+    const roomsThisFloor = Object.values(d.rooms).filter((r) => r.floor === floor).map((r) => r.id);
+    const entry = Object.values(d.rooms).find((r) => r.floor === floor && (floor === 1 ? r.isStairsUp : r.connections.up))?.id ?? roomsThisFloor[0];
+    const goal = Object.values(d.rooms).find((r) => r.floor === floor && (r.isBossRoom || r.connections.down))?.id;
+    if (!entry || !goal) continue;
+    const seen = new Set([entry]);
+    const q = [entry];
+    while (q.length) {
+      const cur = q.shift()!;
+      for (const to of Object.values(d.rooms[cur].connections)) {
+        if (to && d.rooms[to] && d.rooms[to].floor === floor && !seen.has(to)) { seen.add(to); q.push(to); }
+      }
+    }
+    if (!seen.has(goal)) {
+      // carve an honest corridor: connect the goal to the nearest
+      // reachable room on this floor (grid-adjacent when possible)
+      const goalRoom = d.rooms[goal];
+      const reachable = [...seen].map((rid) => d.rooms[rid]);
+      const byDist = reachable.sort((a, b) => (Math.abs(a.x - goalRoom.x) + Math.abs(a.y - goalRoom.y)) - (Math.abs(b.x - goalRoom.x) + Math.abs(b.y - goalRoom.y)));
+      const from = byDist[0];
+      if (from) {
+        const dx = goalRoom.x - from.x;
+        const dirOut = Math.abs(dx) >= Math.abs(goalRoom.y - from.y) ? (dx >= 0 ? 'east' : 'west') : (goalRoom.y - from.y >= 0 ? 'south' : 'north');
+        const OPP: Record<string, 'north' | 'south' | 'east' | 'west'> = { north: 'south', south: 'north', east: 'west', west: 'east' };
+        from.connections[dirOut as 'north'] ??= goal;
+        goalRoom.connections[OPP[dirOut]] ??= from.id;
+      }
+    }
+  }
   d.entryRoom = firstRoom!;
   d.generated = true;
   logEvent(world, 'dungeon.generated', { dungeon: d.id, seed: d.generationSeed }, `${d.name} mapped (seed ${d.generationSeed}).`);
