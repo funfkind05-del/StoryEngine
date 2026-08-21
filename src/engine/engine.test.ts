@@ -78,9 +78,18 @@ describe('dungeon persistence', () => {
     const d = w.dungeons['DUN_OLDQUARTER_001'];
     const entry = d.rooms[w.currentRoom!];
     expect(entry.explored).toBe(true);
-    const dir = Object.keys(entry.connections)[0] as 'north';
-    const res = moveInDungeon(w, dir);
-    expect('room' in res && res.room.explored).toBe(true);
+    // true-entropy worlds can bar any single direction (locked doors);
+    // prove that SOME open connection walks and marks explored
+    let moved = false;
+    for (const dir of Object.keys(entry.connections) as 'north'[]) {
+      const res = moveInDungeon(w, dir);
+      if ('room' in res) {
+        expect(res.room.explored).toBe(true);
+        moved = true;
+        break;
+      }
+    }
+    expect(moved, 'every exit from the entry room was barred').toBe(true);
   });
 });
 
