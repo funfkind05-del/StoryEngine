@@ -6,9 +6,11 @@ import type { Character, CharacterId, FactionId, LocationId, WorldState } from '
 import { Rng } from './rng';
 import { logEvent, nextId } from './world';
 
-const FIRST_M = ['Kael', 'Doran', 'Brann', 'Tobbe', 'Ulric', 'Fenn', 'Gareth', 'Joss', 'Marek', 'Rilo', 'Sten', 'Vance', 'Corvin', 'Aldous', 'Piter'];
-const FIRST_F = ['Mara', 'Lyra', 'Sella', 'Ilsa', 'Brena', 'Katya', 'Odella', 'Rin', 'Tessa', 'Vada', 'Yola', 'Nessa', 'Petra', 'Sable', 'Wren'];
-const LAST = ['Venn', 'Ashfall', 'Coldwater', 'Marsh', 'Hobb', 'Iremark', 'Quill', 'Blackrock', 'Tarn', 'Elmsley', 'Groat', 'Harrow', 'Kettle', 'Locke', 'Mott'];
+// the cast's own names stay OUT of the street pools — a random
+// 'Lyra Venn' walking past Lyra and Mara Venn reads like a misprint
+const FIRST_M = ['Doran', 'Brann', 'Ulric', 'Fenn', 'Gareth', 'Joss', 'Marek', 'Rilo', 'Sten', 'Vance', 'Corvin', 'Aldous', 'Piter', 'Hesk', 'Ottmar'];
+const FIRST_F = ['Ilsa', 'Brena', 'Katya', 'Odella', 'Rin', 'Tessa', 'Vada', 'Yola', 'Nessa', 'Sable', 'Maud', 'Greta', 'Edda', 'Liss', 'Onna'];
+const LAST = ['Ashfall', 'Coldwater', 'Hobb', 'Iremark', 'Quill', 'Blackrock', 'Tarn', 'Elmsley', 'Kettle', 'Locke', 'Mott', 'Spurling', 'Cray', 'Duffin', 'Weck'];
 const RACES = ['human', 'human', 'human', 'human', 'half-elf', 'dwarf', 'halfling'];
 const TRAITS = ['suspicious', 'humorous', 'opportunistic', 'loyal', 'greedy', 'devout', 'bitter', 'kind', 'reckless', 'cautious', 'vain', 'quiet', 'boastful', 'sharp-tongued', 'superstitious'];
 const VALUES = ['courage', 'honesty', 'wealth', 'kindness', 'loyalty', 'strength', 'cunning', 'faith', 'freedom'];

@@ -41,6 +41,19 @@ export function eventsSinceOutline(world: WorldState): SimEvent[] {
   return world.events.slice(world.outlinedUpTo ?? 0).filter((e) => SIGNIFICANT.includes(e.kind));
 }
 
+/** Twelve identical 'bought Torch' lines are a ledger, not a scene. */
+function collapseRepeats(bullets: string[]): string[] {
+  const out: string[] = [];
+  let run = 0;
+  for (let i = 0; i <= bullets.length; i++) {
+    if (i < bullets.length && bullets[i] === bullets[i - run - 1 + run] && i > 0 && bullets[i] === bullets[i - 1]) { run++; continue; }
+    if (run > 0) out[out.length - 1] = `${out[out.length - 1]} (×${run + 1})`;
+    if (i < bullets.length) out.push(bullets[i]);
+    run = 0;
+  }
+  return out;
+}
+
 function minutesOf(e: SimEvent): number {
   return e.time.day * 1440 + e.time.minute;
 }
@@ -99,7 +112,7 @@ function carryForwardOf(events: SimEvent[]): string[] {
     }
     if (e.kind === 'injury') out.push(e.summary);
     if (e.kind === 'level.available') out.push(e.summary);
-    if (e.kind === 'quest.accepted') out.push(`Open job: ${e.summary}`);
+    if (e.kind === 'quest.accepted') out.push(`Open job: ${e.summary.replace(/^Job taken: /, '')}`);
     if (e.kind === 'encounter.vendetta') out.push('The Red Knives will try again.');
   }
   return out.slice(0, 3);
@@ -133,7 +146,7 @@ export function buildOutline(world: WorldState): OutlineBeat[] {
       startMinute: first.time.minute,
       location: first.location ?? world.partyLocation,
       participants: [...witnesses],
-      bullets: group.flatMap((e) => (e.kind === 'combat.end' ? [e.summary, ...combatDigest(e)] : [e.summary])),
+      bullets: collapseRepeats(group.flatMap((e) => (e.kind === 'combat.end' ? [e.summary, ...combatDigest(e)] : [e.summary]))),
       carryForward: carryForwardOf(group),
     };
     beat.sceneType = beatType(group);
