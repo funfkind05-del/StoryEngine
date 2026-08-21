@@ -47,6 +47,8 @@ export interface AutoplayerState {
   sweepSearched?: Record<string, boolean>;
   /** day each dungeon's full sweep last came up empty */
   sweepDoneDay?: Record<string, number>;
+  /** actions spent on the current sweep — hard budget, no exceptions */
+  sweepSpent?: number;
   log: string[];
 }
 
@@ -161,7 +163,11 @@ function equipBest(world: WorldState): void {
   }
 }
 
-function pickTargetDungeon(world: WorldState): string | null {
+function pickTargetDungeon(world: WorldState, state?: AutoplayerState): string | null {
+  const avoided = (id: string) => {
+    const day = state?.sweepDoneDay?.[id];
+    return day !== undefined && world.time.day - day < 10;
+  };
   const lvl = avgLevel(world);
   // the spine's clear-boss target outranks farming, once we're ready:
   // grinding the 'lowest open' dungeon while Sella waits is how the
@@ -171,7 +177,7 @@ function pickTargetDungeon(world: WorldState): string | null {
   if (mainBoss) {
     const obj = mainBoss.objectives.find((o) => o.kind === 'clear-boss' && !o.done);
     const target = obj && 'dungeonId' in obj ? world.dungeons[obj.dungeonId] : null;
-    if (target && lvl >= (parseInt(target.recommendedLevel, 10) || 1) - 1) return target.id;
+    if (target && !avoided(target.id) && lvl >= (parseInt(target.recommendedLevel, 10) || 1) - 1) return target.id;
   }
   const open = Object.values(world.dungeons)
     .filter((d) => !d.bossDefeated)
@@ -179,7 +185,7 @@ function pickTargetDungeon(world: WorldState): string | null {
       const lo = parseInt(d.recommendedLevel, 10) || 1;
       return { d, lo };
     })
-    .filter((x) => lvl >= x.lo - 1)
+    .filter((x) => lvl >= x.lo - 1 && !avoided(x.d.id))
     .sort((a, b) => a.lo - b.lo);
   return open[0]?.d.id ?? null;
 }
@@ -350,6 +356,14 @@ export function autoplayStep(world: WorldState, state: AutoplayerState, _rng: Rn
       const wardenWaits = !d.bossDefeated;
       const sweep = (): string | null => {
         if (!wardenWaits) return null;
+        // HARD BUDGET: run 6 spent 207,279 actions sweep-walking.
+        // A sweep gets ~120 actions, then the verdict is 'not today'.
+        state.sweepSpent = (state.sweepSpent ?? 0) + 1;
+        if (state.sweepSpent > 120) {
+          (state.sweepDoneDay ??= {})[d.id] = world.time.day;
+          state.sweepSpent = 0;
+          return null;
+        }
         // a finished, fruitless sweep stands for ten days — re-sweeping
         // every visit turned the early game into wall-fondling
         state.sweepDoneDay ??= {};
@@ -386,6 +400,7 @@ export function autoplayStep(world: WorldState, state: AutoplayerState, _rng: Rn
         const swept = sweep();
         if (swept) return swept;
         if (wardenWaits) (state.sweepDoneDay ??= {})[d.id] = world.time.day;
+        state.sweepSpent = 0;
         // boss floor cleared or nothing left anywhere
         exitDungeon(world);
         state.targetDungeon = null;
@@ -395,6 +410,7 @@ export function autoplayStep(world: WorldState, state: AutoplayerState, _rng: Rn
         const swept = sweep();
         if (swept) return swept;
         if (wardenWaits) (state.sweepDoneDay ??= {})[d.id] = world.time.day;
+        state.sweepSpent = 0;
         // no stairs reachable either — this hole is done for the day
         state.wanderStreak = 0;
         state.leavingFloor = false;
@@ -688,7 +704,7 @@ export function autoplayStep(world: WorldState, state: AutoplayerState, _rng: Rn
           return 'make-room';
         }
         // nothing to sell here — carry on with the day
-        state.targetDungeon ??= pickTargetDungeon(world);
+        state.targetDungeon ??= pickTargetDungeon(world, state);
       }
       const rSup = goTo(store.id, 'to-supplies');
       if (rSup) return rSup;
@@ -738,7 +754,7 @@ export function autoplayStep(world: WorldState, state: AutoplayerState, _rng: Rn
   }
 
   // otherwise: to the hunting grounds
-  state.targetDungeon ??= pickTargetDungeon(world);
+  state.targetDungeon ??= pickTargetDungeon(world, state);
   if (state.targetDungeon) {
     const d = world.dungeons[state.targetDungeon];
     const torches = countProto('torch');
