@@ -66,8 +66,9 @@ function LlmSettings({ onClose }: { onClose: () => void }) {
         <button onClick={onClose}>Done</button>
       </div>
       <p className="dim small">
-        Default targets LM Studio on localhost:1234 (via the dev proxy, no CORS setup needed). Any
-        OpenAI-compatible endpoint works — Ollama, vLLM, LiteLLM, or api.openai.com/v1 with a key.
+        Default targets the opencode prose agent at /oclm/v1 (start it with `npm run llm-server`).
+        Any OpenAI-compatible endpoint also works: /llm/v1 proxies LM Studio on localhost:1234,
+        or point at Ollama, vLLM, LiteLLM, api.openai.com/v1 with a key.
       </p>
     </div>
   );

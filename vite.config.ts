@@ -81,9 +81,83 @@ function ideogramPlugin(): Plugin {
   }
 }
 
+// OpenCode LLM bridge: the app speaks OpenAI chat-completions; this
+// middleware translates each call into a throwaway opencode session
+// driven by the "prose" agent (headless `opencode serve`). Tools are
+// disabled per-request — a prose model must never edit this repo.
+const OPENCODE_URL = process.env.OPENCODE_URL ?? 'http://127.0.0.1:4096'
+
+function opencodePlugin(): Plugin {
+  return {
+    name: 'storyengine-opencode',
+    configureServer(server) {
+      server.middlewares.use('/oclm/v1', (req, res) => {
+        void (async () => {
+          try {
+            if (req.method === 'GET' && req.url?.startsWith('/models')) {
+              const ping = await fetch(`${OPENCODE_URL}/session/status`).catch(() => null)
+              if (!ping?.ok) {
+                res.statusCode = 503
+                res.end(JSON.stringify({ error: `opencode serve is not reachable at ${OPENCODE_URL} — start it with: npm run llm-server` }))
+                return
+              }
+              res.setHeader('Content-Type', 'application/json')
+              res.end(JSON.stringify({ data: [{ id: 'prose' }] }))
+              return
+            }
+            if (req.method !== 'POST' || !req.url?.startsWith('/chat/completions')) {
+              res.statusCode = 404
+              res.end('Unknown /oclm route')
+              return
+            }
+            let body = ''
+            req.on('data', (c) => { body += c })
+            await new Promise((resolve) => req.on('end', resolve))
+            const { messages } = JSON.parse(body) as { messages: { role: string; content: string }[] }
+            const system = messages.filter((m) => m.role === 'system').map((m) => m.content).join('\n\n')
+            const turns = messages.filter((m) => m.role !== 'system')
+            const transcript = turns.map((m) => (m.role === 'assistant' ? `[Your previous reply]: ${m.content}` : m.content)).join('\n\n')
+            const created = await fetch(`${OPENCODE_URL}/session`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ title: 'storyengine-prose' }),
+            })
+            if (!created.ok) throw new Error(`opencode session create: ${created.status}`)
+            const sid = ((await created.json()) as { id: string }).id
+            try {
+              const reply = await fetch(`${OPENCODE_URL}/session/${sid}/message`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  agent: 'prose',
+                  system: system || undefined,
+                  tools: { bash: false, write: false, edit: false, read: false, glob: false, grep: false, webfetch: false, todowrite: false, todoread: false, task: false },
+                  parts: [{ type: 'text', text: transcript || '(continue)' }],
+                }),
+              })
+              if (!reply.ok) throw new Error(`opencode prompt: ${reply.status} ${(await reply.text()).slice(0, 200)}`)
+              const msg = (await reply.json()) as { parts?: { type: string; text?: string }[] }
+              const content = (msg.parts ?? []).filter((pt) => pt.type === 'text').map((pt) => pt.text ?? '').join('\n').trim()
+              if (!content) throw new Error('opencode returned no text parts')
+              res.setHeader('Content-Type', 'application/json')
+              res.end(JSON.stringify({ model: 'prose', choices: [{ index: 0, message: { role: 'assistant', content }, finish_reason: 'stop' }] }))
+            } finally {
+              void fetch(`${OPENCODE_URL}/session/${sid}`, { method: 'DELETE' }).catch(() => {})
+            }
+          } catch (e) {
+            res.statusCode = 502
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }))
+          }
+        })()
+      })
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), ideogramPlugin()],
+  plugins: [react(), ideogramPlugin(), opencodePlugin()],
   server: {
     proxy: {
       // Local LLM (LM Studio default port). The app talks to /llm/v1/...

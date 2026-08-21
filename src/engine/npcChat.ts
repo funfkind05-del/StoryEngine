@@ -28,16 +28,24 @@ export interface LlmConfig {
 const LLM_KEY = 'storyengine.llm.v1';
 
 export const DEFAULT_LLM: LlmConfig = {
-  baseUrl: '/llm/v1',
+  // the opencode bridge: `npm run llm-server` + the "prose" agent
+  baseUrl: '/oclm/v1',
   apiKey: '',
-  model: '',
+  model: 'prose',
   temperature: 0.8,
 };
 
 export function loadLlmConfig(): LlmConfig {
   try {
     const raw = localStorage.getItem(LLM_KEY);
-    return raw ? { ...DEFAULT_LLM, ...JSON.parse(raw) } : { ...DEFAULT_LLM };
+    const cfg = raw ? { ...DEFAULT_LLM, ...(JSON.parse(raw) as Partial<LlmConfig>) } : { ...DEFAULT_LLM };
+    // saved configs still pointing at the old LM Studio default roll
+    // forward to the opencode bridge; hand-set endpoints are kept
+    if (cfg.baseUrl === '/llm/v1' && !cfg.apiKey) {
+      cfg.baseUrl = DEFAULT_LLM.baseUrl;
+      cfg.model = cfg.model || DEFAULT_LLM.model;
+    }
+    return cfg;
   } catch {
     return { ...DEFAULT_LLM };
   }
