@@ -906,7 +906,15 @@ function finishCombat(world: WorldState, combat: CombatState) {
       }
     }
     if (world.deathRule === 'story') {
-      logEvent(world, 'party.defeated', {}, 'STORY MODE: the party was left for dead but survived — beaten, robbed of nothing but pride.');
+      const DEFEAT_LINES = [
+        'STORY MODE: the party was left for dead but survived — beaten, robbed of nothing but pride.',
+        'STORY MODE: the party went down and the world stepped over them. They woke to rain, and each other, and that was the whole inventory.',
+        'STORY MODE: beaten. Somebody dragged somebody; nobody will say who. The argument about whose fault it was lasted three streets.',
+        'STORY MODE: the fight ended without them. They came to in a doorway with their boots still on, which in this city counts as mercy.',
+        'STORY MODE: left in the mud. Lyra says Kael was unconscious first; Kael keeps a different ledger. Both walked home.',
+        'STORY MODE: the party lost, and learned the oldest lesson again — the dark does not owe anyone a fair fight.',
+      ];
+      logEvent(world, 'party.defeated', {}, DEFEAT_LINES[(world.time.day + world.events.length) % DEFEAT_LINES.length]);
     }
   }
   // political weight: killing a faction's people is noticed
