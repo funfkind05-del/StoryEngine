@@ -384,6 +384,8 @@ export interface Faction {
 }
 
 // ---------- Monsters (templates + live instances) ----------
+export type Element = 'fire' | 'frost' | 'shock' | 'venom' | 'holy' | 'void';
+
 export interface MonsterTemplate {
   key: string; // 'giant-rat'
   name: string;
@@ -398,6 +400,9 @@ export interface MonsterTemplate {
   ai: 'aggressive' | 'cowardly' | 'pack';
   /** status a hit may inflict */
   inflicts?: { status: StatusKey; chance: number };
+  /** elements this thing shrugs (×0.5) or dreads (×1.5) */
+  resists?: Element[];
+  weakTo?: Element[];
   /** bestiary-plate rendering for monsters without a dedicated drawing */
   art?: { archetype: 'beast' | 'humanoid' | 'undead' | 'construct' | 'horror' | 'serpent' | 'dragon' | 'demon' | 'spirit' | 'giant'; accent?: string };
 }

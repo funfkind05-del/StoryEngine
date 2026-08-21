@@ -14,8 +14,9 @@ import { SET_FAMILIES, affixMod, rollGearMods, setBonusMod } from './progression
 import { SET_RECIPES, craftSetPiece } from './crafting';
 import { addToContainer, makeItem, performTempleService } from './rules';
 import { repairAtShop, takeFromParty } from './services';
-import { SPELLS, autoResolve, fieldCast, fieldCastable, startCombat } from './combat';
+import { SPELLS, autoResolve, fieldCast, fieldCastable, resolveRound, startCombat } from './combat';
 import { enterDungeon } from './dungeon';
+import { MONSTERS } from './monsters';
 import { doomTick } from './campaign';
 import type { Character } from './types';
 
@@ -163,6 +164,53 @@ describe('the party pool shares out', () => {
     }
     const res = takeFromParty(w, back.id, lyra.id);
     if (res !== null) expect(res).toMatch(/pack is full/);
+  });
+});
+
+describe('elements (the schools finally matter)', () => {
+  it('holy scourges the undead; venom washes off them; the roster is consistently tagged', () => {
+    for (const [k, t] of Object.entries(MONSTERS)) {
+      for (const e of [...(t.resists ?? []), ...(t.weakTo ?? [])]) {
+        expect(['fire', 'frost', 'shock', 'venom', 'holy', 'void'], `${k}: ${e}`).toContain(e);
+      }
+      const both = (t.resists ?? []).filter((e) => (t.weakTo ?? []).includes(e));
+      expect(both, k).toHaveLength(0);
+    }
+    expect(MONSTERS['skeleton'].weakTo).toContain('holy');
+    expect(MONSTERS['young-dragon'].resists).toContain('fire');
+    expect(SPELLS['smite'].element).toBe('holy');
+    expect(SPELLS['fireball'].element).toBe('fire');
+  });
+
+  it('resistance halves and dread amplifies in a real fight', () => {
+    let sawShrug = false;
+    let sawDread = false;
+    for (let seed = 0; seed < 40 && !(sawShrug && sawDread); seed++) {
+      const w = buildSeedWorld();
+      const mc = w.characters[w.mcId];
+      mc.charClass = 'priest';
+      mc.abilities = ['smite', 'wither'];
+      mc.mana.max = 200; mc.mana.current = 200;
+      const combat = startCombat(w, { seed, description: 'test', monsters: [{ templateKey: 'skeleton', count: 1 }], source: 'city', locationId: w.partyLocation });
+      resolveRound(w, [
+        { actor: w.mcId, type: 'spell', spellKey: 'smite', target: combat.monsters[0].id },
+        { actor: 'CHAR_LYRA', type: 'defend' },
+      ]);
+      if (combat.log.some((l) => l.text.includes('WANTS to burn'))) sawDread = true;
+      const w2 = buildSeedWorld();
+      const mc2 = w2.characters[w2.mcId];
+      mc2.charClass = 'warlock';
+      mc2.abilities = ['wither'];
+      mc2.mana.max = 200; mc2.mana.current = 200;
+      const c2 = startCombat(w2, { seed, description: 'test', monsters: [{ templateKey: 'skeleton', count: 1 }], source: 'city', locationId: w2.partyLocation });
+      resolveRound(w2, [
+        { actor: w2.mcId, type: 'spell', spellKey: 'wither', target: c2.monsters[0].id },
+        { actor: 'CHAR_LYRA', type: 'defend' },
+      ]);
+      if (c2.log.some((l) => l.text.includes('shrugs away half'))) sawShrug = true;
+    }
+    expect(sawDread).toBe(true);
+    expect(sawShrug).toBe(true);
   });
 });
 

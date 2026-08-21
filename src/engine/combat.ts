@@ -158,6 +158,8 @@ export interface SpellDef {
   name: string;
   mana: number;
   damage?: string;
+  /** damage type: resisted or dreaded by particular monsters */
+  element?: import('./types').Element;
   /** drain arts: the caster feeds on what the spell takes (dice) */
   selfHeal?: string;
   heal?: string;
@@ -180,31 +182,31 @@ export const SPELLS: Record<string, SpellDef> = {
   requiem: { name: 'Requiem', mana: 18, damage: '5d6+6', hitsAll: true, stunChance: 20 },
   'the-last-song': { name: 'The Last Song', mana: 26, damage: '6d8+10', hitsAll: true, stunChance: 35 },
   // warlock pact-work — the Nameless Chapel does not advertise
-  wither: { name: 'Wither', mana: 4, damage: '2d6+1' },
-  'gnawing-dark': { name: 'Gnawing Dark', mana: 6, damage: '2d8+2' },
+  wither: { name: 'Wither', mana: 4, element: 'venom', damage: '2d6+1' },
+  'gnawing-dark': { name: 'Gnawing Dark', mana: 6, element: 'venom', damage: '2d8+2' },
   hex: { name: 'Hex', mana: 7, damage: '1d8', stunChance: 40 },
-  'soul-lash': { name: 'Soul Lash', mana: 9, damage: '3d8+2' },
-  'black-tide': { name: 'Black Tide', mana: 12, damage: '3d6+3', hitsAll: true },
-  unravel: { name: 'Unravel', mana: 14, damage: '4d8+4' },
-  'pact-flame': { name: 'Pact Flame', mana: 16, damage: '5d8+5' },
-  'devouring-sign': { name: 'Devouring Sign', mana: 20, damage: '5d6+8', hitsAll: true, stunChance: 20 },
-  'the-hungry-door': { name: 'The Hungry Door', mana: 24, damage: '6d10+8', stunChance: 30 },
-  'name-eater': { name: 'Name-Eater', mana: 30, damage: '8d10+10' },
+  'soul-lash': { name: 'Soul Lash', mana: 9, element: 'void', damage: '3d8+2' },
+  'black-tide': { name: 'Black Tide', mana: 12, element: 'void', damage: '3d6+3', hitsAll: true },
+  unravel: { name: 'Unravel', mana: 14, element: 'void', damage: '4d8+4' },
+  'pact-flame': { name: 'Pact Flame', mana: 16, element: 'fire', damage: '5d8+5' },
+  'devouring-sign': { name: 'Devouring Sign', mana: 20, element: 'void', damage: '5d6+8', hitsAll: true, stunChance: 20 },
+  'the-hungry-door': { name: 'The Hungry Door', mana: 24, element: 'void', damage: '6d10+8', stunChance: 30 },
+  'name-eater': { name: 'Name-Eater', mana: 30, element: 'void', damage: '8d10+10' },
   // spellblade edge-work
-  'spark-edge': { name: 'Spark Edge', mana: 3, damage: '1d8+2' },
-  'frost-guard': { name: 'Frost Guard', mana: 6, damage: '1d6', partyDefense: 1, stunChance: 20 },
-  'storm-brand': { name: 'Storm Brand', mana: 10, damage: '3d8+2' },
+  'spark-edge': { name: 'Spark Edge', mana: 3, element: 'shock', damage: '1d8+2' },
+  'frost-guard': { name: 'Frost Guard', mana: 6, element: 'frost', damage: '1d6', partyDefense: 1, stunChance: 20 },
+  'storm-brand': { name: 'Storm Brand', mana: 10, element: 'shock', damage: '3d8+2' },
   'runic-burst': { name: 'Runic Burst', mana: 14, damage: '3d6+4', hitsAll: true },
   'blade-tempest': { name: 'Blade Tempest', mana: 20, damage: '5d8+6', hitsAll: true },
   // mage line
-  firebolt: { name: 'Firebolt', mana: 4, damage: '2d6' },
-  'frost-grasp': { name: 'Frost Grasp', mana: 5, damage: '1d8', stunChance: 0.4 },
-  fireball: { name: 'Fireball', mana: 9, damage: '2d6', hitsAll: true },
-  'lightning-lance': { name: 'Lightning Lance', mana: 8, damage: '3d6' },
-  'ice-storm': { name: 'Ice Storm', mana: 12, damage: '2d6', hitsAll: true, stunChance: 0.25 },
-  immolate: { name: 'Immolate', mana: 12, damage: '4d6' },
-  'chain-lightning': { name: 'Chain Lightning', mana: 16, damage: '3d6', hitsAll: true },
-  meteor: { name: 'Meteor', mana: 20, damage: '6d6' },
+  firebolt: { name: 'Firebolt', mana: 4, element: 'fire', damage: '2d6' },
+  'frost-grasp': { name: 'Frost Grasp', mana: 5, element: 'frost', damage: '1d8', stunChance: 0.4 },
+  fireball: { name: 'Fireball', mana: 9, element: 'fire', damage: '2d6', hitsAll: true },
+  'lightning-lance': { name: 'Lightning Lance', mana: 8, element: 'shock', damage: '3d6' },
+  'ice-storm': { name: 'Ice Storm', mana: 12, element: 'frost', damage: '2d6', hitsAll: true, stunChance: 0.25 },
+  immolate: { name: 'Immolate', mana: 12, element: 'fire', damage: '4d6' },
+  'chain-lightning': { name: 'Chain Lightning', mana: 16, element: 'shock', damage: '3d6', hitsAll: true },
+  meteor: { name: 'Meteor', mana: 20, element: 'fire', damage: '6d6' },
   cataclysm: { name: 'Cataclysm', mana: 26, damage: '4d6', hitsAll: true },
   unmaking: { name: 'The Unmaking Word', mana: 34, damage: '10d6' },
   // priest line
@@ -212,41 +214,41 @@ export const SPELLS: Record<string, SpellDef> = {
   purify: { name: 'Purify', mana: 4, cures: true },
   sanctuary: { name: 'Sanctuary', mana: 6, partyDefense: 2 },
   'greater-mending': { name: 'Greater Mending', mana: 7, heal: '2d8+6' },
-  smite: { name: 'Smite', mana: 7, damage: '2d8' },
+  smite: { name: 'Smite', mana: 7, element: 'holy', damage: '2d8' },
   'circle-of-renewal': { name: 'Circle of Renewal', mana: 12, heal: '1d8+6', healAll: true },
-  'holy-fire': { name: 'Holy Fire', mana: 12, damage: '3d8' },
+  'holy-fire': { name: 'Holy Fire', mana: 12, element: 'holy', damage: '3d8' },
   aegis: { name: 'Aegis', mana: 14, partyDefense: 4 },
   'mass-renewal': { name: 'Mass Renewal', mana: 20, heal: '2d8+8', healAll: true },
-  'divine-wrath': { name: 'Divine Wrath', mana: 26, damage: '3d8', hitsAll: true },
+  'divine-wrath': { name: 'Divine Wrath', mana: 26, element: 'holy', damage: '3d8', hitsAll: true },
   // necromancer bone-craft — the Graverow bonehouses
-  'bone-dart': { name: 'Bone Dart', mana: 4, damage: '2d6' },
-  'chill-touch': { name: 'Chill Touch', mana: 5, damage: '1d8', stunChance: 30 },
+  'bone-dart': { name: 'Bone Dart', mana: 4, element: 'void', damage: '2d6' },
+  'chill-touch': { name: 'Chill Touch', mana: 5, element: 'frost', damage: '1d8', stunChance: 30 },
   'corpse-burst': { name: 'Corpse-Burst', mana: 9, damage: '2d6', hitsAll: true },
-  'marrow-drain': { name: 'Marrow Drain', mana: 8, damage: '3d6+1' },
-  'grave-chill': { name: 'Grave-Chill', mana: 12, damage: '2d6+1', hitsAll: true, stunChance: 20 },
+  'marrow-drain': { name: 'Marrow Drain', mana: 8, element: 'void', damage: '3d6+1' },
+  'grave-chill': { name: 'Grave-Chill', mana: 12, element: 'frost', damage: '2d6+1', hitsAll: true, stunChance: 20 },
   'wither-limb': { name: 'Wither the Limb', mana: 12, damage: '4d6+2' },
-  'bone-storm': { name: 'Bone-Storm', mana: 16, damage: '3d6+3', hitsAll: true },
+  'bone-storm': { name: 'Bone-Storm', mana: 16, element: 'void', damage: '3d6+3', hitsAll: true },
   entomb: { name: 'Entomb', mana: 15, damage: '2d10', stunChance: 50 },
   'legion-of-the-dead': { name: 'Legion of the Dead', mana: 24, damage: '5d6+5', hitsAll: true },
-  'the-grey-court': { name: 'The Grey Court', mana: 32, damage: '8d8+8', stunChance: 25 },
+  'the-grey-court': { name: 'The Grey Court', mana: 32, element: 'void', damage: '8d8+8', stunChance: 25 },
   // paladin vows — lamp-oil and scripture
   'lamp-oath': { name: 'Lamp-Oath', mana: 4, partyDefense: 1 },
   'lay-on-hands': { name: 'Lay on Hands', mana: 6, heal: '2d8+4' },
   'bulwark-of-dawn': { name: 'Bulwark of Dawn', mana: 11, partyDefense: 3 },
   beacon: { name: 'Beacon', mana: 13, heal: '1d8+5', healAll: true },
   'last-vigil': { name: 'The Last Vigil', mana: 20, heal: '2d8+8', healAll: true, partyDefense: 2 },
-  daybreak: { name: 'Daybreak', mana: 26, damage: '5d8+6', hitsAll: true },
+  daybreak: { name: 'Daybreak', mana: 26, element: 'holy', damage: '5d8+6', hitsAll: true },
   // late-book gap workings
   'arc-spark': { name: 'Arc-Spark', mana: 6, damage: '2d8+1' },
   'sunder-ward': { name: 'Sunder the Ward', mana: 22, damage: '5d6+6' },
-  radiance: { name: 'Radiance', mana: 6, damage: '2d6+1' },
+  radiance: { name: 'Radiance', mana: 6, element: 'holy', damage: '2d6+1' },
   benediction: { name: 'Benediction', mana: 18, heal: '3d8+8' },
   lullaby: { name: 'Lullaby', mana: 7, damage: '1d4', stunChance: 45 },
   'chorus-of-blades': { name: 'Chorus of Blades', mana: 20, damage: '3d6+4', hitsAll: true },
   'ember-riposte': { name: 'Ember Riposte', mana: 7, damage: '2d8+2' },
   'glyph-of-ruin': { name: 'Glyph of Ruin', mana: 22, damage: '4d8+4' },
   'creeping-doubt': { name: 'Creeping Doubt', mana: 8, damage: '1d8+1', stunChance: 30 },
-  'tithe-of-flesh': { name: 'Tithe of Flesh', mana: 22, damage: '5d8+2' },
+  'tithe-of-flesh': { name: 'Tithe of Flesh', mana: 22, element: 'venom', damage: '5d8+2' },
   // cultivator qi-arts — breath, meridian, and heaven's weather
   'flowing-qi': { name: 'Flowing Qi', mana: 3, heal: '1d6+2' },
   'qi-lance': { name: 'Qi Lance', mana: 5, damage: '2d6+1' },
@@ -254,21 +256,21 @@ export const SPELLS: Record<string, SpellDef> = {
   'breath-of-the-valley': { name: 'Breath of the Valley', mana: 12, heal: '1d8+4', healAll: true },
   'golden-core-burst': { name: 'Golden Core Burst', mana: 15, damage: '3d6+3', hitsAll: true },
   'spirit-sever': { name: 'Spirit-Sever', mana: 18, damage: '4d8+4', stunChance: 25 },
-  'tribulation-lightning': { name: 'Tribulation Lightning', mana: 38, damage: '8d8+10', stunChance: 30, selfHeal: '2d6' },
+  'tribulation-lightning': { name: 'Tribulation Lightning', mana: 38, element: 'shock', damage: '8d8+10', stunChance: 30, selfHeal: '2d6' },
   'the-dao-of-the-empty-sky': { name: 'The Dao of the Empty Sky', mana: 56, damage: '10d10+12', hitsAll: true, selfHeal: '3d6' },
   // alchemist thrown-work — the Physic's back room
-  'acid-vial': { name: 'Acid Vial', mana: 4, damage: '1d8+1' },
+  'acid-vial': { name: 'Acid Vial', mana: 4, element: 'venom', damage: '1d8+1' },
   'smoke-bomb': { name: 'Smoke Bomb', mana: 5, damage: '1d4', stunChance: 40 },
-  'fire-flask': { name: 'Fire Flask', mana: 7, damage: '2d6+2' },
+  'fire-flask': { name: 'Fire Flask', mana: 7, element: 'fire', damage: '2d6+2' },
   'mutagen-draught': { name: 'Mutagen Draught', mana: 8, heal: '2d8+2' },
   'shrapnel-bomb': { name: 'Shrapnel Bomb', mana: 10, damage: '2d6', hitsAll: true },
-  'frost-oil': { name: 'Frost Oil', mana: 11, damage: '2d6', stunChance: 35 },
-  'plague-vial': { name: 'Plague Vial', mana: 14, damage: '4d6+2' },
-  'thunderclap-bomb': { name: 'Thunderclap Bomb', mana: 16, damage: '3d6+2', hitsAll: true, stunChance: 25 },
+  'frost-oil': { name: 'Frost Oil', mana: 11, element: 'frost', damage: '2d6', stunChance: 35 },
+  'plague-vial': { name: 'Plague Vial', mana: 14, element: 'venom', damage: '4d6+2' },
+  'thunderclap-bomb': { name: 'Thunderclap Bomb', mana: 16, element: 'shock', damage: '3d6+2', hitsAll: true, stunChance: 25 },
   'elixir-of-renewal': { name: 'Elixir of Renewal', mana: 18, heal: '2d8+6', healAll: true },
-  'caustic-rain': { name: 'Caustic Rain', mana: 22, damage: '4d6+4', hitsAll: true },
-  'the-perfect-solvent': { name: 'The Perfect Solvent', mana: 26, damage: '8d6+6' },
-  'philosophers-fire': { name: "Philosopher's Fire", mana: 34, damage: '6d8+8', hitsAll: true },
+  'caustic-rain': { name: 'Caustic Rain', mana: 22, element: 'venom', damage: '4d6+4', hitsAll: true },
+  'the-perfect-solvent': { name: 'The Perfect Solvent', mana: 26, element: 'venom', damage: '8d6+6' },
+  'philosophers-fire': { name: "Philosopher's Fire", mana: 34, element: 'fire', damage: '6d8+8', hitsAll: true },
   panacea: { name: 'Panacea', mana: 40, heal: '4d8+14', healAll: true, cures: true },
   'the-great-work': { name: 'The Great Work', mana: 55, damage: '10d10+12', hitsAll: true },
   // tidecaller sea-work — Saltmere's older prayers
@@ -283,17 +285,17 @@ export const SPELLS: Record<string, SpellDef> = {
   'leviathan-coil': { name: 'Leviathan Coil', mana: 26, damage: '4d8+6', stunChance: 30 },
   'the-drowned-choir': { name: 'The Drowned Choir', mana: 30, damage: '5d6+5', hitsAll: true },
   'tide-of-the-old-sea': { name: 'Tide of the Old Sea', mana: 38, damage: '7d8+8', hitsAll: true },
-  'the-black-fathom': { name: 'The Black Fathom', mana: 45, damage: '9d8+10', selfHeal: '2d8' },
+  'the-black-fathom': { name: 'The Black Fathom', mana: 45, element: 'void', damage: '9d8+10', selfHeal: '2d8' },
   'the-sea-remembers': { name: 'The Sea Remembers', mana: 58, damage: '10d10+12', hitsAll: true, stunChance: 25 },
   // oneiromancer dream-work — the Night Market's quietest stall
   'waking-pinch': { name: 'Waking Pinch', mana: 3, damage: '1d6', stunChance: 30 },
   'sandman-touch': { name: "Sandman's Touch", mana: 6, damage: '1d4', stunChance: 55 },
   'nightmare-thread': { name: 'Nightmare-Thread', mana: 8, damage: '2d6+2' },
-  'dream-eater': { name: 'Dream-Eater', mana: 10, damage: '2d8', selfHeal: '1d6' },
+  'dream-eater': { name: 'Dream-Eater', mana: 10, element: 'void', damage: '2d8', selfHeal: '1d6' },
   'lull-the-room': { name: 'Lull the Room', mana: 14, damage: '1d6', hitsAll: true, stunChance: 35 },
   'terror-made-flesh': { name: 'Terror Made Flesh', mana: 16, damage: '4d6+2' },
   'the-shared-dream': { name: 'The Shared Dream', mana: 18, heal: '2d8+4', healAll: true },
-  'unravel-the-real': { name: 'Unravel the Real', mana: 22, damage: '5d6+4' },
+  'unravel-the-real': { name: 'Unravel the Real', mana: 22, element: 'void', damage: '5d6+4' },
   'sleepwalkers-parade': { name: "Sleepwalkers' Parade", mana: 26, damage: '3d6+2', hitsAll: true, stunChance: 30 },
   'the-door-in-the-dream': { name: 'The Door in the Dream', mana: 30, damage: '6d6+6', selfHeal: '1d8' },
   'wake-them-never': { name: 'Wake Them Never', mana: 38, damage: '6d8+8', stunChance: 45 },
@@ -308,10 +310,10 @@ export const SPELLS: Record<string, SpellDef> = {
   'the-ninth-chorus': { name: 'The Ninth Chorus', mana: 52, damage: '9d8+12', hitsAll: true, stunChance: 40 },
   'the-written-blade': { name: 'The Written Blade', mana: 45, damage: '10d8+10', stunChance: 25 },
   'the-second-pact': { name: 'The Second Pact', mana: 40, damage: '9d8+8', stunChance: 30 },
-  'the-doorless-dark': { name: 'The Doorless Dark', mana: 56, damage: '10d10+14', hitsAll: true },
+  'the-doorless-dark': { name: 'The Doorless Dark', mana: 56, element: 'void', damage: '10d10+14', hitsAll: true },
   'the-unburnt-lamp': { name: 'The Unburnt Lamp', mana: 42, heal: '5d8+15', healAll: true, partyDefense: 4 },
   'the-pale-census': { name: 'The Pale Census', mana: 42, damage: '8d8+10', hitsAll: true, stunChance: 30 },
-  'the-last-winter': { name: 'The Last Winter', mana: 58, damage: '10d10+15', hitsAll: true, stunChance: 35 },
+  'the-last-winter': { name: 'The Last Winter', mana: 58, element: 'frost', damage: '10d10+15', hitsAll: true, stunChance: 35 },
 };
 
 function weaponOf(world: WorldState, c: Character): Item | null {
@@ -589,7 +591,15 @@ function resolveCharacterAction(
           return;
         }
         for (const m of targets) {
-          const dmg = rng.roll(spell.damage) + Math.floor(c.skills.magic / 2);
+          let dmg = rng.roll(spell.damage) + Math.floor(c.skills.magic / 2);
+          const t = MONSTERS[m.templateKey];
+          if (spell.element && t?.resists?.includes(spell.element)) {
+            dmg = Math.floor(dmg * 0.5);
+            record({ round, actor: c.id, actorName: c.name, action: 'spell', detail: spell.name, result: 'info', text: `${m.name} shrugs away half the ${spell.element} — it has met this element before.` });
+          } else if (spell.element && t?.weakTo?.includes(spell.element)) {
+            dmg = Math.floor(dmg * 1.5);
+            record({ round, actor: c.id, actorName: c.name, action: 'spell', detail: spell.name, result: 'info', text: `The ${spell.element} finds something in ${m.name} that WANTS to burn.` });
+          }
           applyDamageToMonster(world, combat, c, m, dmg, spell.name, 'hit', rng, record, undefined, spell.stunChance !== undefined && rng.chance(spell.stunChance));
           if (spell.selfHeal && c.hp.current > 0 && c.hp.current < c.hp.max) {
             const drank = Math.min(rng.roll(spell.selfHeal), c.hp.max - c.hp.current);
