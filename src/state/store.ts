@@ -150,7 +150,7 @@ interface AppState {
   homeDeposit: (itemId: string) => void;
   homeWithdraw: (itemId: string) => void;
   poolItem: (itemId: string) => void;
-  unpoolItem: (itemId: string) => void;
+  unpoolItem: (itemId: string, toCharId?: string) => void;
   treasuryMove: (amount: number, dir: 'deposit' | 'withdraw') => void;
   setDeathRule: (r: WorldState['deathRule']) => void;
   setEncumbrance: (r: WorldState['encumbrance']) => void;
@@ -504,9 +504,9 @@ export const useStore = create<AppState>((set, get) => ({
     commit();
   },
 
-  unpoolItem: (itemId) => {
+  unpoolItem: (itemId, toCharId) => {
     const { world, commit, setToast } = get();
-    const err = takeFromParty(world, itemId, world.mcId);
+    const err = takeFromParty(world, itemId, toCharId ?? world.mcId);
     if (err) setToast(err);
     commit();
   },

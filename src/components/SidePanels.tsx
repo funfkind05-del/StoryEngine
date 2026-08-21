@@ -947,7 +947,13 @@ function ItemCard({ iid, ownerChar }: { iid: string; ownerChar?: string }) {
         {equipped && <button onClick={() => unequip(iid)}>Unequip</button>}
         {(it.kind === 'potion' || it.effectKey?.startsWith('food-') || it.effectKey?.startsWith('teach-')) && !world.combat?.active && (inParty || ownerChar) && <button onClick={() => drinkPotion(iid)} title={it.effectKey?.startsWith('teach-') ? 'Study it — learn the ability inside, forever.' : undefined}>{it.effectKey?.startsWith('teach-') ? '📖 Study' : 'Use'}</button>}
         {ownerChar && !equipped && <button onClick={() => poolItem(iid)} title="Move to shared party supplies">→ party</button>}
-        {inParty && <button onClick={() => unpoolItem(iid)}>→ personal</button>}
+        {inParty && (() => {
+          const takers = Object.values(world.characters).filter((m) => m.inParty && m.alive);
+          if (takers.length <= 1) return <button onClick={() => unpoolItem(iid)}>→ personal</button>;
+          return takers.map((m) => (
+            <button key={m.id} onClick={() => unpoolItem(iid, m.id)} title={`Into ${m.name}'s pack`}>→ {m.isMC ? m.name.split(' ')[0] : m.name.split(' ')[0]}</button>
+          ));
+        })()}
         {atHome && !equipped && !inHome && <button onClick={() => homeDeposit(iid)}>→ storage</button>}
         {inHome && <button onClick={() => homeWithdraw(iid)}>take out</button>}
         {ownerChar && !equipped && loc?.shop?.buys && (

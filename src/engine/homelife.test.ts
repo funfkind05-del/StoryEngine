@@ -12,6 +12,7 @@ import { giveGift } from './romance';
 import { SET_FAMILIES, affixMod, setBonusMod } from './progression';
 import { SET_RECIPES, craftSetPiece } from './crafting';
 import { addToContainer, makeItem } from './rules';
+import { takeFromParty } from './services';
 import { SPELLS, autoResolve, fieldCast, fieldCastable, startCombat } from './combat';
 import { enterDungeon } from './dungeon';
 import type { Character } from './types';
@@ -137,6 +138,29 @@ describe('children grow up', () => {
     dailyFamilyTick(w);
     expect(child.charClass).not.toBe('commoner');
     expect(w.events.some((e) => e.kind === 'family.coming-of-age')).toBe(true);
+  });
+});
+
+describe('the party pool shares out', () => {
+  it('any member can take from the pool, and full packs refuse', () => {
+    const w = buildSeedWorld();
+    const lyra = w.characters['CHAR_LYRA'];
+    const blade = makeItem(w, 'dagger', 1);
+    addToContainer(w, blade, 'party');
+    expect(w.partyInventory).toContain(blade.id);
+    expect(takeFromParty(w, blade.id, lyra.id)).toBeNull();
+    expect(lyra.inventory).toContain(blade.id);
+    expect(w.partyInventory).not.toContain(blade.id);
+    // a stuffed pack says no
+    const back = makeItem(w, 'iron-longsword', 1);
+    addToContainer(w, back, 'party');
+    while (lyra.inventory.length < 60) {
+      const filler = makeItem(w, 'rope', 1);
+      addToContainer(w, filler, lyra);
+      if (!lyra.inventory.includes(filler.id)) break;
+    }
+    const res = takeFromParty(w, back.id, lyra.id);
+    if (res !== null) expect(res).toMatch(/pack is full/);
   });
 });
 
