@@ -37,6 +37,19 @@ function homeWithResidents(n: 1 | 2) {
 }
 
 describe('the house that lives', () => {
+  it('an empty household survives the daily tick (burn seed 932 crash)', () => {
+    const w = buildSeedWorld();
+    const mc = w.characters[w.mcId];
+    mc.money = 2000;
+    expect(buyFirstHome(w)).toBeNull();
+    // a house with nobody home — every resident gone
+    for (let d = 0; d < 20; d++) {
+      w.time.day += 1;
+      dailyHomeLife(w);
+    }
+    expect(true).toBe(true); // no throw is the assertion
+  });
+
   it('residents generate ambient life without the party lifting a finger', () => {
     const { w } = homeWithResidents(1);
     for (let d = 0; d < 30; d++) {

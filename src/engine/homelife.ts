@@ -54,6 +54,7 @@ const AMBIENT_BY_CLASS: Record<string, ((c: Character) => string)[]> = {
 
 /** One ambient thread a day, some days: the house does a thing. */
 function ambientEvent(world: WorldState, rng: Rng, residents: Character[]) {
+  if (residents.length === 0) return; // an empty house tells no stories
   if (!rng.chance(0.4)) return;
   const c = rng.pick(residents);
   const pool = [...AMBIENT_GENERIC, ...(AMBIENT_BY_CLASS[c.charClass] ?? [])];
@@ -187,7 +188,7 @@ export function dailyHomeLife(world: WorldState) {
   if (home) {
     const hh = world.locations[home].household!;
     const residents = hh.residents.map((id) => world.characters[id]).filter((c): c is Character => !!c && c.alive && !c.isMC);
-    ambientEvent(world, rng, residents.length ? residents : []);
+    ambientEvent(world, rng, residents);
     if (residents.length >= 2) residentWeb(world, rng, residents);
     else if (residents.length === 1 && rng.chance(0.15)) {
       const c = residents[0];
