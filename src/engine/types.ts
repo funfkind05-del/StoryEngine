@@ -456,7 +456,7 @@ export interface DungeonRoom {
   /** the model already rendered this room's description — it persists */
   describedByLlm?: boolean;
   /** a door that opens to knowledge: the answer is in a lorebook */
-  riddleDoor?: { dir: 'north' | 'south' | 'east' | 'west'; to: RoomId; loreId: string; opened: boolean };
+  riddleDoor?: { dir: 'north' | 'south' | 'east' | 'west'; to: RoomId; loreId: string; opened: boolean; lastGuessDay?: number };
   connections: Partial<Record<'north' | 'south' | 'east' | 'west' | 'down' | 'up', RoomId>>;
 }
 

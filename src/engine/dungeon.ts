@@ -442,6 +442,21 @@ export function answerRiddle(world: WorldState): string | null {
   if (!room.riddleDoor || room.riddleDoor.opened) return 'No riddle waits here.';
   addMinutes(world, 5);
   if (!(world.codex ?? []).includes(room.riddleDoor.loreId)) {
+    // knowledge is the easy key — but the classics let you REASON at a
+    // door, once a day, and wisdom sometimes carries it. This is also
+    // the escape hatch for worlds where the lorebook chain knots shut.
+    if (room.riddleDoor.lastGuessDay === world.time.day) {
+      return 'The door has heard today\u2019s guesses. Sleep on it, or find the writings.';
+    }
+    room.riddleDoor.lastGuessDay = world.time.day;
+    const sage = [...partyMembers(world)].sort((a, b) => (b.attributes.wisdom + b.attributes.intelligence) - (a.attributes.wisdom + a.attributes.intelligence))[0];
+    const rng = new Rng((world.masterSeed ^ (world.time.day * 7451) ^ room.id.length) >>> 0);
+    const roll = rng.die(20) + Math.floor((sage.attributes.wisdom + sage.attributes.intelligence) / 4);
+    if (roll >= 21) {
+      room.riddleDoor.opened = true;
+      logEvent(world, 'dungeon.riddle', { room: room.id, answered: true, guessed: true }, `${sage.name} stood at the riddle-door and REASONED it out, word by word, with no book to lean on — and the door, grudgingly, agreed.`, { witnesses: partyMembers(world).map((c) => c.id) });
+      return null;
+    }
     logEvent(world, 'dungeon.riddle', { room: room.id, answered: false }, 'The script on the door asks its question and the party has no answer. Somewhere shallower, the writings that hold it are still lying unread.', { witnesses: partyMembers(world).map((c) => c.id) });
     return 'The party does not know the answer. The writings that hold it lie on a shallower floor.';
   }

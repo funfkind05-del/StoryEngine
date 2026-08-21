@@ -316,7 +316,9 @@ export function autoplayStep(world: WorldState, state: AutoplayerState, _rng: Rn
       if (r.floor !== room.floor) return false;
       // an answerable riddle-door is an objective: standing before it
       // is how it gets spoken open
-      const answerableRiddle = !!(r.riddleDoor && !r.riddleDoor.opened && (world.codex ?? []).includes(r.riddleDoor.loreId));
+      const answerableRiddle = !!(r.riddleDoor && !r.riddleDoor.opened && (
+        (world.codex ?? []).includes(r.riddleDoor.loreId) || r.riddleDoor.lastGuessDay !== world.time.day
+      ));
       return r.enemies === 'alive' || !r.explored || !!(r.chest && !r.chest.opened) || !!(r.key && !r.key.taken) || !!(r.lorebook && !r.lorebook.taken) || answerableRiddle;
     };
     // sixty walks without a fight, a find, or a descent means the floor

@@ -15,7 +15,7 @@ import { SET_RECIPES, craftSetPiece } from './crafting';
 import { addToContainer, makeItem, performTempleService } from './rules';
 import { repairAtShop, takeFromParty } from './services';
 import { SPELLS, autoResolve, fieldCast, fieldCastable, resolveRound, startCombat } from './combat';
-import { enterDungeon } from './dungeon';
+import { answerRiddle, enterDungeon } from './dungeon';
 import { MONSTERS } from './monsters';
 import { doomTick } from './campaign';
 import type { Character } from './types';
@@ -164,6 +164,29 @@ describe('the party pool shares out', () => {
     }
     const res = takeFromParty(w, back.id, lyra.id);
     if (res !== null) expect(res).toMatch(/pack is full/);
+  });
+});
+
+describe('riddles yield to wisdom, eventually', () => {
+  it('a sage can brute a riddle-door — one guess a day, knowledge still instant', () => {
+    const w = buildSeedWorld();
+    enterDungeon(w, 'DUN_OLDQUARTER_001');
+    const d = w.dungeons['DUN_OLDQUARTER_001'];
+    const room = Object.values(d.rooms)[0];
+    room.riddleDoor = { dir: 'north', to: Object.values(d.rooms)[1].id, loreId: 'DUN_OLDQUARTER_001:1', opened: false };
+    w.currentRoom = room.id;
+    const mc = w.characters[w.mcId];
+    mc.attributes.wisdom = 20;
+    mc.attributes.intelligence = 20; // +10 to the guess: opens fast
+    let opened = false;
+    for (let day = 0; day < 30 && !opened; day++) {
+      const res = answerRiddle(w);
+      if (res === null) { opened = true; break; }
+      expect(answerRiddle(w)).toMatch(/heard today|does not know/); // one guess a day
+      w.time.day += 1;
+    }
+    expect(opened).toBe(true);
+    expect(w.events.some((e) => e.kind === 'dungeon.riddle' && e.data.guessed === true)).toBe(true);
   });
 });
 

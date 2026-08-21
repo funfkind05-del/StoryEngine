@@ -28,12 +28,12 @@ for (let attempt = 0; attempt < 8; attempt++) {
   const w = buildSeedWorld();
   const rng = new Rng(1000 + attempt);
   const state = newAutoplayer();
-  for (let i = 0; i < 22000; i++) autoplayStep(w, state, rng, i);
-  const stage1 = mainQuests(w).find((q) => q.stage === 1);
-  const d = w.dungeons['DUN_OLDQUARTER_001'];
+  for (let i = 0; i < 45000; i++) autoplayStep(w, state, rng, i);
+  const stage1 = mainQuests(w).find((q) => q.stage === 4);
+  const d = w.dungeons['DUN_IRONMARKET_001'];
   const boss = Object.values(d.rooms).find((r) => r.isBossRoom);
   const done = stage1?.status === 'completed';
-  console.log(`attempt ${attempt}: stage1 ${stage1?.status}, bossDefeated ${d.bossDefeated}, bossRoom enemies ${boss?.enemies}, level ${w.characters[w.mcId].level}`);
+  console.log(`attempt ${attempt}: stage4 ${stage1?.status}, bossDefeated ${d.bossDefeated}, bossRoom enemies ${boss?.enemies}, level ${w.characters[w.mcId].level}, generated ${d.generated}`);
   if (!done && boss) {
     // AUTOPSY
     console.log('=== WEDGED WORLD AUTOPSY ===');
