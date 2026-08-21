@@ -43,6 +43,10 @@ export interface AutoplayerState {
    * stops paying gets left, not paced until the torches die */
   wanderStreak?: number;
   leavingFloor?: boolean;
+  /** rooms already wall-searched (secret-door sweep), per dungeon */
+  sweepSearched?: Record<string, boolean>;
+  /** day each dungeon's full sweep last came up empty */
+  sweepDoneDay?: Record<string, number>;
   log: string[];
 }
 
@@ -338,6 +342,38 @@ export function autoplayStep(world: WorldState, state: AutoplayerState, _rng: Rn
         return r.floor === room.floor && (!!r.connections.down || !!r.isBossRoom);
       };
       dir = dungeonStepToward(world, stairs);
+      // the classic move before giving up on a live warden: the floor
+      // is mapped and there's no way on — so SEARCH THE WALLS, room by
+      // room, until a secret door gives or every wall has been tried
+      const wardenWaits = !d.bossDefeated;
+      const sweep = (): string | null => {
+        if (!wardenWaits) return null;
+        // a finished, fruitless sweep stands for ten days — re-sweeping
+        // every visit turned the early game into wall-fondling
+        state.sweepDoneDay ??= {};
+        const lastDone = state.sweepDoneDay[d.id];
+        if (lastDone !== undefined && world.time.day - lastDone < 10) return null;
+        if (lastDone !== undefined && world.time.day - lastDone >= 10) {
+          delete state.sweepDoneDay[d.id];
+          for (const k of Object.keys(state.sweepSearched ?? {})) if (k.startsWith(`${d.id}:`)) delete state.sweepSearched![k];
+        }
+        state.sweepSearched ??= {};
+        const key = `${d.id}:${room.id}`;
+        if (!state.sweepSearched[key]) {
+          state.sweepSearched[key] = true;
+          const before = Object.keys(room.connections).length;
+          searchRoom(world);
+          if (Object.keys(room.connections).length > before) state.leavingFloor = false; // a wall gave
+          return 'sweep-search';
+        }
+        const unsearched = (rid: string) => d.rooms[rid].floor === room.floor && !state.sweepSearched![`${d.id}:${rid}`];
+        const dirU = dungeonStepToward(world, unsearched);
+        if (dirU && dirU !== 'here') {
+          const res = moveInDungeon(world, dirU);
+          if (!('error' in res)) return 'sweep-walk';
+        }
+        return null;
+      };
       if (dir === 'here') {
         state.wanderStreak = 0;
         state.leavingFloor = false;
@@ -345,12 +381,18 @@ export function autoplayStep(world: WorldState, state: AutoplayerState, _rng: Rn
           moveInDungeon(world, 'down');
           return 'descend';
         }
+        const swept = sweep();
+        if (swept) return swept;
+        if (wardenWaits) (state.sweepDoneDay ??= {})[d.id] = world.time.day;
         // boss floor cleared or nothing left anywhere
         exitDungeon(world);
         state.targetDungeon = null;
         return 'dungeon-done';
       }
       if (dir === null) {
+        const swept = sweep();
+        if (swept) return swept;
+        if (wardenWaits) (state.sweepDoneDay ??= {})[d.id] = world.time.day;
         // no stairs reachable either — this hole is done for the day
         state.wanderStreak = 0;
         state.leavingFloor = false;
