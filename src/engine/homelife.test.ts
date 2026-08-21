@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { buildSeedWorld } from '../data/seed';
 import { dailyHomeLife, fulfillWant } from './homelife';
 import { buyFirstHome } from './household';
-import { inviteToLive } from './hearth';
+import { HOUSEHOLD_ALLOWANCE, inviteToLive, spouseLedger } from './hearth';
 import { relationshipBetween, travelTo } from './world';
 import { dailyFamilyTick, COMING_OF_AGE } from './family';
 import { giveGift } from './romance';
@@ -161,6 +161,31 @@ describe('the party pool shares out', () => {
     }
     const res = takeFromParty(w, back.id, lyra.id);
     if (res !== null) expect(res).toMatch(/pack is full/);
+  });
+});
+
+describe('one ledger', () => {
+  it('a resident spouse pools her coin above the allowance, and draws back when broke; a lover does not', () => {
+    const { w, home } = homeWithResidents(2);
+    const lyra = w.characters['CHAR_LYRA'];
+    const mara = w.characters['CHAR_MARA'];
+    // Lyra marries in; Mara stays a lover (moving in nudged commitment,
+    // so pin her below the vow line explicitly)
+    Object.assign(relationshipBetween(w, lyra.id, w.mcId), { commitment: 9, attraction: 6 });
+    Object.assign(relationshipBetween(w, mara.id, w.mcId), { commitment: 3, attraction: 6, affection: 7 });
+    lyra.money = 400;
+    mara.money = 400;
+    const hh = home.household!;
+    const chest = hh.treasury;
+    spouseLedger(w);
+    expect(lyra.money).toBe(HOUSEHOLD_ALLOWANCE);
+    expect(hh.treasury).toBe(chest + 350);
+    expect(mara.money).toBe(400); // her purse is her own until vows
+    expect(w.events.some((e) => e.kind === 'hearth.ledger')).toBe(true);
+    // broke spouse draws pin money back
+    lyra.money = 0;
+    spouseLedger(w);
+    expect(lyra.money).toBe(HOUSEHOLD_ALLOWANCE);
   });
 });
 

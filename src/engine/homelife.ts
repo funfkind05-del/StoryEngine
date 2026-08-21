@@ -9,7 +9,7 @@ import type { Character, Want, WorldState } from './types';
 import { logEvent, relationshipBetween } from './world';
 import { findHome } from './household';
 import { relationshipStage } from './romance';
-import { noteAttention } from './hearth';
+import { noteAttention, spouseLedger } from './hearth';
 import { Rng } from './rng';
 
 // ---------- ambient household events ----------
@@ -195,4 +195,5 @@ export function dailyHomeLife(world: WorldState) {
     }
   }
   offerWant(world, rng);
+  spouseLedger(world);
 }

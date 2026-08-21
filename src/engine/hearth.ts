@@ -127,6 +127,37 @@ export function hearthTime(world: WorldState, npcId: string, actKey: string): st
   return null;
 }
 
+// ---------- one ledger (spouses share the treasury) ----------
+
+/** Walking-around money a spouse keeps out of the common chest. */
+export const HOUSEHOLD_ALLOWANCE = 50;
+
+/** Daily: married residents keep one ledger with the house — coin
+ * above the allowance goes into the treasury, and a broke spouse
+ * draws back up to it. Lovers and partners keep their own purses;
+ * marriage is the line where the money stops being separate. */
+export function spouseLedger(world: WorldState) {
+  const home = findHome(world);
+  if (!home) return;
+  const hh = world.locations[home].household!;
+  for (const id of hh.residents) {
+    const c = world.characters[id];
+    if (!c || !c.alive || c.isMC) continue;
+    if (relationshipStage(c.relationships[world.mcId]) !== 'spouse') continue;
+    if (c.money > HOUSEHOLD_ALLOWANCE) {
+      const moved = c.money - HOUSEHOLD_ALLOWANCE;
+      c.money = HOUSEHOLD_ALLOWANCE;
+      hh.treasury += moved;
+      logEvent(world, 'hearth.ledger', { character: c.id, moved, direction: 'in' }, `${c.name} counted her coin onto the kitchen table and swept ${moved} copper into the household chest — one ledger in this house, and both names on it.`, { location: home, witnesses: [world.mcId, c.id] });
+    } else if (c.money < HOUSEHOLD_ALLOWANCE && hh.treasury > 0) {
+      const drawn = Math.min(HOUSEHOLD_ALLOWANCE - c.money, hh.treasury);
+      hh.treasury -= drawn;
+      c.money += drawn;
+      logEvent(world, 'hearth.ledger', { character: c.id, moved: drawn, direction: 'out' }, `${c.name} took ${drawn} copper from the household chest for the day's errands, and noted it in the book, because that is how a house stays a house.`, { location: home, witnesses: [c.id] });
+    }
+  }
+}
+
 // ---------- the cooling (Sims decay) ----------
 
 export const NEGLECT_DAYS = 7; // untended hearts cool after a week
