@@ -190,7 +190,9 @@ export function autoplayStep(world: WorldState, state: AutoplayerState, _rng: Rn
 
   // fight what's in front of us
   if (world.combat?.active) {
-    state.wanderStreak = 0;
+    // NOTE: combat does NOT reset the wander streak — respawning
+    // rooms hand out a trivial fight every ~25 walks, which kept the
+    // 'floor is milked' trigger from ever firing (the bimodal tail)
     autoRound(world);
     if (world.combat && !world.combat.active) {
       if (world.combat.pendingLoot) takeLoot(world, 'all');
