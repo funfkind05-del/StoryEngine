@@ -49,6 +49,8 @@ export interface AutoplayerState {
   sweepDoneDay?: Record<string, number>;
   /** actions spent on the current sweep — hard budget, no exceptions */
   sweepSpent?: number;
+  /** rooms that teleport-bounced us — pathing avoids them after once */
+  bounced?: Record<string, boolean>;
   log: string[];
 }
 
@@ -97,7 +99,7 @@ function cityStepToward(world: WorldState, dest: string): string | null {
 }
 
 /** BFS one step in the current dungeon toward the best objective room. */
-function dungeonStepToward(world: WorldState, want: (roomId: string) => boolean): MoveDir | 'here' | null {
+function dungeonStepToward(world: WorldState, want: (roomId: string) => boolean, avoid?: Record<string, boolean>): MoveDir | 'here' | null {
   const d = world.dungeons[world.currentDungeon!];
   const start = world.currentRoom!;
   if (want(start)) return 'here';
@@ -112,6 +114,8 @@ function dungeonStepToward(world: WorldState, want: (roomId: string) => boolean)
       // a locked/riddle passage we can't open yet is a wall for pathing
       if (room.lockedDoor && !room.lockedDoor.opened && room.lockedDoor.dir === dir && !d.keysHeld?.includes(cur)) continue;
       if (room.riddleDoor && !room.riddleDoor.opened && room.riddleDoor.dir === dir) continue;
+      // a room that teleport-bounced us once is a trap, not a corridor
+      if (avoid?.[to] && !want(to)) continue;
       seen.add(to);
       prev.set(to, { from: cur, dir });
       if (want(to)) {
@@ -347,10 +351,11 @@ export function autoplayStep(world: WorldState, state: AutoplayerState, _rng: Rn
       const r = d.rooms[rid];
       return r.floor === room.floor && (!!r.connections.down || (!!r.isBossRoom && r.enemies === 'alive'));
     };
-    let dir = state.leavingFloor ? null : dungeonStepToward(world, overleveled ? bossHunt : objective);
+    const bouncedHere = Object.fromEntries(Object.entries(state.bounced ?? {}).filter(([k]) => k.startsWith(`${d.id}:`)).map(([k, v]) => [k.split(':')[1], v]));
+    let dir = state.leavingFloor ? null : dungeonStepToward(world, overleveled ? bossHunt : objective, bouncedHere);
     // stairs behind a lock or a riddle read as walls — go earn the way
     // through (keys, lorebooks, answers) instead of giving up on the hole
-    if (overleveled && dir === null && !state.leavingFloor) dir = dungeonStepToward(world, objective);
+    if (overleveled && dir === null && !state.leavingFloor) dir = dungeonStepToward(world, objective, bouncedHere);
     if (dir === 'here' && overleveled) {
       if (room.connections.down) {
         moveInDungeon(world, 'down');
@@ -367,7 +372,7 @@ export function autoplayStep(world: WorldState, state: AutoplayerState, _rng: Rn
         const r = d.rooms[rid];
         return r.floor === room.floor && (!!r.connections.down || !!r.isBossRoom);
       };
-      dir = dungeonStepToward(world, stairs);
+      dir = dungeonStepToward(world, stairs, bouncedHere);
       // the classic move before giving up on a live warden: the floor
       // is mapped and there's no way on — so SEARCH THE WALLS, room by
       // room, until a secret door gives or every wall has been tried
@@ -402,7 +407,7 @@ export function autoplayStep(world: WorldState, state: AutoplayerState, _rng: Rn
           return 'sweep-search';
         }
         const unsearched = (rid: string) => d.rooms[rid].floor === room.floor && !state.sweepSearched![`${d.id}:${rid}`];
-        const dirU = dungeonStepToward(world, unsearched);
+        const dirU = dungeonStepToward(world, unsearched, bouncedHere);
         if (dirU && dirU !== 'here') {
           const res = moveInDungeon(world, dirU);
           if (!('error' in res)) return 'sweep-walk';
@@ -440,11 +445,18 @@ export function autoplayStep(world: WorldState, state: AutoplayerState, _rng: Rn
     }
     if (dir && dir !== 'here') {
       state.wanderStreak = (state.wanderStreak ?? 0) + 1;
+      const intended = room.connections[dir as MoveDir];
       const res = moveInDungeon(world, dir);
       if ('error' in res) {
         // locked from this side without recourse — search for another way
         searchRoom(world);
         return 'stuck-search';
+      }
+      if (intended && res.room.id !== intended) {
+        // stepped into a teleporter: the floor folded and put us
+        // somewhere else. Never path THROUGH that room again.
+        (state.bounced ??= {})[`${d.id}:${intended}`] = true;
+        return 'bounced';
       }
       return 'walk';
     }
