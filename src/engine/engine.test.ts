@@ -137,9 +137,11 @@ describe('encounters & combat', () => {
       expect(combat.pendingLoot).toBeTruthy();
       const room = w.dungeons['DUN_OLDQUARTER_001'].rooms[combat.roomId!];
       expect(room.enemies).toBe('dead');
-      // full XP to every participant
+      // full XP to every participant (underdog bonus may top it up
+      // when the foes outrank the fighter)
       for (const id of combat.partyIds) {
-        expect(w.characters[id].xp).toBe(combat.pendingLoot!.xp);
+        expect(w.characters[id].xp).toBeGreaterThanOrEqual(combat.pendingLoot!.xp);
+        expect(w.characters[id].xp).toBeLessThanOrEqual(combat.pendingLoot!.xp * 2);
       }
       const money = w.characters[w.mcId].money;
       takeLoot(w, 'all');

@@ -837,8 +837,12 @@ function finishCombat(world: WorldState, combat: CombatState) {
           logEvent(world, 'injury', { character: c.id, injury }, `${c.name} took ${injury} — it will need proper treatment (temple or time won't fix it alone).`);
         }
       }
-      // full XP to each participant (rules-engine policy)
-      grantXp(world, c, combat.pendingLoot.xp);
+      // full XP to each participant (rules-engine policy) — and
+      // fighting above your level pays extra: catch-up XP that fills
+      // the grind valleys the campaign runs kept mapping
+      const foeAvg = combat.monsters.length ? combat.monsters.reduce((a, m) => a + (MONSTERS[m.templateKey]?.level ?? 1), 0) / combat.monsters.length : 1;
+      const underdog = Math.min(2, 1 + Math.max(0, foeAvg - c.level) * 0.1);
+      grantXp(world, c, Math.round(combat.pendingLoot.xp * underdog));
     }
     // room state persists
     if (combat.roomId && world.currentDungeon) {

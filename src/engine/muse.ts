@@ -417,11 +417,17 @@ export function openThreads(world: WorldState): OpenThread[] {
   for (const r of livingRivals(world)) {
     threads.push({ kind: 'rival', label: `${r.name} still lives`, detail: `Power ${r.power}, grudge ${r.grudge}${r.scars.length ? `, carrying ${r.scars[r.scars.length - 1]}` : ''}. It will come back until somebody ends it.`, urgency: 5 + Math.min(4, r.power) });
   }
+  const waitingArcs = Object.values(world.quests).filter((q) => q.status === 'offered' && q.personal);
+  if (waitingArcs.length === 1) {
+    const q = waitingArcs[0];
+    const c = world.characters[q.personal!];
+    threads.push({ kind: 'arc', label: `${c?.name ?? q.personal}: "${q.title}" waits`, detail: 'A personal chapter on offer and unplayed. Hearts do not hold forever.', urgency: 6 });
+  } else if (waitingArcs.length > 1) {
+    // six identical cards is a wall, not a muse — one card, all names
+    const names = waitingArcs.map((q) => world.characters[q.personal!]?.name?.split(' ')[0] ?? q.personal).join(', ');
+    threads.push({ kind: 'arc', label: `${waitingArcs.length} personal chapters wait`, detail: `${names} — each has something she needs help with, on offer and unplayed. Hearts do not hold forever.`, urgency: 6 });
+  }
   for (const q of Object.values(world.quests)) {
-    if (q.status === 'offered' && q.personal) {
-      const c = world.characters[q.personal];
-      threads.push({ kind: 'arc', label: `${c?.name ?? q.personal}: "${q.title}" waits`, detail: 'A personal chapter on offer and unplayed. Hearts do not hold forever.', urgency: 6 });
-    }
     if (q.status === 'offered' && q.isMain) {
       threads.push({ kind: 'spine', label: `The spine waits: "${q.title}"`, detail: world.doomEnabled !== false ? 'The Circle digs while the party dallies — the clock is ticking.' : 'The clock is paused, but the story is not moving.', urgency: 8 });
     }

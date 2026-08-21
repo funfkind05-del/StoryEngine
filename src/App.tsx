@@ -40,6 +40,31 @@ function ArrestBanner() {
   );
 }
 
+
+function SpineBanner() {
+  // finding from the campaign bot-runs: an offered main quest sat
+  // silent in the log while the Circle got its quiet months. The
+  // spine announces itself now.
+  const world = useStore((s) => s.world);
+  const [snoozedUntil, setSnoozedUntil] = useState(0);
+  const offer = Object.values(world.quests).find((q) => q.isMain && q.status === 'offered');
+  if (!offer || world.combat || world.currentDungeon) return null;
+  if (world.partyLocation === offer.giverLocation) return null;
+  if (world.time.day < snoozedUntil) return null;
+  const giver = offer.giver === 'board' ? 'The board' : world.characters[offer.giver]?.name ?? 'Someone';
+  const where = world.locations[offer.giverLocation]?.name ?? offer.giverLocation;
+  const doomed = (world.doom?.stage ?? 0) > 0;
+  return (
+    <div className="encounter-banner" style={{ borderColor: 'var(--gold, #c9a227)', background: '#221c10' }}>
+      <div className="row">
+        <b style={{ color: 'var(--gold, #c9a227)' }}>⚜ {giver} is asking for you at {where}</b>
+        <span className="grow dim small">"{offer.title}"{doomed ? ' — and the Circle is not waiting.' : ''}</span>
+        <button onClick={() => setSnoozedUntil(world.time.day + 3)}>A few days more</button>
+      </div>
+    </div>
+  );
+}
+
 function MomentBanner() {
   const world = useStore((s) => s.world);
   const hearMoment = useStore((s) => s.hearMoment);
@@ -254,6 +279,7 @@ export default function App() {
         <EncounterBanner />
         <ArrestBanner />
         <MomentBanner />
+        <SpineBanner />
       </div>
       <div className="main">
         <div className="sidebar">
